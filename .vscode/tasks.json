@@ -13,6 +13,16 @@
       "group": "build"
     },
     {
+      "type": "shell",
+      "label": "pnpm: watch:webview",
+      "command": "pnpm run watch:webview",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Launch Extension Host (Insiders CLI)",
       "type": "shell",
       "command": "bash",
@@ -22,8 +32,8 @@
         "9333",
         "${workspaceFolder}"
       ],
-      "dependsOn": "pnpm: watch",
-      "dependsOrder": "sequence",
+      "dependsOn": ["pnpm: watch", "pnpm: watch:webview"],
+      "dependsOrder": "parallel",
       "problemMatcher": []
     },
     {
@@ -36,8 +46,8 @@
         "9334",
         "${workspaceFolder}"
       ],
-      "dependsOn": "pnpm: watch",
-      "dependsOrder": "sequence",
+      "dependsOn": ["pnpm: watch", "pnpm: watch:webview"],
+      "dependsOrder": "parallel",
       "problemMatcher": []
     }
   ]

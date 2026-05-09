@@ -55,11 +55,15 @@ What you get out of the box:
 oai-copilot/
 ├── src/                      # TypeScript source files
 │   ├── extension.ts          # Extension entry point (activate/deactivate)
+│   ├── settings-panel.ts     # Settings webview panel provider
+│   ├── webview/              # Webview React source (bundled by esbuild)
+│   │   └── settings-app.tsx  # Settings page React app
 │   └── test/
 │       └── e2e/              # E2E tests (run inside VS Code)
 ├── out/                      # Compiled JavaScript output (gitignored)
 ├── .vscode/                  # Launch configs, tasks, helper scripts
 ├── .vscode-test.mjs          # E2E test runner configuration
+├── esbuild.mts               # esbuild config for webview bundling
 ├── vitest.config.mts         # Vitest unit test configuration
 ├── eslint.config.mjs         # ESLint flat config
 ├── tsconfig.json             # TypeScript configuration

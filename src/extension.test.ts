@@ -17,6 +17,12 @@ vi.mock('vscode', () => {
   };
 });
 
+vi.mock('./settings-panel.js', () => ({
+  SettingsPanel: {
+    createOrShow: vi.fn(),
+  },
+}));
+
 import * as vscode from 'vscode';
 import { activate, deactivate } from './extension.js';
 
@@ -39,10 +45,19 @@ describe('activate', () => {
     );
   });
 
-  it('should push a disposable to subscriptions', () => {
+  it('should register the openSettings command', () => {
     activate(context);
 
-    expect(context.subscriptions).toHaveLength(1);
+    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
+      'oai-copilot.openSettings',
+      expect.any(Function),
+    );
+  });
+
+  it('should push disposables to subscriptions', () => {
+    activate(context);
+
+    expect(context.subscriptions).toHaveLength(2);
   });
 
   it('helloWorld command should show an information message', () => {
@@ -54,6 +69,16 @@ describe('activate', () => {
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
       'Hello World from OAI Copilot!',
     );
+  });
+
+  it('openSettings command should create or show settings panel', async () => {
+    const { SettingsPanel } = await import('./settings-panel.js');
+    activate(context);
+
+    const callback = vi.mocked(vscode.commands.registerCommand).mock.calls[1][1] as () => void;
+    callback();
+
+    expect(SettingsPanel.createOrShow).toHaveBeenCalled();
   });
 });
 
