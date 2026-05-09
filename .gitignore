@@ -1,0 +1,18 @@
+# Incremental specs
+.sdd
+
+# Dependencies
+node_modules/
+
+# Compiled output
+out/
+dist/
+
+# Packaged extension
+*.vsix
+
+# OS files
+.DS_Store
+
+# VS Code test runner
+.vscode-test/

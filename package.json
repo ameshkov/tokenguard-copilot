@@ -1,0 +1,72 @@
+{
+  "name": "oai-copilot",
+  "displayName": "OAI Copilot",
+  "description": "Use third-party OpenAI-compatible models with VS Code Copilot Chat",
+  "version": "0.1.0",
+  "publisher": "ameshkov",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.116.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "enabledApiProposals": [
+    "chatProvider"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "oai-copilot",
+        "displayName": "OAI Copilot"
+      }
+    ],
+    "commands": [
+      {
+        "command": "oai-copilot.helloWorld",
+        "title": "Hello World",
+        "category": "OAI Copilot"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format:check": "prettier --check --no-error-on-unmatched-pattern . && markdownlint-cli2 '**/*.md'",
+    "format:fix": "prettier --write --no-error-on-unmatched-pattern . && markdownlint-cli2 --fix '**/*.md'",
+    "prepare": "husky",
+    "vscode:prepublish": "pnpm run compile",
+    "package": "vsce package -o dist/",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "vscode-test",
+    "clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.116.0",
+    "@vscode/vsce": "^3.9.1",
+    "eslint": "^9.13.0",
+    "husky": "^9.1.7",
+    "markdownlint-cli2": "^0.22.1",
+    "prettier": "^3.1.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.0",
+    "vitest": "4.1.5",
+    "@vscode/test-cli": "0.0.12",
+    "@vscode/test-electron": "2.5.2",
+    "@types/mocha": "10.0.10",
+    "mocha": "11.7.5",
+    "glob": "11.0.2",
+    "@types/glob": "8.1.0"
+  }
+}

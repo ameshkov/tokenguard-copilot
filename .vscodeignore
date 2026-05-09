@@ -1,0 +1,38 @@
+# Files excluded from the packaged .vsix extension.
+# Only runtime-essential files (compiled JS, package.json, README, etc.)
+# should be included in the published extension.
+
+# IDE and dev tooling configs
+.vscode/**
+tsconfig.json
+eslint.config.mjs
+.prettierrc
+.prettierignore
+.markdownlint-cli2.yaml
+.gitignore
+.github/**
+
+# Source files (compiled output in out/ is included instead)
+src/**
+
+# Source maps and declaration files (not needed at runtime)
+out/**/*.map
+out/**/*.d.ts
+out/**/*.d.ts.map
+
+# Build artifacts and test output
+*.vsix
+.vscode-test/
+dist/
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+
+# OS files
+.DS_Store
+
+# Dev-only documentation
+AGENTS.md
+DEVELOPMENT.md
+PLAN.md

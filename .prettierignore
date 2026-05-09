@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Compiled output
+out/
+dist/
+
+# VS Code test runner
+.vscode-test/
+
+# Lock files (auto-generated, formatting breaks them)
+pnpm-lock.yaml
+package-lock.json
+
+# Markdown (formatted by markdownlint instead)
+*.md
+
+# Packaged extension
+*.vsix
