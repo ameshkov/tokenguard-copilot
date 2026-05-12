@@ -14,6 +14,8 @@ eslint.config.mjs
 
 # Source files (compiled output in out/ is included instead)
 src/**
+packages/**
+test-e2e/**
 
 # Source maps and declaration files (not needed at runtime)
 out/**/*.map
@@ -36,3 +38,10 @@ pnpm-lock.yaml
 AGENTS.md
 DEVELOPMENT.md
 PLAN.md
+
+# Monorepo config
+pnpm-workspace.yaml
+drizzle.config.ts
+vitest.config.mts
+esbuild.mts
+docs/**

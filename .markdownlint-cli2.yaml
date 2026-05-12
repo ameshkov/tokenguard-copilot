@@ -23,5 +23,6 @@ config:
 ignores:
   - .vscode-test/**
   - node_modules/**
+  - packages/*/node_modules/**
   - dist/**
   - out/**

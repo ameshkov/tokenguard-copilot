@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'nonce-{{nonce}}'; style-src {{cspSource}} 'unsafe-inline';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TokenGuard Copilot Settings</title>
+    <style>
+      body {
+        padding: 16px;
+        color: var(--vscode-foreground);
+        background-color: var(--vscode-editor-background);
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+      }
+      .settings-container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      h1 {
+        color: var(--vscode-foreground);
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      p {
+        color: var(--vscode-descriptionForeground);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+  </body>
+</html>

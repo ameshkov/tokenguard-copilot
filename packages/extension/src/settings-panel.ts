@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 
 /**
@@ -44,8 +45,8 @@ export class SettingsPanel {
     }
 
     const panel = vscode.window.createWebviewPanel(
-      'oaiCopilotSettings',
-      'OAI Copilot Settings',
+      'tokenguardCopilotSettings',
+      'TokenGuard Copilot Settings',
       SettingsPanel.viewColumn,
       {
         enableScripts: true,
@@ -74,6 +75,9 @@ export class SettingsPanel {
   /**
    * Builds the HTML content for the webview.
    *
+   * Reads the HTML template from assets/webview/settings.html and
+   * interpolates dynamic placeholders (nonce, script URI, CSP source).
+   *
    * @param webview - The webview to generate HTML for.
    * @returns The full HTML string for the webview.
    */
@@ -84,46 +88,18 @@ export class SettingsPanel {
 
     const nonce = getNonce();
 
-    return /* html */ `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';"
-    />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
-    <title>OAI Copilot Settings</title>
-    <style>
-      body {
-        padding: 16px;
-        color: var(--vscode-foreground);
-        background-color: var(--vscode-editor-background);
-        font-family: var(--vscode-font-family);
-        font-size: var(--vscode-font-size);
-      }
-      .settings-container {
-        max-width: 600px;
-        margin: 0 auto;
-      }
-      h1 {
-        color: var(--vscode-foreground);
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-      p {
-        color: var(--vscode-descriptionForeground);
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script nonce="${nonce}" src="${scriptUri}"></script>
-  </body>
-</html>`;
+    const templatePath = vscode.Uri.joinPath(
+      this.extensionUri,
+      'assets',
+      'webview',
+      'settings.html',
+    );
+    const template = fs.readFileSync(templatePath.fsPath, 'utf8');
+
+    return template
+      .replaceAll('{{nonce}}', nonce)
+      .replaceAll('{{scriptUri}}', scriptUri.toString())
+      .replaceAll('{{cspSource}}', webview.cspSource);
   }
 }
 

@@ -1,13 +1,10 @@
 /// <reference types="node" />
 import * as esbuild from 'esbuild';
-
 const watch = process.argv.includes('--watch');
-
-/** @type {esbuild.BuildOptions} */
-const buildOptions: esbuild.BuildOptions = {
-  entryPoints: ['src/webview/settings-app.tsx'],
+const buildOptions = {
+  entryPoints: { 'settings-app': 'src/index.tsx' },
   bundle: true,
-  outdir: 'out/webview',
+  outdir: '../../out/webview',
   format: 'iife',
   platform: 'browser',
   target: 'es2022',
@@ -15,7 +12,6 @@ const buildOptions: esbuild.BuildOptions = {
   minify: !watch,
   jsx: 'automatic',
 };
-
 if (watch) {
   const ctx = await esbuild.context(buildOptions);
   await ctx.watch();
@@ -23,3 +19,4 @@ if (watch) {
 } else {
   await esbuild.build(buildOptions);
 }
+//# sourceMappingURL=esbuild.config.mjs.map

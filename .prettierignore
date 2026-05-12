@@ -4,6 +4,7 @@ node_modules/
 # Compiled output
 out/
 dist/
+packages/*/dist/
 
 # VS Code test runner
 .vscode-test/

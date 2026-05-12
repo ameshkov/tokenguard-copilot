@@ -10,7 +10,7 @@ import { createRoot } from 'react-dom/client';
 function SettingsApp(): React.JSX.Element {
   return (
     <main className="settings-container">
-      <h1>OAI Copilot Settings</h1>
+      <h1>TokenGuard Copilot Settings</h1>
       <p>Configure your OpenAI-compatible model endpoints.</p>
     </main>
   );

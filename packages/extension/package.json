@@ -1,0 +1,27 @@
+{
+  "name": "@tokenguard/extension",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsx esbuild.config.mts",
+    "watch": "tsx esbuild.config.mts --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@tokenguard/shared": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.116.0",
+    "drizzle-kit": "1.0.0-rc.2",
+    "esbuild": "0.28.0",
+    "tsx": "4.21.0",
+    "typescript": "^5.9.2",
+    "vitest": "4.1.5"
+  }
+}

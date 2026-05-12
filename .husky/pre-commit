@@ -16,3 +16,15 @@ fi
 echo "Running linting..."
 pnpm format:check
 pnpm lint
+
+# Run type checking
+echo "Running type checking..."
+pnpm typecheck
+
+# Run unit tests
+echo "Running unit tests..."
+pnpm test
+
+# Run E2E tests
+echo "Running E2E tests..."
+pnpm test:e2e

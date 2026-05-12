@@ -1,6 +1,6 @@
 {
-  "name": "oai-copilot",
-  "displayName": "OAI Copilot",
+  "name": "tokenguard-copilot",
+  "displayName": "TokenGuard Copilot",
   "description": "Use third-party OpenAI-compatible models with VS Code Copilot Chat",
   "version": "0.1.0",
   "publisher": "ameshkov",
@@ -22,66 +22,69 @@
   "contributes": {
     "languageModelChatProviders": [
       {
-        "vendor": "oai-copilot",
-        "displayName": "OAI Copilot"
+        "vendor": "tokenguard-copilot",
+        "displayName": "TokenGuard Copilot"
       }
     ],
     "commands": [
       {
-        "command": "oai-copilot.helloWorld",
+        "command": "tokenguard-copilot.helloWorld",
         "title": "Hello World",
-        "category": "OAI Copilot"
+        "category": "TokenGuard Copilot"
       },
       {
-        "command": "oai-copilot.openSettings",
+        "command": "tokenguard-copilot.openSettings",
         "title": "Open Settings",
-        "category": "OAI Copilot"
+        "category": "TokenGuard Copilot"
       }
     ]
   },
   "scripts": {
-    "compile": "tsc -p ./ && tsx esbuild.mts",
-    "compile:webview": "tsx esbuild.mts",
-    "watch": "tsc -watch -p ./",
-    "watch:webview": "tsx esbuild.mts --watch",
+    "compile": "pnpm run compile:extension && pnpm run compile:webview && pnpm run compile:migrations && pnpm run compile:e2e",
+    "compile:extension": "pnpm --filter @tokenguard/extension run build",
+    "compile:webview": "pnpm --filter @tokenguard/webview-ui run build",
+    "compile:migrations": "mkdir -p out/db && cp -r packages/extension/src/db/migrations out/db/migrations",
+    "compile:e2e": "tsc -p test-e2e/tsconfig.json",
+    "typecheck": "pnpm -r run typecheck",
+    "watch": "pnpm --filter @tokenguard/extension run watch",
+    "watch:webview": "pnpm --filter @tokenguard/webview-ui run watch",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "format:check": "prettier --check --no-error-on-unmatched-pattern . && markdownlint-cli2 '**/*.md'",
     "format:fix": "prettier --write --no-error-on-unmatched-pattern . && markdownlint-cli2 --fix '**/*.md'",
     "prepare": "husky",
     "vscode:prepublish": "pnpm run compile",
-    "package": "vsce package -o dist/",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "vscode-test",
-    "clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\""
+    "package": "vsce package --no-dependencies -o dist/",
+    "test": "pnpm -r run test",
+    "test:extension": "pnpm --filter @tokenguard/extension run test",
+    "test:webview": "pnpm --filter @tokenguard/webview-ui run test",
+    "test:e2e": "pnpm run compile && vscode-test",
+    "clean": "node -e \"const fs=require('node:fs');['out','packages/shared/dist','packages/extension/dist','packages/webview-ui/dist'].forEach(d=>fs.rmSync(d,{recursive:true,force:true}))\"",
+    "clean:deps": "pnpm run clean && rm -rf node_modules packages/*/node_modules",
+    "db:generate": "pnpm --filter @tokenguard/extension run db:generate"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
-    "@types/glob": "8.1.0",
     "@types/mocha": "10.0.10",
     "@types/node": "^22.0.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.116.0",
     "@vscode/test-cli": "0.0.12",
     "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "^3.9.1",
-    "esbuild": "0.28.0",
     "eslint": "^9.13.0",
-    "glob": "11.0.2",
+    "globals": "^17.6.0",
     "husky": "^9.1.7",
     "markdownlint-cli2": "^0.22.1",
-    "mocha": "11.7.5",
     "prettier": "^3.1.0",
-    "tsx": "4.21.0",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.39.0",
-    "vitest": "4.1.5"
+    "typescript-eslint": "^8.39.0"
   },
-  "dependencies": {
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@vscode/vsce-sign",
+      "better-sqlite3",
+      "esbuild",
+      "keytar"
+    ]
   }
 }

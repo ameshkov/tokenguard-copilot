@@ -1,0 +1,431 @@
+[
+  {
+    "match": {
+      "type": "exact",
+      "value": "qwen-3.6-plus"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.325,
+    "outputCostPer1M": 1.95,
+    "cachedInputCostPer1M": 0.0325,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "extra_body": {
+          "enable_thinking": false
+        }
+      },
+      "high": {
+        "extra_body": {
+          "enable_thinking": true,
+          "preserve_thinking": true
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "qwen-3.6-max-preview"
+    },
+    "contextSize": 262000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 1.04,
+    "outputCostPer1M": 6.24,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "extra_body": {
+          "enable_thinking": false
+        }
+      },
+      "high": {
+        "extra_body": {
+          "enable_thinking": true,
+          "preserve_thinking": true
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "qwen-3.6-27b"
+    },
+    "contextSize": 262000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.32,
+    "outputCostPer1M": 3.2,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "extra_body": {
+          "enable_thinking": false
+        }
+      },
+      "high": {
+        "extra_body": {
+          "enable_thinking": true,
+          "preserve_thinking": true
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "qwen-3.6-35b-a3b"
+    },
+    "contextSize": 262000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.15,
+    "outputCostPer1M": 1.0,
+    "cachedInputCostPer1M": 0.05,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "extra_body": {
+          "enable_thinking": false
+        }
+      },
+      "high": {
+        "extra_body": {
+          "enable_thinking": true,
+          "preserve_thinking": true
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "kimi-k2.6"
+    },
+    "contextSize": 262000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.74,
+    "outputCostPer1M": 3.5,
+    "cachedInputCostPer1M": 0.15,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled",
+          "keep": "all"
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "glm-5.1"
+    },
+    "contextSize": 203000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 1.05,
+    "outputCostPer1M": 3.5,
+    "cachedInputCostPer1M": 0.525,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled",
+          "clear_thinking": false
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "deepseek-v4-pro"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 1.74,
+    "outputCostPer1M": 3.48,
+    "cachedInputCostPer1M": 0.0145,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "extra_body": {
+          "thinking": {
+            "type": "disabled"
+          }
+        }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "xhigh": {
+        "reasoning_effort": "max",
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "deepseek-v4-flash"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.14,
+    "outputCostPer1M": 0.28,
+    "cachedInputCostPer1M": 0.0028,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "extra_body": {
+          "thinking": {
+            "type": "disabled"
+          }
+        }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      },
+      "xhigh": {
+        "reasoning_effort": "max",
+        "extra_body": {
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "mimo-v2.5-pro"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 1.0,
+    "outputCostPer1M": 3.0,
+    "cachedInputCostPer1M": 0.2,
+    "supportedCapabilities": ["reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "gpt-5.5"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 5.0,
+    "outputCostPer1M": 30.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["none", "low", "medium", "high", "xhigh"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "gpt-5.4"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 2.5,
+    "outputCostPer1M": 15.0,
+    "cachedInputCostPer1M": 0.25,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["none", "low", "medium", "high", "xhigh"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "gpt-5.3-codex"
+    },
+    "contextSize": 400000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 1.75,
+    "outputCostPer1M": 14.0,
+    "cachedInputCostPer1M": 0.175,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "gpt-5.4-mini"
+    },
+    "contextSize": 400000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.75,
+    "outputCostPer1M": 4.5,
+    "cachedInputCostPer1M": 0.075,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "gpt-5.2"
+    },
+    "contextSize": 400000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 1.75,
+    "outputCostPer1M": 14.0,
+    "cachedInputCostPer1M": 0.175,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["none", "low", "medium", "high", "xhigh"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "opus-4.5"
+    },
+    "contextSize": 200000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 5.0,
+    "outputCostPer1M": 25.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "opus-4.6"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 5.0,
+    "outputCostPer1M": 25.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh", "max"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "opus-4.7"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 5.0,
+    "outputCostPer1M": 25.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh", "max"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "sonnet-4.5"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 3.0,
+    "outputCostPer1M": 15.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high"]
+  },
+  {
+    "match": {
+      "type": "exact",
+      "value": "sonnet-4.6"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 3.0,
+    "outputCostPer1M": 15.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "^kimi-k2"
+    },
+    "contextSize": 262000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 0.74,
+    "outputCostPer1M": 3.5,
+    "cachedInputCostPer1M": 0.15,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled",
+          "keep": "all"
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "^opus-4\\."
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 5.0,
+    "outputCostPer1M": 25.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh", "max"]
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "^sonnet-4\\."
+    },
+    "contextSize": 1000000,
+    "maxTokens": 32768,
+    "inputCostPer1M": 3.0,
+    "outputCostPer1M": 15.0,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+  }
+]

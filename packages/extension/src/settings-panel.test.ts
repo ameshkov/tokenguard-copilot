@@ -1,5 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+const FAKE_TEMPLATE = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'nonce-{{nonce}}'; style-src {{cspSource}} 'unsafe-inline';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TokenGuard Copilot Settings</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+  </body>
+</html>`;
+
+vi.mock('node:fs', () => ({
+  readFileSync: vi.fn(() => FAKE_TEMPLATE),
+}));
+
 vi.mock('vscode', () => {
   const disposable = { dispose: vi.fn() };
 
@@ -70,8 +89,8 @@ describe('SettingsPanel', () => {
     SettingsPanel.createOrShow(extensionUri);
 
     expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith(
-      'oaiCopilotSettings',
-      'OAI Copilot Settings',
+      'tokenguardCopilotSettings',
+      'TokenGuard Copilot Settings',
       vscode.ViewColumn.One,
       expect.objectContaining({
         enableScripts: true,
@@ -87,6 +106,9 @@ describe('SettingsPanel', () => {
     expect(html).toContain('<div id="root"></div>');
     expect(html).toContain('settings-app.js');
     expect(html).toContain('Content-Security-Policy');
+    expect(html).not.toContain('{{nonce}}');
+    expect(html).not.toContain('{{scriptUri}}');
+    expect(html).not.toContain('{{cspSource}}');
   });
 
   it('should reveal existing panel instead of creating a new one', () => {

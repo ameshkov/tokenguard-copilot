@@ -51,37 +51,102 @@ What you get out of the box:
 
 ## Project Structure
 
+The extension has two distinct runtime targets that share types:
+
+1. **Extension host** — Node.js code running in the VS Code
+   extension host (providers, models, database, chat completion).
+2. **Webview UI** — browser code (React) running inside a VS Code
+   webview panel (settings, model configuration).
+
+A pnpm monorepo lets us share TypeScript types between host and
+webview, run separate bundlers per target, and produce a single
+`.vsix`. The root `package.json` doubles as the VS Code extension
+manifest (`main`, `contributes`, `publisher`).
+
+### Packages
+
+- **`packages/shared`** (`@tokenguard/shared`) — shared
+  TypeScript types and message protocol definitions used by both
+  the extension host and the webview.
+- **`packages/extension`** (`@tokenguard/extension`) — extension
+  host code: activation, providers, services, database layer.
+  Bundled with esbuild into `out/extension.js` (CJS, Node.js).
+- **`packages/webview-ui`** (`@tokenguard/webview-ui`) — React
+  settings UI. Bundled with esbuild into `out/webview/` (IIFE,
+  browser).
+
+### Directory Layout
+
 ```text
-oai-copilot/
-├── src/                      # TypeScript source files
-│   ├── extension.ts          # Extension entry point (activate/deactivate)
-│   ├── settings-panel.ts     # Settings webview panel provider
-│   ├── webview/              # Webview React source (bundled by esbuild)
-│   │   └── settings-app.tsx  # Settings page React app
-│   └── test/
-│       └── e2e/              # E2E tests (run inside VS Code)
-├── out/                      # Compiled JavaScript output (gitignored)
-├── .vscode/                  # Launch configs, tasks, helper scripts
-├── .vscode-test.mjs          # E2E test runner configuration
-├── esbuild.mts               # esbuild config for webview bundling
-├── vitest.config.mts         # Vitest unit test configuration
-├── eslint.config.mjs         # ESLint flat config
-├── tsconfig.json             # TypeScript configuration
-└── package.json              # Extension manifest and scripts
+tokenguard-copilot/
+├── pnpm-workspace.yaml          # Workspace: packages/*
+├── package.json                 # Extension manifest + root scripts
+├── tsconfig.json                # Base TS config (shared settings)
+├── eslint.config.mjs            # ESLint flat config
+├── .vscode-test.mjs             # E2E test runner config
+├── assets/                      # Static assets shipped with extension
+│   ├── model-defaults.json      # Bundled model defaults database
+│   └── webview/
+│       └── settings.html        # Webview HTML shell template
+├── test-e2e/                    # E2E tests (separate from packages)
+│   ├── tsconfig.json
+│   └── extension.test.ts        # Extension activation, commands
+├── packages/
+│   ├── shared/                  # Shared types & protocol
+│   │   ├── package.json         # @tokenguard/shared
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   │       └── index.ts         # Barrel exports
+│   ├── extension/               # Extension host (VS Code extension)
+│   │   ├── package.json         # @tokenguard/extension
+│   │   ├── tsconfig.json
+│   │   ├── vitest.config.mts    # Unit test config
+│   │   ├── esbuild.config.mts   # Node.js bundle config
+│   │   ├── drizzle.config.ts    # Drizzle Kit config
+│   │   └── src/
+│   │       ├── extension.ts     # activate() / deactivate()
+│   │       ├── context.ts       # ExtensionContext (DI container)
+│   │       ├── settings-panel.ts # Settings webview panel provider
+│   │       ├── services/        # Business logic layer
+│   │       │   └── model-defaults.ts # Model defaults lookup
+│   │       ├── utils/           # Shared utilities
+│   │       │   └── status-bar.ts # Status bar item factory
+│   │       ├── db/              # Database layer (SQLite + Drizzle)
+│   │       │   ├── connection.ts # createDb() factory + Database type
+│   │       │   ├── index.ts     # Barrel exports
+│   │       │   ├── migrate.ts   # runMigrations() function
+│   │       │   ├── schema.ts    # Drizzle ORM table definitions
+│   │       │   └── migrations/  # Generated SQL migrations
+│   │       └── test/            # Test helpers (not tests)
+│   │           └── db-setup.ts  # createTestDb() helper
+│   └── webview-ui/              # React webview app
+│       ├── package.json         # @tokenguard/webview-ui
+│       ├── tsconfig.json
+│       ├── vitest.config.mts    # Component test config
+│       ├── esbuild.config.mts   # Browser bundle config
+│       └── src/
+│           └── index.tsx        # Settings page React entry point
+├── out/                         # Compiled output (gitignored)
+├── .vscode/                     # Launch configs, tasks, helper scripts
+└── docs/                        # Documentation
 ```
 
 ## Build and Test Commands
 
 - `pnpm install` — install dependencies
-- `pnpm run compile` — one-time TypeScript build
-- `pnpm run watch` — incremental watch mode
+- `pnpm run compile` — full build (extension + webview +
+  migrations + E2E)
+- `pnpm run typecheck` — type-check all packages (no emit)
+- `pnpm run watch` — watch extension host (esbuild)
+- `pnpm run watch:webview` — watch webview (esbuild)
 - `pnpm run lint` — lint source files with ESLint
 - `pnpm run lint:fix` — lint and auto-fix issues
-- `pnpm run format:check` — check formatting (Prettier and Markdownlint)
+- `pnpm run format:check` — check formatting (Prettier and
+  Markdownlint)
 - `pnpm run format:fix` — fix formatting issues
 - `pnpm run test` — run all unit tests once
-- `pnpm run test:watch` — run unit tests in watch mode
-- `pnpm run test:coverage` — run unit tests with coverage report
+- `pnpm run test:extension` — run extension unit tests only
+- `pnpm run test:webview` — run webview unit tests only
 - `pnpm run test:e2e` — run E2E tests inside VS Code
 - `pnpm run package` — package extension into `.vsix`
 - `pnpm run clean` — remove compiled output
@@ -93,7 +158,7 @@ You MUST follow the following rules for EVERY task that you perform:
 - You MUST verify it with linter, formatter, and TypeScript compiler.
 
   Use the following commands:
-    - `pnpm run compile` to check for TypeScript type errors
+    - `pnpm run typecheck` to check for TypeScript type errors
     - `pnpm run lint` to run the linter (ESLint)
     - `pnpm run lint:fix` to fix linting issues automatically
     - `pnpm run format:check` to check formatting (Prettier and
@@ -131,6 +196,38 @@ You MUST follow the following rules for EVERY task that you perform:
   `deactivate()`.
 - **VS Code API** — use the VS Code API directly. Do not wrap it in
   unnecessary abstractions unless reuse is needed.
+- **Dependency Flow** — the extension follows a layered architecture
+  with manual constructor injection:
+
+  ```text
+  activate() / deactivate()
+       ↓
+  ExtensionContext (DI container)
+       ↓
+  Commands + Providers (register with VS Code)
+       ↓
+  Services (business logic)
+       ↓
+  Repositories (data access)
+       ↓
+  Database (packages/extension/src/db/)
+  ```
+
+  Rules:
+    - `ExtensionContext` wires repositories and services. It
+      exposes only services — repositories and the database
+      connection are internal wiring details.
+    - Services receive repositories via constructor. No raw
+      database calls in services.
+    - Repositories receive the Drizzle `Database` instance via
+      constructor. They encapsulate all SQL queries. No caching
+      or business logic in repositories.
+    - No upward dependencies — lower layers never import from
+      upper layers.
+    - `activate()` creates the database connection, runs
+      migrations, builds the `ExtensionContext`, and passes it
+      to commands and handlers.
+    - `deactivate()` closes the database connection.
 
 ### Code Quality
 
@@ -140,8 +237,8 @@ All code MUST meet documentation and style requirements before merge:
   interfaces, and their properties MUST have JSDoc comments describing
   purpose, arguments, return values, and thrown errors.
 - **Static analysis gates**: Every change MUST pass TypeScript
-  compilation (`pnpm run compile`), ESLint (`pnpm run lint`), and
-  Prettier/Markdownlint (`pnpm run format:check`) before merge.
+  type checking (`pnpm run typecheck`), ESLint (`pnpm run lint`),
+  and Prettier/Markdownlint (`pnpm run format:check`) before merge.
 - **Do not modify linter or formatter configurations**: Never change
   ESLint, Prettier, Markdownlint, or TypeScript configuration files
   (`eslint.config.mjs`, `.prettierrc`, `.prettierignore`,
@@ -176,7 +273,7 @@ Every exported function and class MUST have unit test coverage:
 E2E tests run inside a real VS Code instance using
 `@vscode/test-cli` and `@vscode/test-electron`:
 
-- **Test location**: E2E tests live in `src/test/e2e/` and use
+- **Test location**: E2E tests live in `test-e2e/` and use
   Mocha as the test runner (required by `@vscode/test-cli`).
 - **Configuration**: The test runner is configured via
   `.vscode-test.mjs` in the project root.
