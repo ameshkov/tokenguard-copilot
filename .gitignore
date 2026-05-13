@@ -8,6 +8,7 @@ node_modules/
 out/
 dist/
 packages/*/dist/
+*.tsbuildinfo
 *.mjs.map
 *.js.map
 *.d.ts.map

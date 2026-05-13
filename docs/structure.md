@@ -97,12 +97,16 @@ tokenguard-copilot/
 │   │       ├── providers/           # VS Code API providers
 │   │       │   └── chat-model-provider.ts  # languageModelChatProvider
 │   │       │
+│   │       ├── ui/                  # UI layer
+│   │       │   ├── panels/          # Webview panel providers
+│   │       │   │   ├── index.ts     # Barrel exports
+│   │       │   │   └── settings-panel.ts
+│   │       │   └── status-bar/      # Status bar item
+│   │       │       └── index.ts     # Module barrel
+│   │       │
 │   │       ├── services/            # Business logic layer
-│   │       │   ├── provider-service.ts
-│   │       │   ├── model-service.ts
-│   │       │   ├── usage-service.ts
-│   │       │   ├── chat-completion.ts
-│   │       │   └── model-defaults.ts
+│   │       │   └── model-defaults/  # Model defaults lookup
+│   │       │       └── index.ts     # Module barrel
 │   │       │
 │   │       ├── repositories/        # Data access layer
 │   │       │   ├── provider-repository.ts
@@ -116,8 +120,6 @@ tokenguard-copilot/
 │   │       │   ├── index.ts         # Barrel exports
 │   │       │   └── migrations/      # Generated SQL migrations
 │   │       │
-│   │       ├── utils/               # Shared utilities
-│   │       │   └── status-bar.ts    # Status bar item factory
 │   │       │
 │   │       └── test/                # Test helpers (not tests themselves)
 │   │           └── db-setup.ts      # createTestDb() helper
@@ -191,10 +193,10 @@ completion handler.
 | --- | --- |
 | `commands/` | VS Code command handlers (one file per command) |
 | `providers/` | VS Code API providers (`languageModelChatProvider`) |
+| `ui/` | UI layer (webview panels, status bar) |
 | `services/` | Business logic (provider mgmt, model registry, usage tracking, chat completion, model defaults) |
 | `repositories/` | Data access layer (Drizzle queries, one per table group) |
 | `db/` | Database connection, schema, migrations |
-| `utils/` | Shared utilities (status bar, helpers) |
 | `test/` | Test helpers only (e.g., `db-setup.ts`); actual tests are colocated as `*.test.ts` |
 
 **Layered architecture** (unchanged from AGENTS.md):

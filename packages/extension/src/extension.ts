@@ -2,11 +2,11 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import * as vscode from 'vscode';
+import { registerCommands } from './commands/index.js';
 import { ExtensionContext } from './context.js';
 import { createDb } from './db/connection.js';
 import { runMigrations } from './db/migrate.js';
-import { SettingsPanel } from './settings-panel.js';
-import { createStatusBarItem } from './utils/status-bar.js';
+import { createStatusBarItem } from './ui/status-bar/status-bar.js';
 
 let rawDb: DatabaseSync | null = null;
 
@@ -33,17 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
     return;
   }
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.helloWorld', () => {
-      vscode.window.showInformationMessage('Hello World from TokenGuard Copilot!');
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.openSettings', () => {
-      SettingsPanel.createOrShow(context.extensionUri);
-    }),
-  );
+  registerCommands(context);
 
   context.subscriptions.push(createStatusBarItem());
 }

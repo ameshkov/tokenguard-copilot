@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import type { ModelDefaults, ModelDefaultsEntry } from './model-defaults.js';
 import { getDefaults, initDefaults, resetDefaults } from './model-defaults.js';
 
-const jsonPath = resolve(__dirname, '..', '..', '..', '..', 'assets', 'model-defaults.json');
+const jsonPath = resolve(__dirname, '..', '..', '..', '..', '..', 'assets', 'model-defaults.json');
 
 beforeEach(() => {
   resetDefaults();

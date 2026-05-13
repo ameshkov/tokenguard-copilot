@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
  * - `exact`: the model ID must equal `value` exactly.
  * - `regex`: the model ID must match the regex in `value`.
  */
-export interface ModelDefaultsMatch {
+interface ModelDefaultsMatch {
   /** Match strategy: exact string or regex pattern. */
   type: 'exact' | 'regex';
   /** The value to match against — exact model ID or regex

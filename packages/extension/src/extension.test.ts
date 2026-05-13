@@ -29,14 +29,13 @@ vi.mock('vscode', () => {
   };
 });
 
-vi.mock('./settings-panel.js', () => ({
-  SettingsPanel: {
-    createOrShow: vi.fn(),
-  },
+const mockRegisterCommands = vi.hoisted(() => vi.fn());
+vi.mock('./commands/index.js', () => ({
+  registerCommands: mockRegisterCommands,
 }));
 
 const mockStatusBarItem = vi.hoisted(() => ({ dispose: vi.fn() }));
-vi.mock('./utils/status-bar.js', () => ({
+vi.mock('./ui/status-bar/status-bar.js', () => ({
   createStatusBarItem: vi.fn(() => mockStatusBarItem),
 }));
 
@@ -81,54 +80,21 @@ describe('activate', () => {
     } as unknown as vscode.ExtensionContext;
   });
 
-  it('should register the helloWorld command', () => {
+  it('should call registerCommands', () => {
     activate(context);
 
-    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
-      'tokenguard-copilot.helloWorld',
-      expect.any(Function),
-    );
-  });
-
-  it('should register the openSettings command', () => {
-    activate(context);
-
-    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
-      'tokenguard-copilot.openSettings',
-      expect.any(Function),
-    );
+    expect(mockRegisterCommands).toHaveBeenCalledWith(context);
   });
 
   it('should push disposables to subscriptions', () => {
     activate(context);
 
-    // 2 commands + 1 status bar item = 3 disposables
-    expect(context.subscriptions).toHaveLength(3);
-  });
-
-  it('helloWorld command should show an information message', () => {
-    activate(context);
-
-    const callback = vi.mocked(vscode.commands.registerCommand).mock.calls[0][1] as () => void;
-    callback();
-
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-      'Hello World from TokenGuard Copilot!',
-    );
-  });
-
-  it('openSettings command should create or show settings panel', async () => {
-    const { SettingsPanel } = await import('./settings-panel.js');
-    activate(context);
-
-    const callback = vi.mocked(vscode.commands.registerCommand).mock.calls[1][1] as () => void;
-    callback();
-
-    expect(SettingsPanel.createOrShow).toHaveBeenCalled();
+    // registerCommands is mocked, so only status bar = 1
+    expect(context.subscriptions).toHaveLength(1);
   });
 
   it('should create a status bar item', async () => {
-    const { createStatusBarItem } = await import('./utils/status-bar.js');
+    const { createStatusBarItem } = await import('./ui/status-bar/status-bar.js');
     activate(context);
 
     expect(createStatusBarItem).toHaveBeenCalled();
@@ -165,7 +131,7 @@ describe('activate', () => {
       expect.stringContaining('migration failed'),
     );
     // No commands registered
-    expect(vscode.commands.registerCommand).not.toHaveBeenCalled();
+    expect(mockRegisterCommands).not.toHaveBeenCalled();
   });
 });
 

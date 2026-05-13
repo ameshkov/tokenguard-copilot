@@ -83,6 +83,7 @@ tokenguard-copilot/
 ├── package.json                 # Extension manifest + root scripts
 ├── tsconfig.json                # Base TS config (shared settings)
 ├── eslint.config.mjs            # ESLint flat config
+├── knip.config.ts               # Knip unused-export config
 ├── .vscode-test.mjs             # E2E test runner config
 ├── assets/                      # Static assets shipped with extension
 │   ├── model-defaults.json      # Bundled model defaults database
@@ -106,11 +107,19 @@ tokenguard-copilot/
 │   │   └── src/
 │   │       ├── extension.ts     # activate() / deactivate()
 │   │       ├── context.ts       # ExtensionContext (DI container)
-│   │       ├── settings-panel.ts # Settings webview panel provider
+│   │       ├── commands/        # Command handlers
+│   │       │   └── index.ts     # Barrel (stub)
+│   │       ├── providers/       # VS Code API providers
+│   │       │   └── index.ts     # Barrel (stub)
+│   │       ├── ui/              # UI layer
+│   │       │   ├── panels/      # Webview panel providers
+│   │       │   │   ├── index.ts # Barrel exports
+│   │       │   │   └── settings-panel.ts
+│   │       │   └── status-bar/  # Status bar item
+│   │       │       └── index.ts # Module barrel
 │   │       ├── services/        # Business logic layer
-│   │       │   └── model-defaults.ts # Model defaults lookup
-│   │       ├── utils/           # Shared utilities
-│   │       │   └── status-bar.ts # Status bar item factory
+│   │       │   └── model-defaults/ # Model defaults lookup
+│   │       │       └── index.ts # Module barrel
 │   │       ├── db/              # Database layer (SQLite + Drizzle)
 │   │       │   ├── connection.ts # createDb() factory + Database type
 │   │       │   ├── index.ts     # Barrel exports
@@ -139,8 +148,8 @@ tokenguard-copilot/
 - `pnpm run typecheck` — type-check all packages (no emit)
 - `pnpm run watch` — watch extension host (esbuild)
 - `pnpm run watch:webview` — watch webview (esbuild)
-- `pnpm run lint` — lint source files with ESLint
-- `pnpm run lint:fix` — lint and auto-fix issues
+- `pnpm run lint` — lint source files (ESLint + Knip)
+- `pnpm run lint:fix` — lint and auto-fix issues (ESLint)
 - `pnpm run format:check` — check formatting (Prettier and
   Markdownlint)
 - `pnpm run format:fix` — fix formatting issues
@@ -159,7 +168,7 @@ You MUST follow the following rules for EVERY task that you perform:
 
   Use the following commands:
     - `pnpm run typecheck` to check for TypeScript type errors
-    - `pnpm run lint` to run the linter (ESLint)
+    - `pnpm run lint` to run the linter (ESLint + Knip)
     - `pnpm run lint:fix` to fix linting issues automatically
     - `pnpm run format:check` to check formatting (Prettier and
       Markdownlint)
@@ -185,10 +194,21 @@ You MUST follow the following rules for EVERY task that you perform:
 
 ### Architecture
 
+- **Separation of Concerns** — each module handles one aspect of the
+  system (e.g. routing, business logic, data access).
 - **Single Responsibility Principle** — every file, class, or function
   has one reason to change.
+- **Dependency Direction** — dependencies point inward / downward; never
+  from lower layers to higher ones.
+- **Explicit Boundaries** — module interfaces are intentional; external
+  code imports from barrel `index.ts` files only.
 - **Explicit Exports** — only export symbols that are part of the
   public API.
+- **Minimize Coupling, Maximize Cohesion** — modules are self-contained
+  and interact through narrow interfaces.
+- **Make Invalid States Impossible** — use types and validation to prevent
+  illegal combinations at compile time (shared types in
+  `@tokenguard/shared`).
 - **Keep It Boring** — prefer well-understood patterns over clever or
   novel solutions.
 - **Extension Lifecycle** — all disposables MUST be pushed to
@@ -234,15 +254,31 @@ You MUST follow the following rules for EVERY task that you perform:
 All code MUST meet documentation and style requirements before merge:
 
 - **Public API documentation**: Exported functions, classes,
-  interfaces, and their properties MUST have JSDoc comments describing
-  purpose, arguments, return values, and thrown errors.
+  interfaces, and their properties MUST have JSDoc comments
+  describing purpose, arguments, return values, and thrown
+  errors (use `@throws` only for specific errors).
 - **Static analysis gates**: Every change MUST pass TypeScript
-  type checking (`pnpm run typecheck`), ESLint (`pnpm run lint`),
-  and Prettier/Markdownlint (`pnpm run format:check`) before merge.
-- **Do not modify linter or formatter configurations**: Never change
-  ESLint, Prettier, Markdownlint, or TypeScript configuration files
-  (`eslint.config.mjs`, `.prettierrc`, `.prettierignore`,
-  `.markdownlint-cli2.yaml`, `tsconfig.json`) to work around lint or
+  type checking (`pnpm run typecheck`), ESLint + Knip
+  (`pnpm run lint`), and Prettier/Markdownlint
+  (`pnpm run format:check`) before merge.
+- **Knip unused-export analysis**: The project uses Knip
+  (`knip.config.ts`) to detect unused exports. All Knip
+  findings MUST be resolved — either remove the unused export
+  or, when the export is genuinely needed but not reachable
+  through the public dependency graph, mark it with the JSDoc
+  `@internal` tag. The `@internal` tag is allowed **only**
+  when a symbol is exported solely for test files and is
+  intentionally **not** re-exported from the module barrel.
+  Every `@internal` tag MUST include a short explanation of
+  why the export is excluded (e.g., "Exported for tests only;
+  not part of the public module API"). Do NOT use `@internal`
+  to silence legitimate unused-export warnings — remove the
+  export instead.
+- **Do not modify linter or formatter configurations**: Never
+  change ESLint, Prettier, Markdownlint, Knip, or TypeScript
+  configuration files (`eslint.config.mjs`, `.prettierrc`,
+  `.prettierignore`, `.markdownlint-cli2.yaml`,
+  `knip.config.ts`, `tsconfig.json`) to work around lint or
   formatting errors. Fix the source code instead. If the issue cannot
   be resolved after a few attempts, ask the human for help.
 - **File naming**: Use kebab-case for all file names. TypeScript source
