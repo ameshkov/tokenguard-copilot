@@ -97,7 +97,8 @@ tokenguard-copilot/
 │   │   ├── package.json         # @tokenguard/shared
 │   │   ├── tsconfig.json
 │   │   └── src/
-│   │       └── index.ts         # Barrel exports
+│   │       ├── index.ts         # Barrel exports
+│   │       └── messages.ts      # Host ↔ webview message protocol
 │   ├── extension/               # Extension host (VS Code extension)
 │   │   ├── package.json         # @tokenguard/extension
 │   │   ├── tsconfig.json
@@ -111,6 +112,9 @@ tokenguard-copilot/
 │   │       │   └── index.ts     # Barrel (stub)
 │   │       ├── providers/       # VS Code API providers
 │   │       │   └── index.ts     # Barrel (stub)
+│   │       ├── repositories/    # Data access layer
+│   │       │   ├── index.ts     # Barrel exports
+│   │       │   └── provider-repository.ts
 │   │       ├── ui/              # UI layer
 │   │       │   ├── panels/      # Webview panel providers
 │   │       │   │   ├── index.ts # Barrel exports
@@ -118,8 +122,11 @@ tokenguard-copilot/
 │   │       │   └── status-bar/  # Status bar item
 │   │       │       └── index.ts # Module barrel
 │   │       ├── services/        # Business logic layer
-│   │       │   └── model-defaults/ # Model defaults lookup
-│   │       │       └── index.ts # Module barrel
+│   │       │   ├── model-defaults/ # Model defaults lookup
+│   │       │   │   └── index.ts # Module barrel
+│   │       │   └── provider-manager/ # Provider CRUD
+│   │       │       ├── index.ts # Module barrel
+│   │       │       └── provider-manager.ts
 │   │       ├── db/              # Database layer (SQLite + Drizzle)
 │   │       │   ├── connection.ts # createDb() factory + Database type
 │   │       │   ├── index.ts     # Barrel exports
@@ -134,7 +141,24 @@ tokenguard-copilot/
 │       ├── vitest.config.mts    # Component test config
 │       ├── esbuild.config.mts   # Browser bundle config
 │       └── src/
-│           └── index.tsx        # Settings page React entry point
+│           ├── index.tsx        # Settings page React entry point
+│           ├── vscode-api.ts    # VS Code API wrapper + request/response
+│           ├── provider-form.tsx # Add/Edit Provider form component
+│           ├── provider-list.tsx # Provider table component
+│           ├── models-section.tsx # Models stub section
+│           ├── usage-stats-section.tsx # Usage stats stub section
+│           ├── global-actions.tsx # Global actions (reset) section
+│           └── components/      # VS Code-styled React UI primitives
+│               ├── index.ts     # Barrel exports
+│               ├── badge.tsx
+│               ├── button.tsx
+│               ├── card.tsx
+│               ├── confirm-dialog.tsx
+│               ├── form-group.tsx
+│               ├── input.tsx
+│               ├── label.tsx
+│               ├── section-header.tsx
+│               └── table.tsx
 ├── out/                         # Compiled output (gitignored)
 ├── .vscode/                     # Launch configs, tasks, helper scripts
 └── docs/                        # Documentation
@@ -348,6 +372,23 @@ Configuration and documentation MUST stay synchronized with code:
   configuration MUST update `DEVELOPMENT.md`.
 - **Structure tracking**: Changes to project structure MUST update the
   Project Structure section in `AGENTS.md`.
+
+### Webview Theming
+
+Webview UI MUST use VS Code CSS custom properties (design tokens)
+for all colors, fonts, and spacing. These variables are
+automatically injected into every webview and adapt to the active
+color theme. **Never hard-code color values.**
+
+- **Reference**: https://code.visualstudio.com/api/references/theme-color
+- **Usage**: In CSS, use `var(--vscode-<section>-<property>)`.
+  The variable name is derived from the theme color ID by
+  replacing dots with dashes and prefixing with `--vscode-`.
+  For example, `inputValidation.errorBorder` becomes
+  `var(--vscode-inputValidation-errorBorder)`.
+- **Fallbacks**: Some tokens are not defined in every theme.
+  Always provide a fallback when the token may be absent, e.g.
+  `var(--vscode-input-border, transparent)`.
 
 ### Markdown Formatting
 

@@ -7,7 +7,7 @@
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}"],
       "outFiles": ["${workspaceFolder}/out/**/*.js"],
-      "preLaunchTask": "pnpm: watch"
+      "preLaunchTask": "pnpm: compile"
     },
     {
       "name": "Run Extension (Insiders via CLI)",

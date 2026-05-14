@@ -23,9 +23,6 @@ const config: KnipConfig = {
       // upper layers.
       ignore: ['src/**/index.ts'],
       ignoreDependencies: [
-        // Placeholder workspace dependency for future shared
-        // types.
-        '@tokenguard/shared',
         // Provided by the VS Code extension host at runtime.
         'vscode',
       ],
@@ -33,11 +30,7 @@ const config: KnipConfig = {
     },
     'packages/webview-ui': {
       entry: ['src/index.tsx!'],
-      ignoreDependencies: [
-        // Placeholder workspace dependency for future shared
-        // types.
-        '@tokenguard/shared',
-      ],
+
       project: ['src/**/*.{ts,tsx}!', '!src/**/*.test.{ts,tsx}'],
     },
   },

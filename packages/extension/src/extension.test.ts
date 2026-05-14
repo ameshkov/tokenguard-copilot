@@ -57,8 +57,13 @@ vi.mock('./db/migrate.js', () => ({
   runMigrations: vi.fn(),
 }));
 
+const mockExtensionContext = vi.hoisted(() =>
+  vi.fn(function () {
+    return { providerManager: {} };
+  }),
+);
 vi.mock('./context.js', () => ({
-  ExtensionContext: vi.fn(),
+  ExtensionContext: mockExtensionContext,
 }));
 
 import * as vscode from 'vscode';
@@ -77,13 +82,21 @@ describe('activate', () => {
       globalStorageUri: {
         fsPath: '/mock/storage',
       },
+      secrets: {
+        store: vi.fn(),
+        get: vi.fn(),
+        delete: vi.fn(),
+      },
     } as unknown as vscode.ExtensionContext;
   });
 
   it('should call registerCommands', () => {
     activate(context);
 
-    expect(mockRegisterCommands).toHaveBeenCalledWith(context);
+    expect(mockRegisterCommands).toHaveBeenCalledWith(
+      context,
+      expect.objectContaining({ providerManager: expect.anything() }),
+    );
   });
 
   it('should push disposables to subscriptions', () => {
@@ -117,6 +130,8 @@ describe('activate', () => {
 
     expect(ExtensionContext).toHaveBeenCalledWith({
       db: mockDb,
+      secrets: context.secrets,
+      resetCallback: expect.any(Function),
     });
   });
 
@@ -144,6 +159,11 @@ describe('deactivate', () => {
       subscriptions: [],
       globalStorageUri: {
         fsPath: '/mock/storage',
+      },
+      secrets: {
+        store: vi.fn(),
+        get: vi.fn(),
+        delete: vi.fn(),
       },
     } as unknown as vscode.ExtensionContext;
   });

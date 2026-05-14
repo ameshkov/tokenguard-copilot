@@ -1,5 +1,14 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
+import type { ExtensionContext as AppContext } from '../../context.js';
+import type {
+  WebviewCommand,
+  GetProvidersResponse,
+  AddProviderResponse,
+  EditProviderResponse,
+  RemoveProviderResponse,
+  ResetSettingsResponse,
+} from '@tokenguard/shared';
 
 /**
  * Manages the settings webview panel.
@@ -23,22 +32,131 @@ export class SettingsPanel {
   /** Disposables owned by this panel. */
   private readonly disposables: vscode.Disposable[] = [];
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, appCtx: AppContext) {
     this.panel = panel;
     this.extensionUri = extensionUri;
 
     this.panel.webview.html = this.getHtmlForWebview(this.panel.webview);
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+
+    this.panel.webview.onDidReceiveMessage(
+      async (message: WebviewCommand) => {
+        switch (message.type) {
+          case 'getProviders': {
+            const providers = appCtx.providerManager.getProviders();
+            await this.panel.webview.postMessage({
+              type: 'getProvidersResult',
+              requestId: message.requestId,
+              providers,
+            } satisfies GetProvidersResponse);
+            break;
+          }
+          case 'addProvider': {
+            try {
+              const provider = await appCtx.providerManager.addProvider(
+                message.name,
+                message.baseUrl,
+                message.apiKey,
+              );
+              await this.panel.webview.postMessage({
+                type: 'addProviderResult',
+                requestId: message.requestId,
+                success: true,
+                provider,
+              } satisfies AddProviderResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'addProviderResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies AddProviderResponse);
+            }
+            break;
+          }
+          case 'editProvider': {
+            try {
+              const provider = await appCtx.providerManager.editProvider(
+                message.id,
+                message.name,
+                message.baseUrl,
+                message.apiKey,
+              );
+              await this.panel.webview.postMessage({
+                type: 'editProviderResult',
+                requestId: message.requestId,
+                success: true,
+                provider,
+              } satisfies EditProviderResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'editProviderResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies EditProviderResponse);
+            }
+            break;
+          }
+          case 'removeProvider': {
+            try {
+              await appCtx.providerManager.removeProvider(message.id);
+              await this.panel.webview.postMessage({
+                type: 'removeProviderResult',
+                requestId: message.requestId,
+                success: true,
+              } satisfies RemoveProviderResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'removeProviderResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies RemoveProviderResponse);
+            }
+            break;
+          }
+          case 'resetSettings': {
+            try {
+              await appCtx.providerManager.resetAll();
+              await this.panel.webview.postMessage({
+                type: 'resetSettingsResult',
+                requestId: message.requestId,
+                success: true,
+              } satisfies ResetSettingsResponse);
+              void vscode.window.showInformationMessage(
+                'TokenGuard Copilot: All settings have been reset.',
+              );
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'resetSettingsResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies ResetSettingsResponse);
+            }
+            break;
+          }
+        }
+      },
+      null,
+      this.disposables,
+    );
   }
 
   /**
    * Creates a new settings panel or reveals an existing one.
    *
    * @param extensionUri - The URI of the extension's root directory.
+   * @param appCtx - The application context with services.
    * @returns The settings panel instance.
    */
-  public static createOrShow(extensionUri: vscode.Uri): SettingsPanel {
+  public static createOrShow(extensionUri: vscode.Uri, appCtx: AppContext): SettingsPanel {
     if (SettingsPanel.currentPanel) {
       SettingsPanel.currentPanel.panel.reveal(SettingsPanel.viewColumn);
       return SettingsPanel.currentPanel;
@@ -54,7 +172,7 @@ export class SettingsPanel {
       },
     );
 
-    SettingsPanel.currentPanel = new SettingsPanel(panel, extensionUri);
+    SettingsPanel.currentPanel = new SettingsPanel(panel, extensionUri, appCtx);
     return SettingsPanel.currentPanel;
   }
 

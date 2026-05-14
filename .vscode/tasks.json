@@ -3,23 +3,12 @@
   "tasks": [
     {
       "type": "shell",
-      "label": "pnpm: watch",
-      "command": "pnpm run watch",
-      "problemMatcher": [],
-      "isBackground": true,
+      "label": "pnpm: compile",
+      "command": "pnpm run compile",
       "presentation": {
         "reveal": "silent"
       },
-      "group": "build"
-    },
-    {
-      "type": "shell",
-      "label": "pnpm: watch:webview",
-      "command": "pnpm run watch:webview",
-      "isBackground": true,
-      "presentation": {
-        "reveal": "silent"
-      },
+      "group": "build",
       "problemMatcher": []
     },
     {
@@ -32,8 +21,7 @@
         "9333",
         "${workspaceFolder}"
       ],
-      "dependsOn": ["pnpm: watch", "pnpm: watch:webview"],
-      "dependsOrder": "parallel",
+      "dependsOn": ["pnpm: compile"],
       "problemMatcher": []
     },
     {
@@ -46,8 +34,7 @@
         "9334",
         "${workspaceFolder}"
       ],
-      "dependsOn": ["pnpm: watch", "pnpm: watch:webview"],
-      "dependsOrder": "parallel",
+      "dependsOn": ["pnpm: compile"],
       "problemMatcher": []
     }
   ]

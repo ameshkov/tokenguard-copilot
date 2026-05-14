@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { ExtensionContext as AppContext } from '../context.js';
 
 vi.mock('vscode', () => {
   const disposable = { dispose: vi.fn() };
@@ -25,6 +26,7 @@ import { registerCommands } from './index.js';
 
 describe('registerCommands', () => {
   let context: vscode.ExtensionContext;
+  let appCtx: AppContext;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -32,6 +34,9 @@ describe('registerCommands', () => {
       subscriptions: [],
       extensionUri: '/test/extension',
     } as unknown as vscode.ExtensionContext;
+    appCtx = {
+      providerManager: {},
+    } as unknown as AppContext;
   });
 
   afterEach(() => {
@@ -39,7 +44,7 @@ describe('registerCommands', () => {
   });
 
   it('should register the helloWorld command', () => {
-    registerCommands(context);
+    registerCommands(context, appCtx);
 
     expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
       'tokenguard-copilot.helloWorld',
@@ -48,7 +53,7 @@ describe('registerCommands', () => {
   });
 
   it('should register the openSettings command', () => {
-    registerCommands(context);
+    registerCommands(context, appCtx);
 
     expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
       'tokenguard-copilot.openSettings',
@@ -57,13 +62,13 @@ describe('registerCommands', () => {
   });
 
   it('should push 2 disposables to subscriptions', () => {
-    registerCommands(context);
+    registerCommands(context, appCtx);
 
     expect(context.subscriptions).toHaveLength(2);
   });
 
   it('helloWorld command should show an information message', () => {
-    registerCommands(context);
+    registerCommands(context, appCtx);
 
     const callback = vi.mocked(vscode.commands.registerCommand).mock.calls[0][1] as () => void;
     callback();
@@ -75,11 +80,11 @@ describe('registerCommands', () => {
 
   it('openSettings command should create or show settings panel', async () => {
     const { SettingsPanel } = await import('../ui/panels/settings-panel.js');
-    registerCommands(context);
+    registerCommands(context, appCtx);
 
     const callback = vi.mocked(vscode.commands.registerCommand).mock.calls[1][1] as () => void;
     callback();
 
-    expect(SettingsPanel.createOrShow).toHaveBeenCalledWith(context.extensionUri);
+    expect(SettingsPanel.createOrShow).toHaveBeenCalledWith(context.extensionUri, appCtx);
   });
 });

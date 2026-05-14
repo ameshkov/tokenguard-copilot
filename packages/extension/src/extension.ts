@@ -6,12 +6,15 @@ import { registerCommands } from './commands/index.js';
 import { ExtensionContext } from './context.js';
 import { createDb } from './db/connection.js';
 import { runMigrations } from './db/migrate.js';
+import { providers, models, usageRecords } from './db/schema.js';
 import { createStatusBarItem } from './ui/status-bar/status-bar.js';
 
 let rawDb: DatabaseSync | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
   const dbPath = `${context.globalStorageUri.fsPath}/tokenguard-copilot.db`;
+
+  let extCtx: ExtensionContext;
 
   try {
     mkdirSync(context.globalStorageUri.fsPath, { recursive: true });
@@ -23,8 +26,24 @@ export function activate(context: vscode.ExtensionContext) {
     const migrationsFolder = path.join(__dirname, 'db', 'migrations');
     runMigrations(db, migrationsFolder);
 
-    // Future issues will use the context for commands/handlers
-    new ExtensionContext({ db });
+    extCtx = new ExtensionContext({
+      db,
+      secrets: context.secrets,
+      resetCallback: async () => {
+        // Read all provider IDs before deleting
+        const allProviders = db.select({ id: providers.id }).from(providers).all();
+
+        // Delete in FK order
+        db.delete(usageRecords).run();
+        db.delete(models).run();
+        db.delete(providers).run();
+
+        // Delete all provider secrets
+        for (const p of allProviders) {
+          await context.secrets.delete(`tokenguard-copilot.provider.${p.id}`);
+        }
+      },
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     vscode.window.showErrorMessage(
@@ -33,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
     return;
   }
 
-  registerCommands(context);
+  registerCommands(context, extCtx);
 
   context.subscriptions.push(createStatusBarItem());
 }

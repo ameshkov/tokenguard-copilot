@@ -9,12 +9,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TokenGuard Copilot Settings</title>
     <style>
+      /* ── Base ────────────────────────────────────────── */
       body {
-        padding: 16px;
+        padding: 20px;
         color: var(--vscode-foreground);
         background-color: var(--vscode-editor-background);
         font-family: var(--vscode-font-family);
         font-size: var(--vscode-font-size);
+        line-height: 1.4;
       }
       .settings-container {
         max-width: 600px;
@@ -23,10 +25,247 @@
       h1 {
         color: var(--vscode-foreground);
         font-weight: 600;
-        margin-bottom: 8px;
+        font-size: 1.3em;
+        margin: 0 0 4px;
       }
       p {
         color: var(--vscode-descriptionForeground);
+        margin: 0 0 16px;
+      }
+
+      /* ── Button ──────────────────────────────────────── */
+      .vscode-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 14px;
+        border: 1px solid transparent;
+        border-radius: 2px;
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+        line-height: 22px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .vscode-button:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: 1px;
+      }
+      .vscode-button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .vscode-button--primary {
+        color: var(--vscode-button-foreground);
+        background-color: var(--vscode-button-background);
+      }
+      .vscode-button--primary:hover:not(:disabled) {
+        background-color: var(--vscode-button-hoverBackground);
+      }
+      .vscode-button--secondary {
+        color: var(--vscode-button-secondaryForeground);
+        background-color: var(--vscode-button-secondaryBackground);
+      }
+      .vscode-button--secondary:hover:not(:disabled) {
+        background-color: var(--vscode-button-secondaryHoverBackground);
+      }
+
+      /* ── Input ───────────────────────────────────────── */
+      .vscode-input-wrapper {
+        display: flex;
+        flex-direction: column;
+      }
+      .vscode-input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 4px 8px;
+        color: var(--vscode-input-foreground);
+        background-color: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border, transparent);
+        border-radius: 2px;
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+        line-height: 22px;
+      }
+      .vscode-input:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: -1px;
+      }
+      .vscode-input:disabled {
+        opacity: 0.4;
+      }
+      .vscode-input--error {
+        border-color: var(--vscode-inputValidation-errorBorder);
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+      .vscode-input-error {
+        padding: 4px 8px;
+        border: 1px solid var(--vscode-inputValidation-errorBorder);
+        border-top: none;
+        background-color: var(--vscode-inputValidation-errorBackground);
+        color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+        font-size: 0.9em;
+        line-height: 1.3;
+      }
+
+      /* ── Label ───────────────────────────────────────── */
+      .vscode-label {
+        display: block;
+        color: var(--vscode-foreground);
+        font-size: var(--vscode-font-size);
+        margin-bottom: 4px;
+        cursor: default;
+      }
+
+      /* ── Form group ──────────────────────────────────── */
+      .vscode-form-group {
+        margin-bottom: 14px;
+      }
+
+      /* ── Card ────────────────────────────────────────── */
+      .vscode-card {
+        padding: 12px 16px;
+        border: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+        border-radius: 4px;
+        background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+        margin-bottom: 12px;
+      }
+
+      /* ── Badge ───────────────────────────────────────── */
+      .vscode-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 2px;
+        font-size: 0.85em;
+        line-height: 1;
+        color: var(--vscode-badge-foreground);
+        background-color: var(--vscode-badge-background);
+      }
+
+      /* ── Utilities ───────────────────────────────────── */
+      .error-banner {
+        padding: 8px 12px;
+        margin-bottom: 14px;
+        border: 1px solid var(--vscode-inputValidation-errorBorder);
+        background-color: var(--vscode-inputValidation-errorBackground);
+        color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+        border-radius: 2px;
+        font-size: 0.9em;
+      }
+      .section-divider {
+        border: none;
+        border-top: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+        margin: 20px 0;
+      }
+
+      /* ── Section header ─────────────────────────────── */
+      .section-header {
+        margin: 24px 0 12px;
+      }
+      .section-header__title {
+        color: var(--vscode-foreground);
+        font-weight: 600;
+        font-size: 1.1em;
+        margin: 0 0 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid
+          var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+      }
+
+      /* ── Table ──────────────────────────────────────── */
+      .vscode-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 12px;
+      }
+      .vscode-table th {
+        text-align: left;
+        padding: 6px 8px;
+        color: var(--vscode-descriptionForeground);
+        font-weight: 600;
+        font-size: 0.9em;
+        border-bottom: 1px solid
+          var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+      }
+      .vscode-table td {
+        padding: 8px;
+        border-bottom: 1px solid
+          var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+      }
+
+      /* ── Provider actions ───────────────────────────── */
+      .provider-actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      /* ── Form actions ───────────────────────────────── */
+      .form-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      /* ── Confirm dialog ─────────────────────────────── */
+      .confirm-dialog {
+        margin: 12px 0;
+        padding: 12px 16px;
+        border: 1px solid
+          var(--vscode-inputValidation-warningBorder, var(--vscode-panel-border, transparent));
+        border-radius: 4px;
+        background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+      }
+      .confirm-dialog__message {
+        margin: 0 0 12px;
+      }
+      .confirm-dialog__actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      /* ── Danger button modifier ─────────────────────── */
+      .vscode-button--danger {
+        color: var(--vscode-errorForeground);
+        border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+      }
+
+      /* ── Global actions ─────────────────────────────── */
+      .global-actions {
+        margin-top: 8px;
+      }
+      .global-actions__buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      /* ── Usage stats stub ───────────────────────────── */
+      .usage-stats-filters {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .usage-stats-filters select {
+        padding: 4px 8px;
+        color: var(--vscode-input-foreground);
+        background-color: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border, transparent);
+        border-radius: 2px;
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+      }
+      .usage-stats-chart-placeholder {
+        padding: 24px;
+        text-align: center;
+        color: var(--vscode-descriptionForeground);
+        border: 1px dashed var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+        border-radius: 4px;
+      }
+
+      /* ── Models section ─────────────────────────────── */
+      .models-section {
+        margin-bottom: 8px;
       }
     </style>
   </head>
