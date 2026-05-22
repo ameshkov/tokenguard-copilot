@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getColumns } from 'drizzle-orm';
-import { providers, models, usageRecords } from './schema.js';
+import { providers, models, usageRecords, settings, sessionMappings } from './schema.js';
 
 describe('providers table', () => {
   it('should have the expected columns', () => {
@@ -21,7 +21,7 @@ describe('models table', () => {
     expect(columns).toHaveProperty('providerId');
     expect(columns).toHaveProperty('displayName');
     expect(columns).toHaveProperty('maxContextWindowTokens');
-    expect(columns).toHaveProperty('maxPromptTokens');
+    expect(columns).toHaveProperty('maxOutputTokens');
     expect(columns).toHaveProperty('streaming');
     expect(columns).toHaveProperty('vision');
     expect(columns).toHaveProperty('temperature');
@@ -55,5 +55,26 @@ describe('usageRecords table', () => {
     expect(columns).toHaveProperty('requestCount');
     expect(columns).toHaveProperty('errorCount');
     expect(columns).toHaveProperty('estimatedCost');
+  });
+});
+
+describe('settings table', () => {
+  it('should have the expected columns', () => {
+    const columns = getColumns(settings);
+    expect(columns).toHaveProperty('key');
+    expect(columns).toHaveProperty('value');
+  });
+});
+
+describe('sessionMappings table', () => {
+  it('should have the expected columns', () => {
+    const columns = getColumns(sessionMappings);
+    expect(columns).toHaveProperty('id');
+    expect(columns).toHaveProperty('toolCallId');
+    expect(columns).toHaveProperty('contentChecksum');
+    expect(columns).toHaveProperty('sessionId');
+    expect(columns).toHaveProperty('workspaceId');
+    expect(columns).toHaveProperty('modelName');
+    expect(columns).toHaveProperty('createdAt');
   });
 });

@@ -26,6 +26,17 @@ describe('ProviderForm', () => {
     expect(screen.getByText('Name is required')).toBeDefined();
   });
 
+  it('clears validation error when user types in the field', async () => {
+    const user = userEvent.setup();
+    render(<ProviderForm onSubmit={vi.fn()} loading={false} error={null} visible={true} />);
+
+    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    expect(screen.getByText('Name is required')).toBeDefined();
+
+    await user.type(screen.getByLabelText('Name'), 'T');
+    expect(screen.queryByText('Name is required')).toBeNull();
+  });
+
   it('shows validation error for invalid URL', async () => {
     const user = userEvent.setup();
     render(<ProviderForm onSubmit={vi.fn()} loading={false} error={null} visible={true} />);
@@ -157,7 +168,7 @@ describe('ProviderForm', () => {
     expect(onSubmit).toHaveBeenCalledWith('OpenAI', 'https://api.openai.com', '');
   });
 
-  it('calls onCancel when Cancel button clicked', async () => {
+  it('calls onCancel when Cancel button clicked and confirmed', async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
     render(
@@ -171,6 +182,58 @@ describe('ProviderForm', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByText('Discard changes and go back to settings?')).toBeDefined();
+
+    await user.click(screen.getByRole('button', { name: 'Discard' }));
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('does not call onCancel when cancel confirmation is dismissed', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(
+      <ProviderForm
+        onSubmit={vi.fn()}
+        loading={false}
+        error={null}
+        visible={true}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByText('Discard changes and go back to settings?')).toBeDefined();
+
+    // The ConfirmDialog has its own Cancel button
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancel' });
+    await user.click(cancelButtons[cancelButtons.length - 1]);
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('renders page title for add mode', () => {
+    render(<ProviderForm onSubmit={vi.fn()} loading={false} error={null} visible={true} />);
+
+    expect(screen.getByRole('heading', { name: 'Add Provider' })).toBeDefined();
+    expect(screen.getByText('Configure a new OpenAI-compatible provider.')).toBeDefined();
+  });
+
+  it('renders page title for edit mode', () => {
+    render(
+      <ProviderForm
+        onSubmit={vi.fn()}
+        loading={false}
+        error={null}
+        visible={true}
+        editingProvider={{
+          id: 'p1',
+          name: 'OpenAI',
+          baseUrl: 'https://api.openai.com',
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Edit Provider' })).toBeDefined();
+    expect(screen.getByText('Update the provider configuration below.')).toBeDefined();
   });
 });

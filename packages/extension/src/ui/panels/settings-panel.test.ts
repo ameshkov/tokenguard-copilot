@@ -20,6 +20,11 @@ vi.mock('node:fs', () => ({
   readFileSync: vi.fn(() => FAKE_TEMPLATE),
 }));
 
+const mockGetDefaults = vi.hoisted(() => vi.fn().mockReturnValue(null));
+vi.mock('../../services/model-defaults/index.js', () => ({
+  getDefaults: mockGetDefaults,
+}));
+
 vi.mock('vscode', () => {
   const disposable = { dispose: vi.fn() };
 
@@ -90,6 +95,26 @@ describe('SettingsPanel', () => {
         editProvider: vi.fn(),
         removeProvider: vi.fn(),
         resetAll: vi.fn(),
+      },
+      modelRegistry: {
+        getModels: vi.fn().mockReturnValue([]),
+        fetchModels: vi.fn().mockResolvedValue([]),
+        addModel: vi.fn(),
+        updateModel: vi.fn(),
+        removeModel: vi.fn(),
+      },
+      chatDebugSettings: {
+        getSettings: vi.fn().mockReturnValue({
+          enabled: false,
+          ttlHours: 24,
+        }),
+        updateSettings: vi.fn().mockReturnValue({
+          enabled: true,
+          ttlHours: 24,
+        }),
+      },
+      chatDebugCleanup: {
+        clearAll: vi.fn(),
       },
     } as unknown as AppContext;
     mockVscode._mockPanel._onDidDisposeCallback = null;
@@ -333,6 +358,301 @@ describe('SettingsPanel', () => {
         requestId: 'r9',
         success: false,
         error: 'DB error',
+      });
+    });
+
+    it('handles getModels request', async () => {
+      const models = [{ id: 'm1', providerId: 'p1' }];
+      vi.mocked(appCtx.modelRegistry.getModels).mockReturnValue(
+        models as unknown as import('@tokenguard/shared').ModelInfo[],
+      );
+
+      const handler = getMessageHandler();
+      await handler({ type: 'getModels', requestId: 'r10' });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getModelsResult',
+        requestId: 'r10',
+        models,
+      });
+    });
+
+    it('handles fetchAvailableModels success', async () => {
+      const fetched = [{ id: 'gpt-4o', name: 'GPT-4o' }];
+      vi.mocked(appCtx.modelRegistry.fetchModels).mockResolvedValue(
+        fetched as unknown as import('@tokenguard/shared').FetchedModel[],
+      );
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'fetchAvailableModels',
+        requestId: 'r11',
+        providerId: 'p1',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'fetchAvailableModelsResult',
+        requestId: 'r11',
+        success: true,
+        models: fetched,
+      });
+    });
+
+    it('handles fetchAvailableModels failure', async () => {
+      vi.mocked(appCtx.modelRegistry.fetchModels).mockRejectedValue(new Error('401 Unauthorized'));
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'fetchAvailableModels',
+        requestId: 'r12',
+        providerId: 'p1',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'fetchAvailableModelsResult',
+        requestId: 'r12',
+        success: false,
+        error: '401 Unauthorized',
+      });
+    });
+
+    it('handles addModel success', async () => {
+      const model = { id: 'gpt-4o', providerId: 'p1' };
+      vi.mocked(appCtx.modelRegistry.addModel).mockReturnValue(
+        model as unknown as import('@tokenguard/shared').ModelInfo,
+      );
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'addModel',
+        requestId: 'r13',
+        providerId: 'p1',
+        modelId: 'gpt-4o',
+        config: {},
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'addModelResult',
+        requestId: 'r13',
+        success: true,
+        model,
+      });
+    });
+
+    it('handles addModel failure', async () => {
+      vi.mocked(appCtx.modelRegistry.addModel).mockImplementation(() => {
+        throw new Error('already exists');
+      });
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'addModel',
+        requestId: 'r14',
+        providerId: 'p1',
+        modelId: 'gpt-4o',
+        config: {},
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'addModelResult',
+        requestId: 'r14',
+        success: false,
+        error: 'already exists',
+      });
+    });
+
+    it('handles editModel success', async () => {
+      const model = { id: 'gpt-4o', providerId: 'p1', displayName: 'Custom' };
+      vi.mocked(appCtx.modelRegistry.updateModel).mockReturnValue(
+        model as unknown as import('@tokenguard/shared').ModelInfo,
+      );
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'editModel',
+        requestId: 'r15',
+        providerId: 'p1',
+        modelId: 'gpt-4o',
+        config: {},
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'editModelResult',
+        requestId: 'r15',
+        success: true,
+        model,
+      });
+    });
+
+    it('handles editModel failure', async () => {
+      vi.mocked(appCtx.modelRegistry.updateModel).mockImplementation(() => {
+        throw new Error('Model not found');
+      });
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'editModel',
+        requestId: 'r16',
+        providerId: 'p1',
+        modelId: 'gpt-4o',
+        config: {},
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'editModelResult',
+        requestId: 'r16',
+        success: false,
+        error: 'Model not found',
+      });
+    });
+
+    it('handles removeModel success', async () => {
+      vi.mocked(appCtx.modelRegistry.removeModel).mockReturnValue(undefined);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'removeModel',
+        requestId: 'r17',
+        providerId: 'p1',
+        modelId: 'gpt-4o',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'removeModelResult',
+        requestId: 'r17',
+        success: true,
+      });
+    });
+
+    it('handles removeModel failure', async () => {
+      vi.mocked(appCtx.modelRegistry.removeModel).mockImplementation(() => {
+        throw new Error('Model not found');
+      });
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'removeModel',
+        requestId: 'r18',
+        providerId: 'p1',
+        modelId: 'gpt-4o',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'removeModelResult',
+        requestId: 'r18',
+        success: false,
+        error: 'Model not found',
+      });
+    });
+
+    it('handles getModelDefaults request', async () => {
+      const defaults = { contextSize: 128000, maxTokens: 16384 };
+      mockGetDefaults.mockReturnValueOnce(defaults);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'getModelDefaults',
+        requestId: 'r19',
+        modelId: 'gpt-4o',
+      });
+
+      expect(mockGetDefaults).toHaveBeenCalledWith('gpt-4o');
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getModelDefaultsResult',
+        requestId: 'r19',
+        defaults,
+      });
+    });
+
+    it('handles getModelDefaults when no defaults found', async () => {
+      mockGetDefaults.mockReturnValueOnce(null);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'getModelDefaults',
+        requestId: 'r20',
+        modelId: 'unknown-model',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getModelDefaultsResult',
+        requestId: 'r20',
+        defaults: null,
+      });
+    });
+
+    it('handles getChatDebugSettings request', async () => {
+      const settings = { enabled: false, ttlHours: 24 };
+      vi.mocked(appCtx.chatDebugSettings.getSettings).mockReturnValue(settings);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'getChatDebugSettings',
+        requestId: 'r21',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getChatDebugSettingsResult',
+        requestId: 'r21',
+        settings,
+      });
+    });
+
+    it('handles updateChatDebugSettings success', async () => {
+      const updated = { enabled: true, ttlHours: 12 };
+      vi.mocked(appCtx.chatDebugSettings.updateSettings).mockReturnValue(updated);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'updateChatDebugSettings',
+        requestId: 'r22',
+        enabled: true,
+        ttlHours: 12,
+      });
+
+      expect(appCtx.chatDebugSettings.updateSettings).toHaveBeenCalledWith({
+        enabled: true,
+        ttlHours: 12,
+      });
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'updateChatDebugSettingsResult',
+        requestId: 'r22',
+        success: true,
+        settings: updated,
+      });
+    });
+
+    it('handles updateChatDebugSettings failure', async () => {
+      vi.mocked(appCtx.chatDebugSettings.updateSettings).mockImplementation(() => {
+        throw new Error('ttlHours must be at least 1');
+      });
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'updateChatDebugSettings',
+        requestId: 'r23',
+        ttlHours: 0,
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'updateChatDebugSettingsResult',
+        requestId: 'r23',
+        success: false,
+        error: 'ttlHours must be at least 1',
+      });
+    });
+
+    it('handles clearChatDebugLogs request', async () => {
+      const handler = getMessageHandler();
+      await handler({
+        type: 'clearChatDebugLogs',
+        requestId: 'r24',
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'clearChatDebugLogsResult',
+        requestId: 'r24',
+        success: true,
       });
     });
   });

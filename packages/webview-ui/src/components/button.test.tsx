@@ -11,22 +11,15 @@ describe('Button', () => {
     render(<Button>Click me</Button>);
 
     const button = screen.getByRole('button', { name: 'Click me' });
-    expect(button.className).toContain('vscode-button--primary');
+    expect(button.tagName.toLowerCase()).toBe('vscode-button');
+    expect(button.hasAttribute('secondary')).toBe(false);
   });
 
   it('renders with secondary variant', () => {
     render(<Button variant="secondary">Cancel</Button>);
 
     const button = screen.getByRole('button', { name: 'Cancel' });
-    expect(button.className).toContain('vscode-button--secondary');
-  });
-
-  it('merges additional class names', () => {
-    render(<Button className="extra">OK</Button>);
-
-    const button = screen.getByRole('button', { name: 'OK' });
-    expect(button.className).toContain('extra');
-    expect(button.className).toContain('vscode-button');
+    expect(button.hasAttribute('secondary')).toBe(true);
   });
 
   it('passes through disabled attribute', () => {

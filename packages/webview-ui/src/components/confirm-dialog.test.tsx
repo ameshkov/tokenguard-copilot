@@ -51,4 +51,13 @@ describe('ConfirmDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalled();
   });
+
+  it('disables confirm and hides cancel when loading', () => {
+    render(
+      <ConfirmDialog message="Sure?" confirmLabel="Removing…" onConfirm={vi.fn()} loading={true} />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Removing…' })).toHaveProperty('disabled', true);
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+  });
 });

@@ -1,0 +1,217 @@
+/* ── Base ────────────────────────────────────────── */
+body {
+  padding: 20px;
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  line-height: 1.4;
+}
+.settings-container {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
+}
+h1 {
+  color: var(--vscode-settings-headerForeground, var(--vscode-foreground));
+  font-weight: 600;
+  font-size: 2em;
+  margin: 0 0 4px;
+}
+p {
+  color: var(--vscode-descriptionForeground);
+  margin: 0 0 16px;
+}
+
+/* ── Card ────────────────────────────────────────── */
+.vscode-card {
+  padding: 12px 16px;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+  border-radius: 4px;
+  background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  margin-bottom: 12px;
+}
+
+/* ── Utilities ───────────────────────────────────── */
+.error-banner {
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  background-color: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+  border-radius: 2px;
+  font-size: 0.9em;
+}
+
+/* ── Form validation messages ────────────────────── */
+vscode-form-helper[severity='error'] {
+  color: var(--vscode-errorForeground);
+}
+
+/* ── Section header ─────────────────────────────── */
+.section-header {
+  margin: 24px 0 12px;
+}
+.section-header__title {
+  color: var(--vscode-settings-headerForeground, var(--vscode-foreground));
+  font-weight: 600;
+  font-size: 1.5em;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid
+    var(--vscode-settings-headerBorder, var(--vscode-panel-border, transparent));
+}
+.section-header__title:hover {
+  color: var(
+    --vscode-settings-settingsHeaderHoverForeground,
+    var(--vscode-settings-headerForeground, var(--vscode-foreground))
+  );
+}
+
+/* ── Table layout ────────────────────────────────── */
+vscode-table-cell {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+vscode-table {
+  margin-bottom: 12px;
+}
+
+/* ── Provider actions ───────────────────────────── */
+.provider-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Form actions ───────────────────────────────── */
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ── Confirm dialog ─────────────────────────────── */
+.confirm-dialog {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid
+    var(--vscode-inputValidation-warningBorder, var(--vscode-panel-border, transparent));
+  border-radius: 4px;
+  background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+.confirm-dialog__message {
+  margin: 0 0 12px;
+}
+.confirm-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Chat debug ────────────────────────────────── */
+.chat-debug-section__buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Global actions ─────────────────────────────── */
+.global-actions {
+  margin-top: 8px;
+}
+.global-actions__buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ── Usage stats ──────────────────────────────────── */
+.usage-stats-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.usage-stats-filters vscode-single-select {
+  min-width: 140px;
+  flex: 1 1 0;
+}
+.usage-stats-chart-placeholder {
+  padding: 24px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  border: 1px dashed var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+  border-radius: 4px;
+}
+
+/* ── Models section ─────────────────────────────── */
+.models-section {
+  margin-bottom: 8px;
+}
+.models-section__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Select model page ──────────────────────────── */
+.select-model-page__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.select-model-page__error {
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+}
+
+/* ── Model config dialog ────────────────────────── */
+.model-config-dialog__section {
+  margin: 16px 0 8px;
+}
+vscode-collapsible {
+  --vscode-sideBar-background: transparent;
+  --vscode-sideBarSectionHeader-background: transparent;
+}
+.model-config-dialog__section-title {
+  color: var(--vscode-settings-headerForeground, var(--vscode-foreground));
+  font-weight: 600;
+  font-size: var(--vscode-font-size);
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid
+    var(--vscode-settings-headerBorder, var(--vscode-panel-border, transparent));
+}
+.model-config-dialog__prefill-hint {
+  display: block;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.85em;
+  margin-bottom: 4px;
+}
+.model-config-dialog__error {
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  background-color: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+  border-radius: 2px;
+  font-size: 0.9em;
+}
+.model-config-dialog__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.model-config-dialog__add-effort {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.model-config-dialog__efforts-table {
+  margin-bottom: 12px;
+}
+.model-config-dialog__effort-actions-col {
+  max-width: 40px;
+}

@@ -74,6 +74,10 @@ manifest (`main`, `contributes`, `publisher`).
 - **`packages/webview-ui`** (`@tokenguard/webview-ui`) — React
   settings UI. Bundled with esbuild into `out/webview/` (IIFE,
   browser).
+- **`packages/webview-playground`**
+  (`@tokenguard/webview-playground`) — Vite dev server with
+  `@vscode-elements/webview-playground` toolbar and mock
+  VS Code API for developing the settings page in a browser.
 
 ### Directory Layout
 
@@ -119,9 +123,14 @@ tokenguard-copilot/
 │   │       │   ├── panels/      # Webview panel providers
 │   │       │   │   ├── index.ts # Barrel exports
 │   │       │   │   └── settings-panel.ts
+│   │       │   ├── tree-views/  # Tree data providers
+│   │       │   │   ├── index.ts # Barrel exports
+│   │       │   │   └── chat-debug-tree-view.ts
 │   │       │   └── status-bar/  # Status bar item
 │   │       │       └── index.ts # Module barrel
 │   │       ├── services/        # Business logic layer
+│   │       │   ├── chat-handler/  # Chat completion handler
+│   │       │   │   └── index.ts # Module barrel
 │   │       │   ├── model-defaults/ # Model defaults lookup
 │   │       │   │   └── index.ts # Module barrel
 │   │       │   └── provider-manager/ # Provider CRUD
@@ -135,30 +144,33 @@ tokenguard-copilot/
 │   │       │   └── migrations/  # Generated SQL migrations
 │   │       └── test/            # Test helpers (not tests)
 │   │           └── db-setup.ts  # createTestDb() helper
-│   └── webview-ui/              # React webview app
-│       ├── package.json         # @tokenguard/webview-ui
+│   ├── webview-ui/              # React webview app
+│   │   ├── package.json         # @tokenguard/webview-ui
+│   │   ├── tsconfig.json
+│   │   ├── vitest.config.mts    # Component test config
+│   │   ├── esbuild.config.mts   # Browser bundle config
+│   │   └── src/
+│   │       ├── index.tsx        # Entry: side-effect imports, re-exports
+│   │       ├── settings-app.tsx # Root SettingsApp component + router
+│   │       ├── settings.css     # Global styles
+│   │       ├── vscode-api.ts    # postMessage bridge
+│   │       ├── vscode-elements.d.ts # JSX types for web components
+│   │       ├── components/      # Reusable UI primitives
+│   │       │   └── index.ts     # Barrel exports
+│   │       ├── pages/           # Full-page views (routed by Page union)
+│   │       │   └── index.ts     # Barrel exports
+│   │       ├── sections/        # Settings page sections
+│   │       │   └── index.ts     # Barrel exports
+│   │       └── test/            # Test helpers (not tests)
+│   └── webview-playground/      # Vite dev server + mocks
+│       ├── package.json         # @tokenguard/webview-playground
 │       ├── tsconfig.json
-│       ├── vitest.config.mts    # Component test config
-│       ├── esbuild.config.mts   # Browser bundle config
+│       ├── vite.config.mts      # Vite dev server config
+│       ├── index.html           # Vite HTML entry
 │       └── src/
-│           ├── index.tsx        # Settings page React entry point
-│           ├── vscode-api.ts    # VS Code API wrapper + request/response
-│           ├── provider-form.tsx # Add/Edit Provider form component
-│           ├── provider-list.tsx # Provider table component
-│           ├── models-section.tsx # Models stub section
-│           ├── usage-stats-section.tsx # Usage stats stub section
-│           ├── global-actions.tsx # Global actions (reset) section
-│           └── components/      # VS Code-styled React UI primitives
-│               ├── index.ts     # Barrel exports
-│               ├── badge.tsx
-│               ├── button.tsx
-│               ├── card.tsx
-│               ├── confirm-dialog.tsx
-│               ├── form-group.tsx
-│               ├── input.tsx
-│               ├── label.tsx
-│               ├── section-header.tsx
-│               └── table.tsx
+│           ├── main.tsx         # Dev entry (playground toolbar)
+│           ├── mock-vscode-api.ts # Mock acquireVsCodeApi()
+│           └── fixtures.ts      # Sample data for mock API
 ├── out/                         # Compiled output (gitignored)
 ├── .vscode/                     # Launch configs, tasks, helper scripts
 └── docs/                        # Documentation
@@ -172,6 +184,8 @@ tokenguard-copilot/
 - `pnpm run typecheck` — type-check all packages (no emit)
 - `pnpm run watch` — watch extension host (esbuild)
 - `pnpm run watch:webview` — watch webview (esbuild)
+- `pnpm run dev:webview` — start Vite dev server for webview
+  playground
 - `pnpm run lint` — lint source files (ESLint + Knip)
 - `pnpm run lint:fix` — lint and auto-fix issues (ESLint)
 - `pnpm run format:check` — check formatting (Prettier and
@@ -375,20 +389,39 @@ Configuration and documentation MUST stay synchronized with code:
 
 ### Webview Theming
 
-Webview UI MUST use VS Code CSS custom properties (design tokens)
-for all colors, fonts, and spacing. These variables are
-automatically injected into every webview and adapt to the active
-color theme. **Never hard-code color values.**
+The webview uses the
+[VSCode Elements](https://vscode-elements.github.io/) web
+component library (`@vscode-elements/elements`) for UI
+primitives. These components automatically adapt to the
+active VS Code color theme — **never hard-code color
+values or re-implement component styles in CSS.**
 
-- **Reference**: https://code.visualstudio.com/api/references/theme-color
-- **Usage**: In CSS, use `var(--vscode-<section>-<property>)`.
-  The variable name is derived from the theme color ID by
+- **Prefer web components**: Use `<vscode-button>`,
+  `<vscode-badge>`, `<vscode-table>`, `<vscode-form-group>`,
+  `<vscode-checkbox>`, `<vscode-collapsible>`,
+  `<vscode-divider>`, `<vscode-single-select>`, and other
+  VSCode Elements tags instead of native HTML elements with
+  custom CSS.
+- **Component registration**: All web component side-effect
+  imports live in `packages/webview-ui/src/index.tsx`. Do
+  NOT import them from individual component files.
+- **Type declarations**: JSX types for web component tags
+  are declared in
+  `packages/webview-ui/src/vscode-elements.d.ts`. Update
+  this file when adding new VSCode Elements tags.
+- **CSS custom properties**: For any remaining custom CSS,
+  use `var(--vscode-<section>-<property>)` tokens. The
+  variable name is derived from the theme color ID by
   replacing dots with dashes and prefixing with `--vscode-`.
-  For example, `inputValidation.errorBorder` becomes
-  `var(--vscode-inputValidation-errorBorder)`.
-- **Fallbacks**: Some tokens are not defined in every theme.
-  Always provide a fallback when the token may be absent, e.g.
-  `var(--vscode-input-border, transparent)`.
+  Always provide a fallback when the token may be absent,
+  e.g. `var(--vscode-input-border, transparent)`.
+- **Reference**: https://code.visualstudio.com/api/references/theme-color
+- **Test mocks**: In the jsdom test environment, lightweight
+  mock custom elements are registered via
+  `packages/webview-ui/src/test/element-mocks.ts` (called
+  from `test/setup.ts`). Update mocks when adding new web
+  component tags that need roles or form behaviour in
+  tests.
 
 ### Markdown Formatting
 

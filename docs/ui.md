@@ -6,6 +6,29 @@ for theming.
 
 Max content width: 600px, centered horizontally.
 
+## Navigation
+
+The webview uses a `Page` discriminated union as a simple
+client-side router. The root `SettingsApp` component holds a
+single `page` state that determines which full-page view to
+render. Each page type corresponds to a distinct screen:
+
+- `settings` — main settings page (providers table, models
+  table, usage stats, global actions).
+- `addProvider` — full-page add-provider form.
+- `editProvider` — full-page edit-provider form.
+- `selectProvider` — provider selector (add-model flow,
+  step 1).
+- `selectModel` — model selector (add-model flow, step 2).
+- `configureModel` — model configuration form (add-model
+  flow, step 3).
+- `editModel` — full-page edit-model form.
+
+All flow state (loading, errors, fetched data) lives in
+`SettingsApp`. Page components are stateless with respect
+to navigation — they receive data via props and signal
+transitions via callbacks.
+
 ## Layout
 
 ```text
@@ -70,10 +93,16 @@ A table listing all configured (non-removed) providers.
 
 Below the table: **Add Provider** button.
 
-#### Add / Edit Provider Dialog
+#### Add / Edit Provider Page
 
-Opens inline (replaces the "Add Provider" button area) or as
-a modal-style card. Fields:
+Clicking **Add Provider** or **Edit** navigates to a
+full-page form that replaces the settings page entirely.
+The page has its own title and subtitle.
+
+- **Title**: "Add Provider" or "Edit Provider".
+- **Subtitle**: short description of the action.
+
+Fields:
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
@@ -81,11 +110,18 @@ a modal-style card. Fields:
 | Base URL | text | yes | OpenAI-compatible endpoint |
 | API Key | password | yes | Stored in SecretStorage |
 
+Buttons:
+
+- **Add Provider** / **Save** — submits the form.
+- **Cancel** — shows a confirmation dialog ("Discard
+  changes and go back to settings?") before navigating
+  back to the settings page.
+
 - **Add flow**: on submit, the extension calls
   `{baseUrl}/models` to validate the endpoint. A loading
   spinner is shown on the button. On success the provider is
-  saved and appears in the table. On failure an inline error
-  is shown with the entered values preserved.
+  saved and the user returns to the settings page. On failure
+  an inline error is shown with the entered values preserved.
 - **Edit flow**: same form, pre-filled with current values.
   API Key field shows a placeholder ("unchanged") and only
   updates SecretStorage if the user types a new value.
@@ -105,18 +141,29 @@ Below the table: **Add Model** button.
 
 #### Add Model Flow
 
-1. User clicks **Add Model**.
-2. A provider selector appears (dropdown or inline list).
-3. After selecting a provider the extension fetches
-   `{baseUrl}/models` and shows a selection list of
-   available models (already-added models are excluded or
-   marked).
-4. After selecting a model the configuration dialog opens.
+Each step in the add-model flow takes the full page,
+replacing the settings view entirely. Each page has its
+own title ("Add Model") and subtitle.
 
-#### Model Configuration Dialog
+1. User clicks **Add Model** — navigates to a full-page
+   provider selector ("Select a provider to fetch
+   available models from.").
+2. After selecting a provider, navigates to a full-page
+   model selector ("Select a model to configure.") where
+   the extension fetches `{baseUrl}/models` and shows a
+   selection list of available models.
+3. After selecting a model the configuration page opens.
 
-Shown when adding or editing a model. Two sections: basic
-(always visible) and advanced (collapsed by default).
+A **Cancel** button on each step returns to the settings
+page.
+
+#### Model Configuration Page
+
+Shown as a full page when adding or editing a model.
+The **Cancel** button shows a confirmation dialog
+("Discard changes and go back to settings?") before
+navigating back. Two sections: basic (always visible) and
+advanced (collapsed by default).
 
 **Basic parameters:**
 

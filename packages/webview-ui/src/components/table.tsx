@@ -31,33 +31,31 @@ export interface TableProps<T> {
 }
 
 /**
- * A simple data table styled to match VS Code.
+ * A data table rendered with `<vscode-table>` web components
+ * from the VSCode Elements library.
  *
  * @param props - Table props.
  * @returns The table element.
  */
 export function Table<T>(props: TableProps<T>): React.JSX.Element {
   const { columns, rows, rowKey, className } = props;
-  const cls = `vscode-table${className ? ` ${className}` : ''}`;
 
   return (
-    <table className={cls}>
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th key={col.header}>{col.header}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={rowKey(row)}>
-            {columns.map((col) => (
-              <td key={col.header}>{col.render(row)}</td>
-            ))}
-          </tr>
+    <vscode-table bordered-rows className={className}>
+      <vscode-table-header slot="header">
+        {columns.map((col) => (
+          <vscode-table-header-cell key={col.header}>{col.header}</vscode-table-header-cell>
         ))}
-      </tbody>
-    </table>
+      </vscode-table-header>
+      <vscode-table-body slot="body">
+        {rows.map((row) => (
+          <vscode-table-row key={rowKey(row)}>
+            {columns.map((col) => (
+              <vscode-table-cell key={col.header}>{col.render(row)}</vscode-table-cell>
+            ))}
+          </vscode-table-row>
+        ))}
+      </vscode-table-body>
+    </vscode-table>
   );
 }

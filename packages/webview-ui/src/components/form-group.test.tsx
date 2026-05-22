@@ -17,21 +17,9 @@ describe('FormGroup', () => {
     expect(screen.getByText('child')).toBeDefined();
   });
 
-  it('applies vscode-form-group class', () => {
+  it('renders as vscode-form-group element', () => {
     render(<FormGroup data-testid="group">content</FormGroup>);
 
-    expect(screen.getByTestId('group').className).toContain('vscode-form-group');
-  });
-
-  it('merges additional class names', () => {
-    render(
-      <FormGroup data-testid="group" className="extra">
-        content
-      </FormGroup>,
-    );
-
-    const el = screen.getByTestId('group');
-    expect(el.className).toContain('vscode-form-group');
-    expect(el.className).toContain('extra');
+    expect(screen.getByTestId('group').tagName.toLowerCase()).toBe('vscode-form-group');
   });
 });

@@ -38,7 +38,7 @@ export const models = sqliteTable(
       .references(() => providers.id),
     displayName: text('display_name'),
     maxContextWindowTokens: integer('max_context_window_tokens').notNull(),
-    maxPromptTokens: integer('max_prompt_tokens').notNull(),
+    maxOutputTokens: integer('max_output_tokens').notNull(),
     streaming: integer('streaming').notNull().default(1),
     vision: integer('vision').notNull().default(0),
     temperature: real('temperature'),
@@ -47,6 +47,7 @@ export const models = sqliteTable(
     presencePenalty: real('presence_penalty'),
     supportedReasoningEfforts: text('supported_reasoning_efforts'),
     defaultReasoningEffort: text('default_reasoning_effort'),
+    reasoningEffortMap: text('reasoning_effort_map'),
     preserveReasoning: integer('preserve_reasoning').notNull().default(0),
     inputCostPer1m: real('input_cost_per_1m'),
     outputCostPer1m: real('output_cost_per_1m'),
@@ -104,3 +105,47 @@ export type UsageRecord = typeof usageRecords.$inferSelect;
 
 /** TypeScript type for inserting a new usage record. */
 export type NewUsageRecord = typeof usageRecords.$inferInsert;
+
+/**
+ * Settings table — generic key-value store for extension
+ * configuration.
+ *
+ * Each row stores a single setting identified by its key.
+ * Values are stored as text and parsed by the consuming
+ * service.
+ */
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
+/** TypeScript type for a selected settings row. */
+export type Setting = typeof settings.$inferSelect;
+
+/** TypeScript type for inserting a new settings row. */
+export type NewSetting = typeof settings.$inferInsert;
+
+/**
+ * Session mappings table — maps tool call IDs and content
+ * checksums to chat debug session IDs.
+ *
+ * Used by the session tracker to attribute incoming chat
+ * requests to existing sessions. Each row maps either a
+ * `toolCallId` or a `contentChecksum` (or both) to a
+ * `sessionId`.
+ */
+export const sessionMappings = sqliteTable('session_mappings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  toolCallId: text('tool_call_id').unique(),
+  contentChecksum: text('content_checksum'),
+  sessionId: text('session_id').notNull(),
+  workspaceId: text('workspace_id').notNull(),
+  modelName: text('model_name').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+/** TypeScript type for a selected session mapping row. */
+export type SessionMapping = typeof sessionMappings.$inferSelect;
+
+/** TypeScript type for inserting a new session mapping. */
+export type NewSessionMapping = typeof sessionMappings.$inferInsert;

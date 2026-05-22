@@ -78,7 +78,11 @@ describe('ProviderList', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remove' }));
     expect(onRemove).not.toHaveBeenCalled();
-    expect(screen.getByText('Remove provider "OpenAI"?')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Remove provider "OpenAI"? All associated models will be permanently deleted. Usage statistics will be kept.',
+      ),
+    ).toBeDefined();
   });
 
   it('calls onRemove after confirming removal', async () => {
@@ -124,6 +128,10 @@ describe('ProviderList', () => {
     await user.click(screen.getByRole('button', { name: 'Remove' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onRemove).not.toHaveBeenCalled();
-    expect(screen.queryByText('Remove provider "OpenAI"?')).toBeNull();
+    expect(
+      screen.queryByText(
+        'Remove provider "OpenAI"? All associated models will be permanently deleted. Usage statistics will be kept.',
+      ),
+    ).toBeNull();
   });
 });

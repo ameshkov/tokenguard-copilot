@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type * as vscode from 'vscode';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { ProviderRepository } from '../../repositories/provider-repository.js';
+import { ModelRepository } from '../../repositories/model-repository.js';
+import { ModelRegistry } from '../model-registry/model-registry.js';
 import { ProviderManager } from './provider-manager.js';
+import type { ModelConfig } from '@tokenguard/shared';
 import type { Database } from '../../db/connection.js';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -19,6 +22,11 @@ vi.mock('vscode', () => {
       }
       dispose() {}
     },
+    lm: {
+      registerLanguageModelChatProvider: vi.fn(() => ({
+        dispose: vi.fn(),
+      })),
+    },
   };
 });
 
@@ -32,18 +40,51 @@ describe('ProviderManager', () => {
     delete: ReturnType<typeof vi.fn>;
   };
   let resetCallback: ReturnType<typeof vi.fn<() => Promise<void>>>;
+  let modelRegistry: ModelRegistry;
   let manager: ProviderManager;
+
+  const validConfig: ModelConfig = {
+    displayName: null,
+    maxContextWindowTokens: 128000,
+    maxOutputTokens: 16384,
+    streaming: true,
+    vision: false,
+    temperature: null,
+    topP: null,
+    frequencyPenalty: null,
+    presencePenalty: null,
+    supportedReasoningEfforts: null,
+    defaultReasoningEffort: null,
+    reasoningEffortMap: null,
+    preserveReasoning: false,
+    inputCostPer1m: null,
+    outputCostPer1m: null,
+    cachedInputCostPer1m: null,
+  };
 
   beforeEach(() => {
     ({ db, raw } = createTestDb());
     repo = new ProviderRepository(db);
+    const modelRepo = new ModelRepository(db);
     secrets = {
       store: vi.fn().mockResolvedValue(undefined),
       get: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined),
     };
     resetCallback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    manager = new ProviderManager(repo, secrets as unknown as vscode.SecretStorage, resetCallback);
+    modelRegistry = new ModelRegistry(
+      modelRepo,
+      repo,
+      secrets as unknown as vscode.SecretStorage,
+      () => null,
+      { logRequest: vi.fn() } as unknown as import('../chat-debug-logger/index.js').ChatDebugLogger,
+    );
+    manager = new ProviderManager(
+      repo,
+      secrets as unknown as vscode.SecretStorage,
+      resetCallback,
+      modelRegistry,
+    );
   });
 
   afterEach(() => {
@@ -327,6 +368,32 @@ describe('ProviderManager', () => {
       manager.onProvidersChanged(listener);
       await manager.removeProvider(added.id);
       expect(listener).toHaveBeenCalled();
+    });
+
+    it('cascade-removes all provider models', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+      const provider = await manager.addProvider('P', 'https://p.com', 'key');
+
+      modelRegistry.addModel(provider.id, 'model-a', validConfig);
+      modelRegistry.addModel(provider.id, 'model-b', validConfig);
+      expect(modelRegistry.getModels(provider.id)).toHaveLength(2);
+
+      await manager.removeProvider(provider.id);
+
+      expect(modelRegistry.getModels(provider.id)).toHaveLength(0);
+    });
+
+    it('fires onModelsChanged when cascading', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+      const provider = await manager.addProvider('P', 'https://p.com', 'key');
+      modelRegistry.addModel(provider.id, 'model-a', validConfig);
+
+      const handler = vi.fn();
+      modelRegistry.onModelsChanged(handler);
+
+      await manager.removeProvider(provider.id);
+
+      expect(handler).toHaveBeenCalled();
     });
   });
 

@@ -34,8 +34,8 @@ describe('Table', () => {
     expect(screen.getByText('Alice')).toBeDefined();
   });
 
-  it('applies default class name', () => {
+  it('renders as vscode-table element', () => {
     const { container } = render(<Table<TestRow> columns={[]} rows={[]} rowKey={(r) => r.id} />);
-    expect(container.querySelector('.vscode-table')).not.toBeNull();
+    expect(container.querySelector('vscode-table')).not.toBeNull();
   });
 });

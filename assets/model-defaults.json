@@ -12,15 +12,11 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
-        "extra_body": {
-          "enable_thinking": false
-        }
+        "enable_thinking": false
       },
       "high": {
-        "extra_body": {
-          "enable_thinking": true,
-          "preserve_thinking": true
-        }
+        "enable_thinking": true,
+        "preserve_thinking": true
       }
     },
     "preserveReasoning": true
@@ -37,15 +33,11 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
-        "extra_body": {
-          "enable_thinking": false
-        }
+        "enable_thinking": false
       },
       "high": {
-        "extra_body": {
-          "enable_thinking": true,
-          "preserve_thinking": true
-        }
+        "enable_thinking": true,
+        "preserve_thinking": true
       }
     },
     "preserveReasoning": true
@@ -62,15 +54,11 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
-        "extra_body": {
-          "enable_thinking": false
-        }
+        "enable_thinking": false
       },
       "high": {
-        "extra_body": {
-          "enable_thinking": true,
-          "preserve_thinking": true
-        }
+        "enable_thinking": true,
+        "preserve_thinking": true
       }
     },
     "preserveReasoning": true
@@ -88,15 +76,11 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
-        "extra_body": {
-          "enable_thinking": false
-        }
+        "enable_thinking": false
       },
       "high": {
-        "extra_body": {
-          "enable_thinking": true,
-          "preserve_thinking": true
-        }
+        "enable_thinking": true,
+        "preserve_thinking": true
       }
     },
     "preserveReasoning": true
@@ -137,7 +121,7 @@
     "inputCostPer1M": 1.05,
     "outputCostPer1M": 3.5,
     "cachedInputCostPer1M": 0.525,
-    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedCapabilities": ["reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -163,29 +147,23 @@
     "inputCostPer1M": 1.74,
     "outputCostPer1M": 3.48,
     "cachedInputCostPer1M": 0.0145,
-    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedCapabilities": ["reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
-        "extra_body": {
-          "thinking": {
-            "type": "disabled"
-          }
+        "thinking": {
+          "type": "disabled"
         }
       },
       "high": {
         "reasoning_effort": "high",
-        "extra_body": {
-          "thinking": {
-            "type": "enabled"
-          }
+        "thinking": {
+          "type": "enabled"
         }
       },
       "xhigh": {
         "reasoning_effort": "max",
-        "extra_body": {
-          "thinking": {
-            "type": "enabled"
-          }
+        "thinking": {
+          "type": "enabled"
         }
       }
     },
@@ -201,29 +179,23 @@
     "inputCostPer1M": 0.14,
     "outputCostPer1M": 0.28,
     "cachedInputCostPer1M": 0.0028,
-    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedCapabilities": ["reasoning_effort"],
     "reasoningEffortMap": {
       "none": {
-        "extra_body": {
-          "thinking": {
-            "type": "disabled"
-          }
+        "thinking": {
+          "type": "disabled"
         }
       },
       "high": {
         "reasoning_effort": "high",
-        "extra_body": {
-          "thinking": {
-            "type": "enabled"
-          }
+        "thinking": {
+          "type": "enabled"
         }
       },
       "xhigh": {
         "reasoning_effort": "max",
-        "extra_body": {
-          "thinking": {
-            "type": "enabled"
-          }
+        "thinking": {
+          "type": "enabled"
         }
       }
     },

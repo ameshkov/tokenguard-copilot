@@ -13,10 +13,12 @@ describe('UsageStatsSection', () => {
   });
 
   it('renders disabled filter dropdowns', () => {
-    render(<UsageStatsSection />);
-    expect(screen.getByLabelText('Period')).toHaveProperty('disabled', true);
-    expect(screen.getByLabelText('Providers')).toHaveProperty('disabled', true);
-    expect(screen.getByLabelText('Models')).toHaveProperty('disabled', true);
+    const { container } = render(<UsageStatsSection />);
+    const selects = container.querySelectorAll('vscode-single-select');
+    expect(selects.length).toBe(3);
+    for (const select of selects) {
+      expect(select.hasAttribute('disabled')).toBe(true);
+    }
   });
 
   it('renders placeholder text', () => {

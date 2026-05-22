@@ -1,4 +1,4 @@
-import { SectionHeader } from './components/index.js';
+import { SectionHeader } from '../components/index.js';
 
 /**
  * Stub section for Usage Statistics.
@@ -14,15 +14,15 @@ export function UsageStatsSection(): React.JSX.Element {
       <SectionHeader title="Usage Stats" />
       <div className="usage-stats-placeholder">
         <div className="usage-stats-filters" aria-disabled>
-          <select disabled aria-label="Period">
-            <option>Last 7d</option>
-          </select>
-          <select disabled aria-label="Providers">
-            <option>All Providers</option>
-          </select>
-          <select disabled aria-label="Models">
-            <option>All Models</option>
-          </select>
+          <vscode-single-select disabled aria-label="Period">
+            <vscode-option>Last 7d</vscode-option>
+          </vscode-single-select>
+          <vscode-single-select disabled aria-label="Providers">
+            <vscode-option>All Providers</vscode-option>
+          </vscode-single-select>
+          <vscode-single-select disabled aria-label="Models">
+            <vscode-option>All Models</vscode-option>
+          </vscode-single-select>
         </div>
         <div className="usage-stats-chart-placeholder">
           <p>No usage data available</p>

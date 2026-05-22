@@ -2,6 +2,7 @@
   "name": "@tokenguard/webview-ui",
   "version": "0.0.0",
   "private": true,
+  "main": "src/index.tsx",
   "scripts": {
     "build": "tsx esbuild.config.mts",
     "watch": "tsx esbuild.config.mts --watch",
@@ -11,6 +12,7 @@
   },
   "dependencies": {
     "@tokenguard/shared": "workspace:*",
+    "@vscode-elements/elements": "2.5.1",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },

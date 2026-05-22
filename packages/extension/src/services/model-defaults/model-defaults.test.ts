@@ -220,11 +220,11 @@ describe('getDefaults', () => {
     expect(result).not.toBeNull();
     expect(result!.reasoningEffortMap).toBeDefined();
     expect(result!.reasoningEffortMap!['none']).toEqual({
-      extra_body: { thinking: { type: 'disabled' } },
+      thinking: { type: 'disabled' },
     });
     expect(result!.reasoningEffortMap!['high']).toEqual({
       reasoning_effort: 'high',
-      extra_body: { thinking: { type: 'enabled' } },
+      thinking: { type: 'enabled' },
     });
   });
 

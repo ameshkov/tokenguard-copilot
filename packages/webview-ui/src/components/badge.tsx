@@ -1,14 +1,26 @@
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
+
+/** Props for the {@link Badge} component. */
+export interface BadgeProps extends HTMLAttributes<HTMLElement> {
+  /** Badge content. */
+  children?: ReactNode;
+}
 
 /**
- * A small badge/pill element styled to match the VS Code design
- * language.
+ * A small badge/pill element styled to match the VS Code
+ * design language.
  *
- * @param props - Standard span HTML attributes.
+ * Renders a `<vscode-badge>` web component from the
+ * VSCode Elements library.
+ *
+ * @param props - Standard HTML attributes.
  * @returns The badge element.
  */
-export function Badge(props: HTMLAttributes<HTMLSpanElement>): React.JSX.Element {
-  const { className, ...rest } = props;
-  const cls = `vscode-badge${className ? ` ${className}` : ''}`;
-  return <span className={cls} {...rest} />;
+export function Badge(props: BadgeProps): React.JSX.Element {
+  const { className, children, ...rest } = props;
+  return (
+    <vscode-badge className={className} {...rest}>
+      {children}
+    </vscode-badge>
+  );
 }

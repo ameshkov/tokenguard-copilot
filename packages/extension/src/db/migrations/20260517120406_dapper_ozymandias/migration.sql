@@ -1,0 +1,1 @@
+ALTER TABLE `models` RENAME COLUMN `max_prompt_tokens` TO `max_output_tokens`;

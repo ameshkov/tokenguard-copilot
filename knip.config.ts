@@ -28,10 +28,13 @@ const config: KnipConfig = {
       ],
       project: ['src/**/*.ts!', '!src/**/*.test.ts', '!src/test/**'],
     },
+    // Entry points (src/index.tsx, src/main.tsx) are detected
+    // automatically by knip and do not need to be listed here.
     'packages/webview-ui': {
-      entry: ['src/index.tsx!'],
-
       project: ['src/**/*.{ts,tsx}!', '!src/**/*.test.{ts,tsx}'],
+    },
+    'packages/webview-playground': {
+      project: ['src/**/*.{ts,tsx}!'],
     },
   },
 };

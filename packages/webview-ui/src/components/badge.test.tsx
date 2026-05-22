@@ -13,17 +13,9 @@ describe('Badge', () => {
     expect(screen.getByText('42')).toBeDefined();
   });
 
-  it('applies vscode-badge class', () => {
+  it('renders as vscode-badge element', () => {
     render(<Badge>tag</Badge>);
 
-    expect(screen.getByText('tag').className).toContain('vscode-badge');
-  });
-
-  it('merges additional class names', () => {
-    render(<Badge className="extra">tag</Badge>);
-
-    const el = screen.getByText('tag');
-    expect(el.className).toContain('vscode-badge');
-    expect(el.className).toContain('extra');
+    expect(screen.getByText('tag').tagName.toLowerCase()).toBe('vscode-badge');
   });
 });

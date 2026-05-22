@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { ProviderInfo } from '@tokenguard/shared';
 import type { ProviderRepository } from '../../repositories/provider-repository.js';
 import type { Provider } from '../../db/schema.js';
+import type { ModelRegistry } from '../model-registry/model-registry.js';
 
 /**
  * Callback that clears all data from the database and
@@ -25,11 +26,13 @@ export class ProviderManager {
    * @param providerRepo - Data-access layer for the providers table.
    * @param secrets - VS Code SecretStorage for API keys.
    * @param resetCallback - Callback to clear all data.
+   * @param modelRegistry - Model registry for cascade removal.
    */
   constructor(
     private readonly providerRepo: ProviderRepository,
     private readonly secrets: vscode.SecretStorage,
     private readonly resetCallback: ResetCallback,
+    private readonly modelRegistry: ModelRegistry,
   ) {}
 
   /**
@@ -189,6 +192,8 @@ export class ProviderManager {
    * @throws Error if provider not found.
    */
   async removeProvider(id: string): Promise<void> {
+    this.modelRegistry.removeModelsByProvider(id);
+
     const removed = this.providerRepo.softRemove(id);
     if (!removed) {
       throw new Error('Provider not found');

@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "ameshkov",
   "license": "MIT",
+  "icon": "assets/icon/logo_256.png",
   "engines": {
     "vscode": "^1.116.0"
   },
@@ -26,6 +27,15 @@
         "displayName": "TokenGuard Copilot"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "tokenguardCopilotChatDebugLogs",
+          "name": "TokenGuard Logs",
+          "when": "tokenguard-copilot.chatDebugEnabled"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "tokenguard-copilot.helloWorld",
@@ -36,18 +46,62 @@
         "command": "tokenguard-copilot.openSettings",
         "title": "Open Settings",
         "category": "TokenGuard Copilot"
+      },
+      {
+        "command": "tokenguard-copilot.enableChatDebugLogging",
+        "title": "Enable Chat Debug Logging",
+        "category": "TokenGuard Copilot",
+        "icon": "$(play)"
+      },
+      {
+        "command": "tokenguard-copilot.disableChatDebugLogging",
+        "title": "Disable Chat Debug Logging",
+        "category": "TokenGuard Copilot",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "tokenguard-copilot.clearChatDebugLogs",
+        "title": "Clear Chat Debug Logs",
+        "category": "TokenGuard Copilot",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "tokenguard-copilot.refreshChatDebugLogs",
+        "title": "Refresh Chat Debug Logs",
+        "category": "TokenGuard Copilot",
+        "icon": "$(refresh)"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "tokenguard-copilot.disableChatDebugLogging",
+          "when": "view == tokenguardCopilotChatDebugLogs",
+          "group": "navigation"
+        },
+        {
+          "command": "tokenguard-copilot.clearChatDebugLogs",
+          "when": "view == tokenguardCopilotChatDebugLogs",
+          "group": "navigation"
+        },
+        {
+          "command": "tokenguard-copilot.refreshChatDebugLogs",
+          "when": "view == tokenguardCopilotChatDebugLogs",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "pnpm run compile:extension && pnpm run compile:webview && pnpm run compile:migrations && pnpm run compile:e2e",
     "compile:extension": "pnpm --filter @tokenguard/extension run build",
     "compile:webview": "pnpm --filter @tokenguard/webview-ui run build",
-    "compile:migrations": "mkdir -p out/db && cp -r packages/extension/src/db/migrations out/db/migrations",
+    "compile:migrations": "rm -rf out/db/migrations && mkdir -p out/db && cp -r packages/extension/src/db/migrations out/db/migrations",
     "compile:e2e": "tsc -p test-e2e/tsconfig.json",
     "typecheck": "pnpm -r run typecheck",
     "watch": "pnpm --filter @tokenguard/extension run watch",
     "watch:webview": "pnpm --filter @tokenguard/webview-ui run watch",
+    "dev:webview": "pnpm --filter @tokenguard/webview-playground dev",
     "lint": "eslint && knip",
     "lint:fix": "eslint --fix",
     "format:check": "prettier --check --no-error-on-unmatched-pattern . && markdownlint-cli2 '**/*.md'",

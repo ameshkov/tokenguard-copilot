@@ -1,16 +1,34 @@
-import type { LabelHTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
+
+/** Props for the {@link Label} component. */
+export interface LabelProps extends HTMLAttributes<HTMLElement> {
+  /**
+   * Associates the label with a form control by ID.
+   * Maps to the `for` attribute on `<vscode-label>`.
+   */
+  htmlFor?: string;
+  /** Whether to show a required indicator. */
+  required?: boolean;
+  /** Label content. */
+  children?: ReactNode;
+}
 
 /**
  * A label styled to match the VS Code design language.
  *
- * Uses VS Code CSS custom properties for colors so the label
- * automatically adapts to the active color theme.
+ * Renders a `<vscode-label>` web component from the
+ * VSCode Elements library with automatic form control
+ * association via the `htmlFor` prop.
  *
- * @param props - Standard label HTML attributes.
+ * @param props - Label props including `htmlFor` for
+ *   form association.
  * @returns The label element.
  */
-export function Label(props: LabelHTMLAttributes<HTMLLabelElement>): React.JSX.Element {
-  const { className, ...rest } = props;
-  const cls = `vscode-label${className ? ` ${className}` : ''}`;
-  return <label className={cls} {...rest} />;
+export function Label(props: LabelProps): React.JSX.Element {
+  const { htmlFor, children, ...rest } = props;
+  return (
+    <vscode-label for={htmlFor} {...rest}>
+      {children}
+    </vscode-label>
+  );
 }

@@ -1,0 +1,24 @@
+{
+  "name": "@tokenguard/webview-playground",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "dev:preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tokenguard/shared": "workspace:*",
+    "@tokenguard/webview-ui": "workspace:*",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vscode-elements/webview-playground": "1.9.0",
+    "typescript": "5.9.2",
+    "vite": "8.0.13"
+  }
+}

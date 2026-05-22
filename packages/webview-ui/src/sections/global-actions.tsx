@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ResetSettingsResponse } from '@tokenguard/shared';
-import { Button, ConfirmDialog } from './components/index.js';
-import { sendRequest } from './vscode-api.js';
+import { Button, ConfirmDialog } from '../components/index.js';
+import { sendRequest } from '../vscode-api.js';
 
 /** Props for the {@link GlobalActions} component. */
 export interface GlobalActionsProps {
@@ -42,17 +42,12 @@ export function GlobalActions(props: GlobalActionsProps): React.JSX.Element {
 
   return (
     <div className="global-actions">
-      <hr className="section-divider" />
+      <vscode-divider />
       <div className="global-actions__buttons">
         <Button variant="secondary" disabled>
           Reset Statistics
         </Button>
-        <Button
-          variant="secondary"
-          className="vscode-button--danger"
-          onClick={() => setShowConfirm(true)}
-          disabled={resetting}
-        >
+        <Button variant="secondary" onClick={() => setShowConfirm(true)} disabled={resetting}>
           {resetting ? 'Resetting...' : 'Reset All Settings'}
         </Button>
       </div>
@@ -63,9 +58,10 @@ export function GlobalActions(props: GlobalActionsProps): React.JSX.Element {
             'models, and usage data. This action cannot ' +
             'be undone.'
           }
-          confirmLabel="Reset All Settings"
+          confirmLabel={resetting ? 'Resetting…' : 'Reset All Settings'}
           onConfirm={() => void handleReset()}
-          onCancel={() => setShowConfirm(false)}
+          onCancel={resetting ? undefined : () => setShowConfirm(false)}
+          loading={resetting}
         />
       )}
       {error && <div className="error-banner">{error}</div>}

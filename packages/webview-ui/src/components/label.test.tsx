@@ -13,18 +13,10 @@ describe('Label', () => {
     expect(screen.getByText('Field name')).toBeDefined();
   });
 
-  it('applies vscode-label class', () => {
-    render(<Label>Field</Label>);
+  it('renders as a vscode-label element', () => {
+    const { container } = render(<Label>Field</Label>);
 
-    expect(screen.getByText('Field').className).toContain('vscode-label');
-  });
-
-  it('merges additional class names', () => {
-    render(<Label className="extra">Field</Label>);
-
-    const label = screen.getByText('Field');
-    expect(label.className).toContain('vscode-label');
-    expect(label.className).toContain('extra');
+    expect(container.querySelector('vscode-label')).not.toBeNull();
   });
 
   it('associates with an input via htmlFor', () => {

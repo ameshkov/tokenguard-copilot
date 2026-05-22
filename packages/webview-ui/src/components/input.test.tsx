@@ -17,23 +17,15 @@ describe('Input', () => {
     render(<Input aria-label="test" errorMessage="Required" />);
 
     expect(screen.getByText('Required')).toBeDefined();
-    const input = screen.getByRole('textbox', { name: 'test' });
-    expect(input.className).toContain('vscode-input--error');
+    const textfield = screen.getByRole('textbox', { name: 'test' }).closest('vscode-textfield');
+    expect(textfield?.getAttribute('invalid')).not.toBeNull();
   });
 
   it('does not show error when errorMessage is empty', () => {
     render(<Input aria-label="test" errorMessage="" />);
 
-    const input = screen.getByRole('textbox', { name: 'test' });
-    expect(input.className).not.toContain('vscode-input--error');
-  });
-
-  it('merges additional class names', () => {
-    render(<Input aria-label="test" className="extra" />);
-
-    const input = screen.getByRole('textbox', { name: 'test' });
-    expect(input.className).toContain('extra');
-    expect(input.className).toContain('vscode-input');
+    const textfield = screen.getByRole('textbox', { name: 'test' }).closest('vscode-textfield');
+    expect(textfield?.getAttribute('invalid')).toBeNull();
   });
 
   it('passes through disabled attribute', () => {

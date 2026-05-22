@@ -18,10 +18,13 @@ vi.mock('vscode', () => {
   return {
     commands: {
       registerCommand: vi.fn(() => disposable),
+      executeCommand: vi.fn(),
     },
     window: {
       showInformationMessage: vi.fn(),
       showErrorMessage: vi.fn(),
+      showWarningMessage: vi.fn(),
+      registerTreeDataProvider: vi.fn(() => disposable),
     },
     ExtensionContext: vi.fn(),
     _mockDisposable: disposable,
@@ -37,6 +40,16 @@ vi.mock('./commands/index.js', () => ({
 const mockStatusBarItem = vi.hoisted(() => ({ dispose: vi.fn() }));
 vi.mock('./ui/status-bar/status-bar.js', () => ({
   createStatusBarItem: vi.fn(() => mockStatusBarItem),
+}));
+
+const mockTreeViewProvider = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  dispose: vi.fn(),
+}));
+vi.mock('./ui/tree-views/index.js', () => ({
+  ChatDebugTreeViewProvider: vi.fn(function () {
+    return mockTreeViewProvider;
+  }),
 }));
 
 vi.mock('node:sqlite', () => ({
@@ -59,7 +72,27 @@ vi.mock('./db/migrate.js', () => ({
 
 const mockExtensionContext = vi.hoisted(() =>
   vi.fn(function () {
-    return { providerManager: {} };
+    return {
+      providerManager: {},
+      modelRegistry: {
+        registerAll: vi.fn(),
+        disposeAll: vi.fn(),
+      },
+      chatDebugSettings: {
+        getSettings: vi.fn().mockReturnValue({
+          enabled: false,
+          ttlHours: 24,
+        }),
+        updateSettings: vi.fn().mockReturnValue({
+          enabled: false,
+          ttlHours: 24,
+        }),
+      },
+      chatDebugCleanup: {
+        startPeriodicCleanup: vi.fn(() => ({ dispose: vi.fn() })),
+        clearAll: vi.fn(),
+      },
+    };
   }),
 );
 vi.mock('./context.js', () => ({
@@ -102,8 +135,9 @@ describe('activate', () => {
   it('should push disposables to subscriptions', () => {
     activate(context);
 
-    // registerCommands is mocked, so only status bar = 1
-    expect(context.subscriptions).toHaveLength(1);
+    // registerCommands is mocked, so:
+    // tree data provider + tree view dispose + cleanup + enable + disable + refresh + clear + status bar = 8
+    expect(context.subscriptions).toHaveLength(8);
   });
 
   it('should create a status bar item', async () => {
@@ -131,8 +165,17 @@ describe('activate', () => {
     expect(ExtensionContext).toHaveBeenCalledWith({
       db: mockDb,
       secrets: context.secrets,
+      logsBasePath: expect.stringContaining('logs'),
       resetCallback: expect.any(Function),
+      onTreeRefresh: expect.any(Function),
     });
+  });
+
+  it('should call modelRegistry.registerAll on activation', () => {
+    activate(context);
+
+    const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
+    expect(ctxInstance.modelRegistry.registerAll).toHaveBeenCalled();
   });
 
   it('should show error and return early if DB init fails', () => {
@@ -173,6 +216,14 @@ describe('deactivate', () => {
     deactivate();
 
     expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('should call modelRegistry.disposeAll on deactivation', () => {
+    activate(context);
+    const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
+    deactivate();
+
+    expect(ctxInstance.modelRegistry.disposeAll).toHaveBeenCalled();
   });
 
   it('should not throw if close fails', () => {

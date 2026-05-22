@@ -24,6 +24,22 @@ npm run compile
 npm run watch
 ```
 
+## Webview Playground
+
+Develop and debug the settings page in a regular browser
+with VS Code styling, without running the extension host.
+
+```bash
+pnpm dev:webview
+```
+
+This starts a Vite dev server on `http://localhost:5173`
+with hot module replacement. The
+`@vscode-elements/webview-playground` toolbar lets you
+switch between VS Code color themes. All VS Code API calls
+are handled by an in-memory mock — changes are not
+persisted across page reloads.
+
 ## Linting
 
 ```bash

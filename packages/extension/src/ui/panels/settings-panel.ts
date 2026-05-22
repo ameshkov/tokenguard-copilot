@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import type { ExtensionContext as AppContext } from '../../context.js';
+import { getDefaults } from '../../services/model-defaults/index.js';
 import type {
   WebviewCommand,
   GetProvidersResponse,
@@ -8,6 +9,15 @@ import type {
   EditProviderResponse,
   RemoveProviderResponse,
   ResetSettingsResponse,
+  GetModelsResponse,
+  FetchAvailableModelsResponse,
+  AddModelResponse,
+  EditModelResponse,
+  RemoveModelResponse,
+  GetModelDefaultsResponse,
+  GetChatDebugSettingsResponse,
+  UpdateChatDebugSettingsResponse,
+  ClearChatDebugLogsResponse,
 } from '@tokenguard/shared';
 
 /**
@@ -142,6 +152,169 @@ export class SettingsPanel {
             }
             break;
           }
+          case 'getModels': {
+            const models = appCtx.modelRegistry.getModels();
+            await this.panel.webview.postMessage({
+              type: 'getModelsResult',
+              requestId: message.requestId,
+              models,
+            } satisfies GetModelsResponse);
+            break;
+          }
+          case 'fetchAvailableModels': {
+            try {
+              const models = await appCtx.modelRegistry.fetchModels(message.providerId);
+              await this.panel.webview.postMessage({
+                type: 'fetchAvailableModelsResult',
+                requestId: message.requestId,
+                success: true,
+                models,
+              } satisfies FetchAvailableModelsResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'fetchAvailableModelsResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies FetchAvailableModelsResponse);
+            }
+            break;
+          }
+          case 'addModel': {
+            try {
+              const model = appCtx.modelRegistry.addModel(
+                message.providerId,
+                message.modelId,
+                message.config,
+              );
+              await this.panel.webview.postMessage({
+                type: 'addModelResult',
+                requestId: message.requestId,
+                success: true,
+                model,
+              } satisfies AddModelResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'addModelResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies AddModelResponse);
+            }
+            break;
+          }
+          case 'editModel': {
+            try {
+              const model = appCtx.modelRegistry.updateModel(
+                message.providerId,
+                message.modelId,
+                message.config,
+              );
+              await this.panel.webview.postMessage({
+                type: 'editModelResult',
+                requestId: message.requestId,
+                success: true,
+                model,
+              } satisfies EditModelResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'editModelResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies EditModelResponse);
+            }
+            break;
+          }
+          case 'removeModel': {
+            try {
+              appCtx.modelRegistry.removeModel(message.providerId, message.modelId);
+              await this.panel.webview.postMessage({
+                type: 'removeModelResult',
+                requestId: message.requestId,
+                success: true,
+              } satisfies RemoveModelResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'removeModelResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies RemoveModelResponse);
+            }
+            break;
+          }
+          case 'getModelDefaults': {
+            const defaults = getDefaults(message.modelId);
+            await this.panel.webview.postMessage({
+              type: 'getModelDefaultsResult',
+              requestId: message.requestId,
+              defaults,
+            } satisfies GetModelDefaultsResponse);
+            break;
+          }
+          case 'getChatDebugSettings': {
+            const settings = appCtx.chatDebugSettings.getSettings();
+            await this.panel.webview.postMessage({
+              type: 'getChatDebugSettingsResult',
+              requestId: message.requestId,
+              settings,
+            } satisfies GetChatDebugSettingsResponse);
+            break;
+          }
+          case 'updateChatDebugSettings': {
+            try {
+              const settings = appCtx.chatDebugSettings.updateSettings({
+                enabled: message.enabled,
+                ttlHours: message.ttlHours,
+              });
+              await this.panel.webview.postMessage({
+                type: 'updateChatDebugSettingsResult',
+                requestId: message.requestId,
+                success: true,
+                settings,
+              } satisfies UpdateChatDebugSettingsResponse);
+              if (message.enabled !== undefined) {
+                void vscode.commands.executeCommand(
+                  'setContext',
+                  'tokenguard-copilot.chatDebugEnabled',
+                  settings.enabled,
+                );
+              }
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'updateChatDebugSettingsResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies UpdateChatDebugSettingsResponse);
+            }
+            break;
+          }
+          case 'clearChatDebugLogs': {
+            try {
+              appCtx.chatDebugCleanup.clearAll();
+              await this.panel.webview.postMessage({
+                type: 'clearChatDebugLogsResult',
+                requestId: message.requestId,
+                success: true,
+              } satisfies ClearChatDebugLogsResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'clearChatDebugLogsResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies ClearChatDebugLogsResponse);
+            }
+            break;
+          }
         }
       },
       null,
@@ -171,6 +344,11 @@ export class SettingsPanel {
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'out', 'webview')],
       },
     );
+
+    panel.iconPath = {
+      light: vscode.Uri.joinPath(extensionUri, 'assets', 'icon', 'icon_24_light.svg'),
+      dark: vscode.Uri.joinPath(extensionUri, 'assets', 'icon', 'icon_24_dark.svg'),
+    };
 
     SettingsPanel.currentPanel = new SettingsPanel(panel, extensionUri, appCtx);
     return SettingsPanel.currentPanel;
@@ -204,6 +382,10 @@ export class SettingsPanel {
       vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'settings-app.js'),
     );
 
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'settings-app.css'),
+    );
+
     const nonce = getNonce();
 
     const templatePath = vscode.Uri.joinPath(
@@ -217,6 +399,7 @@ export class SettingsPanel {
     return template
       .replaceAll('{{nonce}}', nonce)
       .replaceAll('{{scriptUri}}', scriptUri.toString())
+      .replaceAll('{{styleUri}}', styleUri.toString())
       .replaceAll('{{cspSource}}', webview.cspSource);
   }
 }

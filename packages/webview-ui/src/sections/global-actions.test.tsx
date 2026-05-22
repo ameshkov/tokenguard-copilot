@@ -2,12 +2,12 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-vi.mock('./vscode-api.js', () => ({
+vi.mock('../vscode-api.js', () => ({
   sendRequest: vi.fn(),
 }));
 
 import { GlobalActions } from './global-actions.js';
-import { sendRequest } from './vscode-api.js';
+import { sendRequest } from '../vscode-api.js';
 
 afterEach(() => {
   cleanup();

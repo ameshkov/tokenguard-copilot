@@ -1,150 +1,37 @@
-import { useState, useEffect, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import type {
-  ProviderInfo,
-  GetProvidersResponse,
-  AddProviderResponse,
-  EditProviderResponse,
-  RemoveProviderResponse,
-} from '@tokenguard/shared';
-import { sendRequest } from './vscode-api.js';
-import { ProviderForm } from './provider-form.js';
-import { ProviderList } from './provider-list.js';
-import { ModelsSection } from './models-section.js';
-import { UsageStatsSection } from './usage-stats-section.js';
-import { GlobalActions } from './global-actions.js';
-import { SectionHeader, Button } from './components/index.js';
 
-/**
- * Root settings application component.
- *
- * @returns The settings page element.
- */
-function SettingsApp(): React.JSX.Element {
-  const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingProvider, setEditingProvider] = useState<ProviderInfo | undefined>(undefined);
+/* ── Styles ────────────────────────────────────────────── */
+import './settings.css';
 
-  const fetchProviders = useCallback(async () => {
-    const response = await sendRequest<GetProvidersResponse>({
-      type: 'getProviders',
-    });
-    setProviders(response.providers);
-  }, []);
+/* ── VSCode Elements registration (side-effect imports) ── */
+import '@vscode-elements/elements/dist/vscode-badge/index.js';
+import '@vscode-elements/elements/dist/vscode-button/index.js';
+import '@vscode-elements/elements/dist/vscode-checkbox/index.js';
+import '@vscode-elements/elements/dist/vscode-collapsible/index.js';
+import '@vscode-elements/elements/dist/vscode-divider/index.js';
+import '@vscode-elements/elements/dist/vscode-form-container/index.js';
+import '@vscode-elements/elements/dist/vscode-form-group/index.js';
+import '@vscode-elements/elements/dist/vscode-form-helper/index.js';
+import '@vscode-elements/elements/dist/vscode-icon/index.js';
+import '@vscode-elements/elements/dist/vscode-option/index.js';
+import '@vscode-elements/elements/dist/vscode-progress-ring/index.js';
+import '@vscode-elements/elements/dist/vscode-single-select/index.js';
+import '@vscode-elements/elements/dist/vscode-table/index.js';
+import '@vscode-elements/elements/dist/vscode-table-body/index.js';
+import '@vscode-elements/elements/dist/vscode-table-cell/index.js';
+import '@vscode-elements/elements/dist/vscode-table-header/index.js';
+import '@vscode-elements/elements/dist/vscode-table-header-cell/index.js';
+import '@vscode-elements/elements/dist/vscode-table-row/index.js';
+import '@vscode-elements/elements/dist/vscode-textfield/index.js';
+import '@vscode-elements/elements/dist/vscode-label/index.js';
 
-  useEffect(() => {
-    void fetchProviders();
-  }, [fetchProviders]);
-
-  const handleAdd = async (name: string, baseUrl: string, apiKey: string) => {
-    setLoading(true);
-    setError(null);
-
-    const response = await sendRequest<AddProviderResponse>({
-      type: 'addProvider',
-      name,
-      baseUrl,
-      apiKey,
-    });
-
-    setLoading(false);
-    if (!response.success) {
-      setError(response.error ?? 'Unknown error');
-    } else {
-      setError(null);
-      setShowForm(false);
-      await fetchProviders();
-    }
-  };
-
-  const handleEdit = async (name: string, baseUrl: string, apiKey: string) => {
-    if (!editingProvider) return;
-    setLoading(true);
-    setError(null);
-
-    const response = await sendRequest<EditProviderResponse>({
-      type: 'editProvider',
-      id: editingProvider.id,
-      name,
-      baseUrl,
-      apiKey,
-    });
-
-    setLoading(false);
-    if (!response.success) {
-      setError(response.error ?? 'Unknown error');
-    } else {
-      setError(null);
-      setEditingProvider(undefined);
-      setShowForm(false);
-      await fetchProviders();
-    }
-  };
-
-  const handleRemove = async (id: string) => {
-    const response = await sendRequest<RemoveProviderResponse>({
-      type: 'removeProvider',
-      id,
-    });
-    if (response.success) {
-      await fetchProviders();
-    }
-  };
-
-  const handleStartEdit = (provider: ProviderInfo) => {
-    setEditingProvider(provider);
-    setShowForm(true);
-    setError(null);
-  };
-
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingProvider(undefined);
-    setError(null);
-  };
-
-  const handleStartAdd = () => {
-    setEditingProvider(undefined);
-    setShowForm(true);
-    setError(null);
-  };
-
-  return (
-    <main className="settings-container">
-      <h1>TokenGuard Copilot Settings</h1>
-      <p>Manage providers, models, and usage.</p>
-
-      <SectionHeader title="Providers" />
-      <ProviderList
-        providers={providers}
-        onEdit={handleStartEdit}
-        onRemove={(id) => void handleRemove(id)}
-      />
-
-      {showForm ? (
-        <ProviderForm
-          onSubmit={editingProvider ? handleEdit : handleAdd}
-          loading={loading}
-          error={error}
-          visible={true}
-          editingProvider={editingProvider}
-          onCancel={handleCancel}
-        />
-      ) : (
-        <Button onClick={handleStartAdd}>+ Add Provider</Button>
-      )}
-
-      <ModelsSection />
-      <UsageStatsSection />
-      <GlobalActions onReset={() => void fetchProviders()} />
-    </main>
-  );
-}
+export { SettingsApp } from './settings-app.js';
+export type { Page } from './settings-app.js';
 
 const container = document.getElementById('root');
-if (container) {
-  const root = createRoot(container);
-  root.render(<SettingsApp />);
+if (container && !('devManaged' in (container.dataset ?? {}))) {
+  void import('./settings-app.js').then(({ SettingsApp }) => {
+    const root = createRoot(container);
+    root.render(<SettingsApp />);
+  });
 }

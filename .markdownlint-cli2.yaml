@@ -26,3 +26,4 @@ ignores:
   - packages/*/node_modules/**
   - dist/**
   - out/**
+  - .sdd/**
