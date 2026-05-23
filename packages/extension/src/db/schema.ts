@@ -142,6 +142,7 @@ export const sessionMappings = sqliteTable('session_mappings', {
   workspaceId: text('workspace_id').notNull(),
   modelName: text('model_name').notNull(),
   createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
 });
 
 /** TypeScript type for a selected session mapping row. */

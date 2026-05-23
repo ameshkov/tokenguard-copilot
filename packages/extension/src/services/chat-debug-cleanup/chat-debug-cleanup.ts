@@ -5,13 +5,15 @@ import type { ChatDebugSettingsService } from '../chat-debug-settings/chat-debug
 import type { SessionMappingRepository } from '../../repositories/session-mapping-repository.js';
 
 /**
- * Deletes expired log session directories and orphaned
+ * Deletes expired log session directories and stale
  * database session mappings on a periodic schedule.
  *
- * Sessions are deleted as a unit based on the most recent
- * file's mtime in the session directory. If the newest file
- * is older than the configured TTL, the entire directory and
- * its DB mappings are removed.
+ * Database mappings and filesystem directories are managed
+ * independently:
+ * - Session mappings are deleted when their `updatedAt` is
+ *   older than the configured TTL.
+ * - Session directories are deleted when their most recent
+ *   file's mtime is older than the configured TTL.
  */
 export class ChatDebugCleanupService {
   /** 30 minutes in milliseconds. */
@@ -37,74 +39,22 @@ export class ChatDebugCleanupService {
   /**
    * Run a single cleanup pass.
    *
-   * Scans session directories, deletes expired ones along
-   * with their DB mappings, then removes orphaned DB
-   * mappings for sessions whose directories no longer exist.
+   * Two independent operations:
+   * 1. Delete session mappings where `updatedAt` is older
+   *    than the TTL.
+   * 2. Delete session directories where the newest file mtime
+   *    is older than the TTL.
    */
   runCleanup(): void {
-    if (!existsSync(this.logsBasePath)) return;
-
     const ttlHours = this.settingsService.getSettings().ttlHours;
     const cutoffMs = Date.now() - ttlHours * 60 * 60 * 1000;
+    const cutoffIso = new Date(cutoffMs).toISOString();
 
-    const deletedSessionIds: string[] = [];
+    // 1. Delete expired DB session mappings.
+    this.mappingRepo.deleteExpired(cutoffIso);
 
-    // Scan workspace directories.
-    let workspaceDirs: string[];
-    try {
-      workspaceDirs = readdirSync(this.logsBasePath, {
-        withFileTypes: true,
-      })
-        .filter((d) => d.isDirectory())
-        .map((d) => d.name);
-    } catch {
-      return; // logsBasePath unreadable, nothing to do.
-    }
-
-    for (const workspaceDir of workspaceDirs) {
-      const workspacePath = join(this.logsBasePath, workspaceDir);
-
-      let sessionDirs: string[];
-      try {
-        sessionDirs = readdirSync(workspacePath, {
-          withFileTypes: true,
-        })
-          .filter((d) => d.isDirectory())
-          .map((d) => d.name);
-      } catch {
-        continue; // Can't read workspace dir, skip it.
-      }
-
-      for (const sessionDirName of sessionDirs) {
-        const sessionPath = join(workspacePath, sessionDirName);
-        const isExpired = this.isSessionExpired(sessionPath, cutoffMs);
-
-        if (isExpired) {
-          try {
-            rmSync(sessionPath, { recursive: true });
-            deletedSessionIds.push(sessionDirName);
-          } catch {
-            // Failed to delete — skip, will retry on next
-            // cleanup cycle.
-          }
-
-          // Clean up empty workspace directory.
-          try {
-            this.removeEmptyWorkspaceDir(workspacePath);
-          } catch {
-            // Best-effort cleanup.
-          }
-        }
-      }
-    }
-
-    // Delete DB mappings for expired sessions.
-    if (deletedSessionIds.length > 0) {
-      this.mappingRepo.deleteBySessionIds(deletedSessionIds);
-    }
-
-    // Clean up orphaned mappings.
-    this.cleanOrphanedMappings();
+    // 2. Delete expired session directories.
+    this.deleteExpiredDirectories(cutoffMs);
 
     // Refresh tree view after cleanup.
     this.onTreeRefresh?.();
@@ -193,16 +143,16 @@ export class ChatDebugCleanupService {
   }
 
   /**
-   * Remove DB mappings for sessions whose directories no
-   * longer exist on disk.
+   * Delete session directories where the newest file is
+   * older than the cutoff.
+   *
+   * @param cutoffMs - Cutoff time in milliseconds since
+   *   epoch.
    */
-  private cleanOrphanedMappings(): void {
-    const sessionIds = this.mappingRepo.getDistinctSessionIds();
-    if (sessionIds.length === 0) return;
+  private deleteExpiredDirectories(cutoffMs: number): void {
+    if (!existsSync(this.logsBasePath)) return;
 
-    const orphanedIds: string[] = [];
-
-    // Scan workspace dirs once for existence checks.
+    // Scan workspace directories.
     let workspaceDirs: string[];
     try {
       workspaceDirs = readdirSync(this.logsBasePath, {
@@ -211,25 +161,43 @@ export class ChatDebugCleanupService {
         .filter((d) => d.isDirectory())
         .map((d) => d.name);
     } catch {
-      return; // Can't scan, skip orphan cleanup.
+      return; // logsBasePath unreadable, nothing to do.
     }
 
-    for (const sessionId of sessionIds) {
-      let found = false;
-      for (const workspaceDir of workspaceDirs) {
-        const sessionPath = join(this.logsBasePath, workspaceDir, sessionId);
-        if (existsSync(sessionPath)) {
-          found = true;
-          break;
+    for (const workspaceDir of workspaceDirs) {
+      const workspacePath = join(this.logsBasePath, workspaceDir);
+
+      let sessionDirs: string[];
+      try {
+        sessionDirs = readdirSync(workspacePath, {
+          withFileTypes: true,
+        })
+          .filter((d) => d.isDirectory())
+          .map((d) => d.name);
+      } catch {
+        continue; // Can't read workspace dir, skip it.
+      }
+
+      for (const sessionDirName of sessionDirs) {
+        const sessionPath = join(workspacePath, sessionDirName);
+        const isExpired = this.isSessionExpired(sessionPath, cutoffMs);
+
+        if (isExpired) {
+          try {
+            rmSync(sessionPath, { recursive: true });
+          } catch {
+            // Failed to delete — skip, will retry on next
+            // cleanup cycle.
+          }
+
+          // Clean up empty workspace directory.
+          try {
+            this.removeEmptyWorkspaceDir(workspacePath);
+          } catch {
+            // Best-effort cleanup.
+          }
         }
       }
-      if (!found) {
-        orphanedIds.push(sessionId);
-      }
-    }
-
-    if (orphanedIds.length > 0) {
-      this.mappingRepo.deleteBySessionIds(orphanedIds);
     }
   }
 

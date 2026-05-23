@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Database } from '../db/connection.js';
 import { sessionMappings, type SessionMapping } from '../db/schema.js';
 
@@ -57,6 +57,7 @@ export class SessionMappingRepository {
         workspaceId: mapping.workspaceId,
         modelName: mapping.modelName,
         createdAt: mapping.createdAt,
+        updatedAt: mapping.createdAt,
       })
       .returning()
       .get();
@@ -77,6 +78,7 @@ export class SessionMappingRepository {
         workspaceId: mapping.workspaceId,
         modelName: mapping.modelName,
         createdAt: mapping.createdAt,
+        updatedAt: mapping.createdAt,
       })
       .returning()
       .get();
@@ -110,17 +112,6 @@ export class SessionMappingRepository {
       .get();
   }
 
-  /**
-   * Delete all mappings for the given session IDs.
-   *
-   * @param sessionIds - Session IDs whose mappings should
-   *   be removed.
-   */
-  deleteBySessionIds(sessionIds: string[]): void {
-    if (sessionIds.length === 0) return;
-    this.db.delete(sessionMappings).where(inArray(sessionMappings.sessionId, sessionIds)).run();
-  }
-
   /** Delete all session mappings. */
   deleteAll(): void {
     this.db.delete(sessionMappings).run();
@@ -137,5 +128,37 @@ export class SessionMappingRepository {
       .from(sessionMappings)
       .all();
     return rows.map((r) => r.sessionId);
+  }
+
+  /**
+   * Update the updatedAt timestamp for all mappings belonging
+   * to a session.
+   *
+   * Called when a session is resolved or new tool calls are
+   * registered, keeping the session fresh for TTL cleanup.
+   *
+   * @param sessionId - The session ID to update.
+   * @param timestamp - ISO 8601 timestamp.
+   */
+  bumpSession(sessionId: string, timestamp: string): void {
+    this.db
+      .update(sessionMappings)
+      .set({ updatedAt: timestamp })
+      .where(eq(sessionMappings.sessionId, sessionId))
+      .run();
+  }
+
+  /**
+   * Delete all session mappings where updatedAt is older than
+   * the cutoff timestamp.
+   *
+   * @param cutoffIso - ISO 8601 timestamp (e.g., from
+   *   `new Date(Date.now() - ttlMs).toISOString()`).
+   */
+  deleteExpired(cutoffIso: string): void {
+    this.db
+      .delete(sessionMappings)
+      .where(sql`${sessionMappings.updatedAt} < ${cutoffIso}`)
+      .run();
   }
 }

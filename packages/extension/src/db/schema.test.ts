@@ -76,5 +76,6 @@ describe('sessionMappings table', () => {
     expect(columns).toHaveProperty('workspaceId');
     expect(columns).toHaveProperty('modelName');
     expect(columns).toHaveProperty('createdAt');
+    expect(columns).toHaveProperty('updatedAt');
   });
 });

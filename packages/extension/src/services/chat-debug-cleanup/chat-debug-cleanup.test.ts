@@ -76,15 +76,22 @@ describe('ChatDebugCleanupService', () => {
   }
 
   /**
-   * Helper: creates a session mapping in the DB.
+   * Helper: creates a session mapping in the DB with a
+   * configurable age.
+   *
+   * @param sessionId - The session ID.
+   * @param workspaceId - The workspace ID.
+   * @param ageHours - How old the mapping should be.
+   *   Defaults to 0 (just created).
    */
-  function createMapping(sessionId: string, workspaceId: string): void {
+  function createMapping(sessionId: string, workspaceId: string, ageHours: number = 0): void {
+    const timestamp = new Date(Date.now() - ageHours * 60 * 60 * 1000).toISOString();
     mappingRepo.insertToolCallMapping({
       toolCallId: `tc-${sessionId}`,
       sessionId,
       workspaceId,
       modelName: 'gpt-4o',
-      createdAt: new Date().toISOString(),
+      createdAt: timestamp,
     });
   }
 
@@ -92,7 +99,7 @@ describe('ChatDebugCleanupService', () => {
     it('deletes sessions older than TTL', () => {
       settingsService.updateSettings({ ttlHours: 2 });
       const dir = createSessionDir('ws-1', 'old-session', 3);
-      createMapping('old-session', 'ws-1');
+      createMapping('old-session', 'ws-1', 3);
 
       expect(() => statSync(dir)).not.toThrow();
 
@@ -105,7 +112,7 @@ describe('ChatDebugCleanupService', () => {
     it('preserves sessions with files newer than TTL', () => {
       settingsService.updateSettings({ ttlHours: 2 });
       const dir = createSessionDir('ws-1', 'recent-session', 1);
-      createMapping('recent-session', 'ws-1');
+      createMapping('recent-session', 'ws-1', 0);
 
       service.runCleanup();
 
@@ -138,15 +145,17 @@ describe('ChatDebugCleanupService', () => {
       expect(mappingRepo.getDistinctSessionIds()).toEqual(['mixed-session']);
     });
 
-    it('removes orphaned DB mappings when session directory is missing', () => {
+    it('removes expired DB mappings even without directories', () => {
       settingsService.updateSettings({ ttlHours: 2 });
-      createMapping('orphan-session', 'ws-1');
+      createMapping('orphan-session', 'ws-1', 3);
       // Directory intentionally not created.
 
       expect(mappingRepo.getDistinctSessionIds()).toContain('orphan-session');
 
       service.runCleanup();
 
+      // DB mappings are cleaned based on updatedAt, not
+      // directories.
       expect(mappingRepo.getDistinctSessionIds()).toEqual([]);
     });
 
@@ -168,8 +177,8 @@ describe('ChatDebugCleanupService', () => {
       settingsService.updateSettings({ ttlHours: 1 });
       createSessionDir('ws-1', 'expired-1', 2);
       createSessionDir('ws-2', 'expired-2', 3);
-      createMapping('expired-1', 'ws-1');
-      createMapping('expired-2', 'ws-2');
+      createMapping('expired-1', 'ws-1', 2);
+      createMapping('expired-2', 'ws-2', 3);
 
       service.runCleanup();
 
@@ -191,7 +200,7 @@ describe('ChatDebugCleanupService', () => {
     it('calls runCleanup immediately on start', () => {
       settingsService.updateSettings({ ttlHours: 2 });
       createSessionDir('ws-1', 'old-on-start', 3);
-      createMapping('old-on-start', 'ws-1');
+      createMapping('old-on-start', 'ws-1', 3);
 
       const dir = join(logsBasePath, 'ws-1', 'old-on-start');
       expect(() => statSync(dir)).not.toThrow();
@@ -235,7 +244,9 @@ describe('ChatDebugCleanupService', () => {
         (Date.now() - 2 * 60 * 60 * 1000) / 1000,
       );
 
-      createMapping('periodic-sess', 'ws-1');
+      // Insert mapping with old timestamp so DB cleanup
+      // will also pick it up.
+      createMapping('periodic-sess', 'ws-1', 2);
 
       // Advance to trigger the next interval run.
       vi.advanceTimersByTime(ChatDebugCleanupService.CLEANUP_INTERVAL_MS);

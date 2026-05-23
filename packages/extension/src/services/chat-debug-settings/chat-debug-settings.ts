@@ -42,7 +42,13 @@ export class ChatDebugSettingsService {
 
     return {
       enabled: enabledRaw === 'true' ? true : DEFAULT_ENABLED,
-      ttlHours: ttlRaw !== null ? parseInt(ttlRaw, 10) : DEFAULT_TTL_HOURS,
+      ttlHours:
+        ttlRaw !== null
+          ? (() => {
+              const parsed = parseInt(ttlRaw, 10);
+              return Number.isNaN(parsed) ? DEFAULT_TTL_HOURS : parsed;
+            })()
+          : DEFAULT_TTL_HOURS,
     };
   }
 

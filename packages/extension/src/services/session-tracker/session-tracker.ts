@@ -69,6 +69,7 @@ export class SessionTracker {
     for (const tcId of toolCallIds) {
       const mapping = this.mappingRepo.findByToolCallId(tcId);
       if (mapping) {
+        this.mappingRepo.bumpSession(mapping.sessionId, new Date().toISOString());
         return {
           sessionId: mapping.sessionId,
           isNew: false,
@@ -82,6 +83,7 @@ export class SessionTracker {
     if (checksum) {
       const mapping = this.mappingRepo.findByContentChecksum(checksum);
       if (mapping) {
+        this.mappingRepo.bumpSession(mapping.sessionId, new Date().toISOString());
         return {
           sessionId: mapping.sessionId,
           isNew: false,
@@ -125,21 +127,14 @@ export class SessionTracker {
         createdAt: now,
       });
     }
+
+    // Also bump the session's updatedAt so it stays fresh
+    this.mappingRepo.bumpSession(input.sessionId, now);
   }
 
   /** Remove all session mappings. */
   clearMappings(): void {
     this.mappingRepo.deleteAll();
-  }
-
-  /**
-   * Remove session mappings for specific session IDs.
-   *
-   * @param sessionIds - Session IDs to remove mappings
-   *   for.
-   */
-  clearMappingsForSessions(sessionIds: string[]): void {
-    this.mappingRepo.deleteBySessionIds(sessionIds);
   }
 
   /**
