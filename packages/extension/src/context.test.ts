@@ -43,6 +43,7 @@ describe('ExtensionContext', () => {
       } as unknown as vscode.SecretStorage,
       resetCallback: vi.fn().mockResolvedValue(undefined),
       logsBasePath: tmpdir(),
+      extensionPath: tmpdir(),
     };
   }
 

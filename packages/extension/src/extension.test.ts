@@ -78,6 +78,9 @@ const mockExtensionContext = vi.hoisted(() =>
         registerAll: vi.fn(),
         disposeAll: vi.fn(),
       },
+      tokenCounter: {
+        initialize: vi.fn().mockResolvedValue(undefined),
+      },
       chatDebugSettings: {
         getSettings: vi.fn().mockReturnValue({
           enabled: false,
@@ -91,6 +94,9 @@ const mockExtensionContext = vi.hoisted(() =>
       chatDebugCleanup: {
         startPeriodicCleanup: vi.fn(() => ({ dispose: vi.fn() })),
         clearAll: vi.fn(),
+      },
+      reasoningCacheCleanup: {
+        startPeriodicCleanup: vi.fn(() => ({ dispose: vi.fn() })),
       },
     };
   }),
@@ -123,8 +129,8 @@ describe('activate', () => {
     } as unknown as vscode.ExtensionContext;
   });
 
-  it('should call registerCommands', () => {
-    activate(context);
+  it('should call registerCommands', async () => {
+    await activate(context);
 
     expect(mockRegisterCommands).toHaveBeenCalledWith(
       context,
@@ -132,35 +138,35 @@ describe('activate', () => {
     );
   });
 
-  it('should push disposables to subscriptions', () => {
-    activate(context);
+  it('should push disposables to subscriptions', async () => {
+    await activate(context);
 
     // registerCommands is mocked, so:
-    // tree data provider + tree view dispose + cleanup + enable + disable + refresh + clear + status bar = 8
-    expect(context.subscriptions).toHaveLength(8);
+    // tree data provider + tree view dispose + chat debug cleanup + reasoning cache cleanup + enable + disable + refresh + clear + status bar = 9
+    expect(context.subscriptions).toHaveLength(9);
   });
 
   it('should create a status bar item', async () => {
     const { createStatusBarItem } = await import('./ui/status-bar/status-bar.js');
-    activate(context);
+    await activate(context);
 
     expect(createStatusBarItem).toHaveBeenCalled();
   });
 
-  it('should create a DatabaseSync with the correct path', () => {
-    activate(context);
+  it('should create a DatabaseSync with the correct path', async () => {
+    await activate(context);
 
     expect(DatabaseSync).toHaveBeenCalledWith('/mock/storage/tokenguard-copilot.db');
   });
 
-  it('should run migrations with the correct folder', () => {
-    activate(context);
+  it('should run migrations with the correct folder', async () => {
+    await activate(context);
 
     expect(runMigrations).toHaveBeenCalledWith(mockDb, expect.stringContaining('db'));
   });
 
-  it('should create an ExtensionContext', () => {
-    activate(context);
+  it('should create an ExtensionContext', async () => {
+    await activate(context);
 
     expect(ExtensionContext).toHaveBeenCalledWith({
       db: mockDb,
@@ -171,19 +177,19 @@ describe('activate', () => {
     });
   });
 
-  it('should call modelRegistry.registerAll on activation', () => {
-    activate(context);
+  it('should call modelRegistry.registerAll on activation', async () => {
+    await activate(context);
 
     const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
     expect(ctxInstance.modelRegistry.registerAll).toHaveBeenCalled();
   });
 
-  it('should show error and return early if DB init fails', () => {
+  it('should show error and return early if DB init fails', async () => {
     vi.mocked(DatabaseSync).mockImplementationOnce(function () {
       throw new Error('migration failed');
     });
 
-    activate(context);
+    await activate(context);
 
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('migration failed'),
@@ -211,23 +217,23 @@ describe('deactivate', () => {
     } as unknown as vscode.ExtensionContext;
   });
 
-  it('should close the raw database connection', () => {
-    activate(context);
+  it('should close the raw database connection', async () => {
+    await activate(context);
     deactivate();
 
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('should call modelRegistry.disposeAll on deactivation', () => {
-    activate(context);
+  it('should call modelRegistry.disposeAll on deactivation', async () => {
+    await activate(context);
     const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
     deactivate();
 
     expect(ctxInstance.modelRegistry.disposeAll).toHaveBeenCalled();
   });
 
-  it('should not throw if close fails', () => {
-    activate(context);
+  it('should not throw if close fails', async () => {
+    await activate(context);
     mockClose.mockImplementationOnce(() => {
       throw new Error('already closed');
     });

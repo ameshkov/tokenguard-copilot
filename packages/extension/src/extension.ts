@@ -13,7 +13,7 @@ import { ChatDebugTreeViewProvider } from './ui/tree-views/index.js';
 let rawDb: DatabaseSync | null = null;
 let extCtx: ExtensionContext | null = null;
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   const dbPath = `${context.globalStorageUri.fsPath}/tokenguard-copilot.db`;
 
   let localCtx: ExtensionContext;
@@ -38,6 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
       db,
       secrets: context.secrets,
       logsBasePath,
+      extensionPath: context.extensionPath,
       onTreeRefresh,
       resetCallback: async () => {
         // Read all provider IDs before deleting
@@ -55,6 +56,9 @@ export function activate(context: vscode.ExtensionContext) {
       },
     });
     extCtx = localCtx;
+
+    // Initialize tokenizer for token counting
+    await localCtx.tokenCounter.initialize();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     vscode.window.showErrorMessage(
@@ -80,6 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(treeViewProvider);
 
   context.subscriptions.push(localCtx.chatDebugCleanup.startPeriodicCleanup());
+  context.subscriptions.push(localCtx.reasoningCacheCleanup.startPeriodicCleanup());
 
   context.subscriptions.push(
     vscode.commands.registerCommand('tokenguard-copilot.enableChatDebugLogging', async () => {

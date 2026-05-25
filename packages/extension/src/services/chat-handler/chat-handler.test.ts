@@ -8,11 +8,28 @@ import {
 } from './chat-handler.js';
 import type { ChatDebugLogger, LogRequestInput } from '../chat-debug-logger/index.js';
 import type { Model, Provider } from '../../db/schema.js';
+import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
+
+/** No-op ReasoningCacheService mock for tests that don't exercise reasoning preservation. */
+function noopReasoningCacheService(): ReasoningCacheService {
+  return {
+    backfillReasoning: vi.fn(),
+    cacheReasoning: vi.fn(),
+  } as unknown as ReasoningCacheService;
+}
 
 vi.mock('vscode', () => ({
   LanguageModelChatMessageRole: { User: 1, Assistant: 2 },
   LanguageModelTextPart: class {
     constructor(public value: string) {}
+  },
+  LanguageModelThinkingPart: class {
+    constructor(
+      public value: string | string[],
+      public id?: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      public metadata?: { readonly [key: string]: any },
+    ) {}
   },
   LanguageModelToolCallPart: class {
     constructor(
@@ -25,6 +42,12 @@ vi.mock('vscode', () => ({
     constructor(
       public callId: string,
       public content: unknown[],
+    ) {}
+  },
+  LanguageModelDataPart: class {
+    constructor(
+      public data: Uint8Array,
+      public mimeType: string,
     ) {}
   },
   CancellationTokenSource: class {
@@ -89,14 +112,14 @@ function mockProvider(overrides: Partial<Provider> = {}): Provider {
 
 /** Helper to create a mock progress reporter. */
 function mockProgress(): {
-  parts: { value: string }[];
+  parts: Record<string, unknown>[];
   progress: vscode.Progress<vscode.LanguageModelResponsePart>;
 } {
-  const parts: { value: string }[] = [];
+  const parts: Record<string, unknown>[] = [];
   return {
     parts,
     progress: {
-      report: (part: { value: string }) => parts.push(part),
+      report: (part: Record<string, unknown>) => parts.push(part),
     } as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
   };
 }
@@ -625,6 +648,298 @@ describe('ChatHandler', () => {
       const part = reported[0] as { input: Record<string, unknown> };
       expect(part.input).toEqual({});
     });
+
+    // --- Non-streaming thinking (reasoning) tests ---
+
+    it('reports reasoning_content as LanguageModelThinkingPart before content', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                reasoning_content: 'Let me think about this.',
+                content: 'Here is the answer.',
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Let me think about this.');
+      expect(reported[1]).toHaveProperty('value', 'Here is the answer.');
+    });
+
+    it('reports reasoning (plaintext) as thinking part before content', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                reasoning: 'Anthropic plaintext thinking.',
+                content: 'Answer text.',
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Anthropic plaintext thinking.');
+      expect(reported[1]).toHaveProperty('value', 'Answer text.');
+    });
+
+    it('reports reasoning_details array as thinking part before content', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                reasoning_details: [
+                  { type: 'text', text: 'Let me analyze this.' },
+                  { type: 'summary', text: ' Now I understand.' },
+                ],
+                content: 'Final answer.',
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Let me analyze this. Now I understand.');
+      expect(reported[1]).toHaveProperty('value', 'Final answer.');
+    });
+
+    it('filters out reasoning_details entries with type thinking (non-streaming)', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                reasoning_details: [
+                  { type: 'thinking', text: 'Internal thought.' },
+                  { type: 'redacted_thinking', text: 'Redacted.' },
+                  { type: 'text', text: 'Public reasoning.' },
+                ],
+                content: 'Final answer.',
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Public reasoning.');
+      expect(reported[1]).toHaveProperty('value', 'Final answer.');
+    });
+
+    it('reports only reasoning_content when no text content', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                reasoning_content: 'Thinking only, no text.',
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toHaveProperty('value', 'Thinking only, no text.');
+    });
+
+    it('no thinking part when reasoning fields are absent', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: 'Just content, no thinking.',
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toHaveProperty('value', 'Just content, no thinking.');
+    });
+
+    it('reports reasoning_content alongside tool calls', async () => {
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                reasoning_content: 'I need to use a tool.',
+                content: 'Using tool...',
+                tool_calls: [
+                  {
+                    id: 'call_1',
+                    type: 'function',
+                    function: {
+                      name: 'get_weather',
+                      arguments: '{"city":"London"}',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+
+      await ChatHandler.handleNonStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      // Order: thinking part → text part → tool call part
+      expect(reported).toHaveLength(3);
+      expect(reported[0]).toHaveProperty('value', 'I need to use a tool.');
+      expect(reported[1]).toHaveProperty('value', 'Using tool...');
+      expect(reported[2]).toHaveProperty('callId', 'call_1');
+      expect(reported[2]).toHaveProperty('name', 'get_weather');
+    });
+
+    it('reports usage from non-streaming response', async () => {
+      const usage = {
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        total_tokens: 150,
+      };
+      const response = new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'Hello' } }],
+          usage,
+        }),
+      );
+
+      const { parts, progress } = mockProgress();
+      await ChatHandler.handleNonStreaming(
+        response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      const usageParts = parts.filter(
+        (p: Record<string, unknown>) =>
+          p.constructor?.name === 'LanguageModelDataPart' && p.mimeType === 'usage',
+      );
+      expect(usageParts.length).toBe(1);
+      const data = JSON.parse(new TextDecoder().decode(usageParts[0].data as Uint8Array));
+      expect(data.prompt_tokens).toBe(100);
+      expect(data.completion_tokens).toBe(50);
+      expect(data.total_tokens).toBe(150);
+    });
+
+    it('does not report usage when absent from non-streaming response', async () => {
+      const response = new Response(
+        JSON.stringify({
+          choices: [{ message: { content: 'Hello' } }],
+        }),
+      );
+
+      const { parts, progress } = mockProgress();
+      await ChatHandler.handleNonStreaming(
+        response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      );
+
+      const usageParts = parts.filter(
+        (p: Record<string, unknown>) =>
+          p.constructor?.name === 'LanguageModelDataPart' && p.mimeType === 'usage',
+      );
+      expect(usageParts.length).toBe(0);
+    });
   });
 
   describe('handleStreaming', () => {
@@ -976,6 +1291,421 @@ describe('ChatHandler', () => {
       const part = reported[0] as { input: Record<string, unknown> };
       expect(part.input).toEqual({});
     });
+
+    // --- Streaming thinking (reasoning) tests ---
+
+    it('reports reasoning_content as LanguageModelThinkingPart in real time', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                reasoning_content: 'Let me think...',
+              },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                reasoning_content: ' step by step.',
+              },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: 'The answer is 42.' },
+              finish_reason: 'stop',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      // First two reports are thinking parts
+      expect(reported[0]).toHaveProperty('value', 'Let me think...');
+      expect(reported[1]).toHaveProperty('value', ' step by step.');
+      // Third is the content text part
+      expect(reported[2]).toHaveProperty('value', 'The answer is 42.');
+      expect(reported).toHaveLength(3);
+    });
+
+    it('reports reasoning (plaintext) as thinking part in streaming', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: { reasoning: 'Anthropic thinking...' },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: 'Done.' },
+              finish_reason: 'stop',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Anthropic thinking...');
+      expect(reported[1]).toHaveProperty('value', 'Done.');
+    });
+
+    it('reports reasoning_details array as thinking part in streaming', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                reasoning_details: [
+                  { type: 'text', text: 'Let me explain.' },
+                  { type: 'summary', text: ' In summary:' },
+                ],
+              },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: 'Answer.' },
+              finish_reason: 'stop',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Let me explain. In summary:');
+      expect(reported[1]).toHaveProperty('value', 'Answer.');
+    });
+
+    it('filters out reasoning_details entries with type thinking', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                reasoning_details: [
+                  { type: 'thinking', text: 'Internal thought.' },
+                  { type: 'text', text: 'Public reasoning.' },
+                ],
+              },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: 'Answer.' },
+              finish_reason: 'stop',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'Public reasoning.');
+      expect(reported[1]).toHaveProperty('value', 'Answer.');
+    });
+
+    it('reports only reasoning_content when no content chunk present', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: { reasoning_content: 'thinking...' },
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toHaveProperty('value', 'thinking...');
+    });
+
+    it('no thinking parts when reasoning fields are absent', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: 'Just content.' },
+              finish_reason: 'stop',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toHaveProperty('value', 'Just content.');
+    });
+
+    it('interleaves reasoning and content chunks correctly', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: { reasoning_content: 'Think 1.' },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: 'Content 1.' },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { reasoning_content: 'Think 2.' },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: { content: ' Content 2.' },
+              finish_reason: 'stop',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(4);
+      expect(reported[0]).toHaveProperty('value', 'Think 1.');
+      expect(reported[1]).toHaveProperty('value', 'Content 1.');
+      expect(reported[2]).toHaveProperty('value', 'Think 2.');
+      expect(reported[3]).toHaveProperty('value', ' Content 2.');
+    });
+
+    it('reports reasoning_content alongside tool calls in streaming', async () => {
+      const stream = createSSEStream([
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                reasoning_content: 'I will call a tool.',
+              },
+            },
+          ],
+        }),
+        JSON.stringify({
+          choices: [
+            {
+              delta: {
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: 'call_1',
+                    type: 'function',
+                    function: {
+                      name: 'get_weather',
+                      arguments: '{"city":"London"}',
+                    },
+                  },
+                ],
+              },
+              finish_reason: 'tool_calls',
+            },
+          ],
+        }),
+        '[DONE]',
+      ]);
+
+      const response = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        body: stream,
+      };
+
+      const reported: unknown[] = [];
+      const progress = {
+        report: (part: unknown) => reported.push(part),
+      };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+
+      await ChatHandler.handleStreaming(
+        response as unknown as Response,
+        progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+        token as unknown as vscode.CancellationToken,
+      );
+
+      expect(reported).toHaveLength(2);
+      expect(reported[0]).toHaveProperty('value', 'I will call a tool.');
+      expect(reported[1]).toHaveProperty('callId', 'call_1');
+    });
   });
 
   describe('handle', () => {
@@ -1008,7 +1738,7 @@ describe('ChatHandler', () => {
       const { parts, progress } = mockProgress();
       const token = mockToken();
 
-      const handler = new ChatHandler(baseContext);
+      const handler = new ChatHandler(baseContext, noopReasoningCacheService());
       await handler.handle(messages, progress, token);
 
       expect(fetchMock).toHaveBeenCalledOnce();
@@ -1038,7 +1768,7 @@ describe('ChatHandler', () => {
 
       const messages = [mockMessage(1, [{ value: 'Hello' }])];
       const { progress } = mockProgress();
-      const handler = new ChatHandler(baseContext);
+      const handler = new ChatHandler(baseContext, noopReasoningCacheService());
 
       // Should not throw on abort
       await expect(handler.handle(messages, progress, token)).rejects.toThrow();
@@ -1065,7 +1795,7 @@ describe('ChatHandler', () => {
       const { progress } = mockProgress();
       const token = mockToken();
 
-      const handler = new ChatHandler(ctx);
+      const handler = new ChatHandler(ctx, noopReasoningCacheService());
       await handler.handle(messages, progress, token);
 
       expect(fetchMock.mock.calls[0][0]).toBe('https://api.example.com/v1/chat/completions');
@@ -1087,12 +1817,15 @@ describe('ChatHandler', () => {
 
     it('calls chatDebugLogger.logRequest after successful non-streaming response', async () => {
       const { logger, logRequest } = mockLogger();
-      const handler = new ChatHandler({
-        ...baseContext,
-        model: mockModel({ streaming: 0 }),
-        chatDebugLogger: logger,
-        workspaceFolderUri: 'file:///workspace',
-      });
+      const handler = new ChatHandler(
+        {
+          ...baseContext,
+          model: mockModel({ streaming: 0 }),
+          chatDebugLogger: logger,
+          workspaceFolderUri: 'file:///workspace',
+        },
+        noopReasoningCacheService(),
+      );
 
       fetchMock.mockResolvedValue(
         new Response(
@@ -1116,12 +1849,15 @@ describe('ChatHandler', () => {
 
     it('calls chatDebugLogger.logRequest after successful streaming response', async () => {
       const { logger, logRequest } = mockLogger();
-      const handler = new ChatHandler({
-        ...baseContext,
-        model: mockModel({ streaming: 1 }),
-        chatDebugLogger: logger,
-        workspaceFolderUri: 'file:///workspace',
-      });
+      const handler = new ChatHandler(
+        {
+          ...baseContext,
+          model: mockModel({ streaming: 1 }),
+          chatDebugLogger: logger,
+          workspaceFolderUri: 'file:///workspace',
+        },
+        noopReasoningCacheService(),
+      );
 
       const sseData =
         'data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":null}]}\n\n' +
@@ -1146,11 +1882,14 @@ describe('ChatHandler', () => {
 
     it('calls chatDebugLogger.logRequest with error on API failure', async () => {
       const { logger, logRequest } = mockLogger();
-      const handler = new ChatHandler({
-        ...baseContext,
-        chatDebugLogger: logger,
-        workspaceFolderUri: 'file:///workspace',
-      });
+      const handler = new ChatHandler(
+        {
+          ...baseContext,
+          chatDebugLogger: logger,
+          workspaceFolderUri: 'file:///workspace',
+        },
+        noopReasoningCacheService(),
+      );
 
       fetchMock.mockResolvedValue(
         new Response('Bad Request', { status: 400, statusText: 'Bad Request' }),
@@ -1167,11 +1906,14 @@ describe('ChatHandler', () => {
 
     it('calls chatDebugLogger.logRequest with cancelled on abort', async () => {
       const { logger, logRequest } = mockLogger();
-      const handler = new ChatHandler({
-        ...baseContext,
-        chatDebugLogger: logger,
-        workspaceFolderUri: 'file:///workspace',
-      });
+      const handler = new ChatHandler(
+        {
+          ...baseContext,
+          chatDebugLogger: logger,
+          workspaceFolderUri: 'file:///workspace',
+        },
+        noopReasoningCacheService(),
+      );
 
       const abortError = new Error('The operation was aborted');
       abortError.name = 'AbortError';
@@ -1188,7 +1930,7 @@ describe('ChatHandler', () => {
     });
 
     it('does not fail when chatDebugLogger is not provided', async () => {
-      const handler = new ChatHandler(baseContext);
+      const handler = new ChatHandler(baseContext, noopReasoningCacheService());
 
       fetchMock.mockResolvedValue(
         new Response(
@@ -1208,12 +1950,15 @@ describe('ChatHandler', () => {
         throw new Error('Logging failed');
       });
       const logger = { logRequest } as unknown as ChatDebugLogger;
-      const handler = new ChatHandler({
-        ...baseContext,
-        model: mockModel({ streaming: 0 }),
-        chatDebugLogger: logger,
-        workspaceFolderUri: 'file:///workspace',
-      });
+      const handler = new ChatHandler(
+        {
+          ...baseContext,
+          model: mockModel({ streaming: 0 }),
+          chatDebugLogger: logger,
+          workspaceFolderUri: 'file:///workspace',
+        },
+        noopReasoningCacheService(),
+      );
 
       fetchMock.mockResolvedValue(
         new Response(
@@ -1228,6 +1973,218 @@ describe('ChatHandler', () => {
       await expect(handler.handle([], progress, mockToken())).resolves.not.toThrow();
 
       expect(logRequest).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('reasoning preservation', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      fetchMock = vi.fn();
+      globalThis.fetch = fetchMock as typeof fetch;
+    });
+
+    /**
+     * Creates a ReasoningCacheService mock that exposes the
+     * underlying vi.fn() spies so tests can assert on call
+     * counts and arguments.
+     */
+    function spyReasoningCacheService(): {
+      svc: ReasoningCacheService;
+      backfillMock: ReturnType<typeof vi.fn>;
+      cacheMock: ReturnType<typeof vi.fn>;
+    } {
+      const backfillMock = vi.fn();
+      const cacheMock = vi.fn();
+      return {
+        svc: {
+          backfillReasoning: backfillMock,
+          cacheReasoning: cacheMock,
+        } as unknown as ReasoningCacheService,
+        backfillMock,
+        cacheMock,
+      };
+    }
+
+    const baseContext: ChatContext = {
+      model: mockModel({ streaming: 0, preserveReasoning: 1 }),
+      provider: mockProvider(),
+      apiKey: 'sk-test',
+      defaults: null,
+    };
+
+    it('streaming: calls backfillReasoning before fetch and cacheReasoning after success', async () => {
+      const { svc, backfillMock, cacheMock } = spyReasoningCacheService();
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 1, preserveReasoning: 1 }),
+      };
+      const handler = new ChatHandler(ctx, svc);
+
+      fetchMock.mockResolvedValue(
+        new Response(
+          new Blob([
+            'data: {"choices":[{"delta":{"content":"Hi"},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+          ]).stream(),
+          { status: 200 },
+        ),
+      );
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      await handler.handle(messages, progress, mockToken());
+
+      // backfillReasoning is called before fetch
+      expect(backfillMock).toHaveBeenCalledOnce();
+      // cacheReasoning is called after successful response
+      expect(cacheMock).toHaveBeenCalledOnce();
+
+      // Verify preserveReasoning flag is passed correctly
+      expect(backfillMock.mock.calls[0][1]).toBe(true);
+      expect(cacheMock.mock.calls[0][3]).toBe(true);
+    });
+
+    it('non-streaming: calls backfillReasoning before fetch and cacheReasoning after success', async () => {
+      const { svc, backfillMock, cacheMock } = spyReasoningCacheService();
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 0, preserveReasoning: 1 }),
+      };
+      const handler = new ChatHandler(ctx, svc);
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      await handler.handle(messages, progress, mockToken());
+
+      expect(backfillMock).toHaveBeenCalledOnce();
+      expect(cacheMock).toHaveBeenCalledOnce();
+
+      expect(backfillMock.mock.calls[0][1]).toBe(true);
+      expect(cacheMock.mock.calls[0][3]).toBe(true);
+    });
+
+    it('HTTP error: backfillReasoning called but cacheReasoning NOT called', async () => {
+      const { svc, backfillMock, cacheMock } = spyReasoningCacheService();
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 0, preserveReasoning: 1 }),
+      };
+      const handler = new ChatHandler(ctx, svc);
+
+      fetchMock.mockResolvedValue(
+        new Response('Bad Request', { status: 400, statusText: 'Bad Request' }),
+      );
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      await expect(handler.handle(messages, progress, mockToken())).rejects.toThrow(
+        '400 Bad Request',
+      );
+
+      // backfillReasoning is always called before the request
+      expect(backfillMock).toHaveBeenCalledOnce();
+      expect(backfillMock.mock.calls[0][1]).toBe(true);
+
+      // cacheReasoning must NOT be called on error
+      expect(cacheMock).not.toHaveBeenCalled();
+    });
+
+    it('preserveReasoning disabled: methods called with preserveReasoning=false', async () => {
+      const { svc, backfillMock, cacheMock } = spyReasoningCacheService();
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 0, preserveReasoning: 0 }),
+      };
+      const handler = new ChatHandler(ctx, svc);
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      await handler.handle(messages, progress, mockToken());
+
+      // Both methods are called but with preserveReasoning=false
+      // (the service itself is a no-op when preserveReasoning is false)
+      expect(backfillMock).toHaveBeenCalledOnce();
+      expect(backfillMock.mock.calls[0][1]).toBe(false);
+      expect(cacheMock).toHaveBeenCalledOnce();
+      expect(cacheMock.mock.calls[0][3]).toBe(false);
+    });
+
+    it('streaming with reasoning: cacheReasoning receives accumulated reasoning_content in fields', async () => {
+      const { svc, cacheMock } = spyReasoningCacheService();
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 1, preserveReasoning: 1 }),
+      };
+      const handler = new ChatHandler(ctx, svc);
+
+      const sseData =
+        'data: {"choices":[{"delta":{"reasoning_content":"Let me","content":""},"finish_reason":null}]}\n\n' +
+        'data: {"choices":[{"delta":{"reasoning_content":" think"},"finish_reason":null}]}\n\n' +
+        'data: {"choices":[{"delta":{"content":"42"},"finish_reason":"stop"}]}\n\n' +
+        'data: [DONE]\n\n';
+
+      fetchMock.mockResolvedValue(new Response(new Blob([sseData]).stream(), { status: 200 }));
+
+      const messages = [mockMessage(1, [{ value: 'What is the answer?' }])];
+      const { progress } = mockProgress();
+      await handler.handle(messages, progress, mockToken());
+
+      expect(cacheMock).toHaveBeenCalledOnce();
+      const fields = cacheMock.mock.calls[0][1];
+      expect(fields).not.toBeNull();
+      expect(fields.reasoning_content).toBe('Let me think');
+    });
+
+    it('non-streaming with reasoning: cacheReasoning receives extracted reasoning fields', async () => {
+      const { svc, cacheMock } = spyReasoningCacheService();
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 0, preserveReasoning: 1 }),
+      };
+      const handler = new ChatHandler(ctx, svc);
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: 'Paris',
+                reasoning_content: 'The capital of France is Paris.',
+              },
+            },
+          ],
+        }),
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Capital of France?' }])];
+      const { progress } = mockProgress();
+      await handler.handle(messages, progress, mockToken());
+
+      expect(cacheMock).toHaveBeenCalledOnce();
+      const fields = cacheMock.mock.calls[0][1];
+      expect(fields).not.toBeNull();
+      expect(fields.reasoning_content).toBe('The capital of France is Paris.');
     });
   });
 });

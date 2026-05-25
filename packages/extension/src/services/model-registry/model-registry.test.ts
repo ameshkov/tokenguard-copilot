@@ -65,6 +65,11 @@ describe('ModelRegistry', () => {
     cachedInputCostPer1m: null,
   };
 
+  const mockReasoningCacheService = {
+    backfillReasoning: vi.fn(),
+    cacheReasoning: vi.fn(),
+  };
+
   beforeEach(() => {
     ({ db, raw } = createTestDb());
     db.insert(providers)
@@ -87,12 +92,18 @@ describe('ModelRegistry', () => {
     mockLogger = {
       logRequest: vi.fn(),
     } as unknown as ChatDebugLogger;
+    const mockTokenCounter = {
+      countTokens: vi.fn().mockResolvedValue(0),
+      countMessageTokens: vi.fn().mockResolvedValue(0),
+    };
     registry = new ModelRegistry(
       modelRepo,
       providerRepo,
       secrets as unknown as import('vscode').SecretStorage,
       () => null,
       mockLogger,
+      mockTokenCounter as unknown as import('../token-counter/index.js').TokenCounter,
+      mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
     );
   });
 
@@ -543,6 +554,43 @@ describe('ModelRegistry', () => {
       registry.disposeAll();
 
       expect(mockDispose).toHaveBeenCalled();
+    });
+  });
+
+  describe('provideTokenCount', () => {
+    it('calls countTokens for string input', async () => {
+      registry.addModel(providerId, 'gpt-4o', validConfig);
+      mockRegister.mockClear();
+
+      registry.registerAll();
+
+      const provider = mockRegister.mock.calls[0]![1]!;
+      const result = await provider.provideTokenCount(
+        { id: 'test-model' } as import('vscode').LanguageModelChatInformation,
+        'Hello world',
+        null as unknown as import('vscode').CancellationToken,
+      );
+      expect(result).toBe(0);
+    });
+
+    it('calls countMessageTokens for message input', async () => {
+      registry.addModel(providerId, 'gpt-4o', validConfig);
+      mockRegister.mockClear();
+
+      registry.registerAll();
+
+      const provider = mockRegister.mock.calls[0]![1]!;
+      const msg = {
+        role: 1,
+        content: [],
+        name: undefined,
+      };
+      const result = await provider.provideTokenCount(
+        { id: 'test-model' } as import('vscode').LanguageModelChatInformation,
+        msg as unknown as import('vscode').LanguageModelChatRequestMessage,
+        null as unknown as import('vscode').CancellationToken,
+      );
+      expect(result).toBe(0);
     });
   });
 });

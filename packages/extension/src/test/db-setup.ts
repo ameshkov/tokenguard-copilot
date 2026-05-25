@@ -38,6 +38,7 @@ export function createTestDb(): {
  * @param raw - The raw DatabaseSync connection.
  */
 export function clearTestDb(raw: DatabaseSync): void {
+  raw.exec('DELETE FROM reasoning_cache');
   raw.exec('DELETE FROM session_mappings');
   raw.exec('DELETE FROM settings');
   raw.exec('DELETE FROM usage_records');

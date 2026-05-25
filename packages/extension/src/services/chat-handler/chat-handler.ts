@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
+import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { ModelDefaults } from '../model-defaults/model-defaults.js';
 import type { Model, Provider } from '../../db/schema.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
+import { extractReasoning, extractReasoningFields } from '../../utils/reasoning.js';
+import type { ReasoningFields } from '../../utils/reasoning.js';
+import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
 
 /**
  * OpenAI-format tool definition for the
@@ -55,6 +59,12 @@ export interface OpenAIMessage {
   tool_calls?: OpenAIToolCall[];
   /** ID of the tool call this message responds to. */
   tool_call_id?: string;
+  /** Reasoning content (string) — DeepSeek, Kimi, GLM, Qwen, MiMo. */
+  reasoning_content?: string;
+  /** Reasoning (string) — Anthropic plaintext. */
+  reasoning?: string;
+  /** Reasoning details (array) — Anthropic structured. */
+  reasoning_details?: Array<{ type: string; text?: string }>;
 }
 
 /**
@@ -114,15 +124,20 @@ export interface ChatContext {
  */
 export class ChatHandler {
   private readonly ctx: ChatContext;
+  private readonly reasoningCacheService: ReasoningCacheService;
 
   /**
    * Creates a ChatHandler for a specific model/provider.
    *
    * @param ctx - Chat context with model, provider, API
    *   key, and defaults.
+   * @param reasoningCacheService - Service for backfilling
+   *   and caching reasoning content across multi-turn
+   *   conversations.
    */
-  constructor(ctx: ChatContext) {
+  constructor(ctx: ChatContext, reasoningCacheService: ReasoningCacheService) {
     this.ctx = ctx;
+    this.reasoningCacheService = reasoningCacheService;
   }
 
   /**
@@ -290,6 +305,7 @@ export class ChatHandler {
   static async handleNonStreaming(
     response: Response,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
+    reasoningOut?: ReasoningCollector,
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -302,6 +318,12 @@ export class ChatHandler {
       choices?: Array<{
         message?: {
           content?: string;
+          reasoning_content?: string;
+          reasoning?: string;
+          reasoning_details?: Array<{
+            type: string;
+            text?: string;
+          }>;
           tool_calls?: Array<{
             id: string;
             type: string;
@@ -312,14 +334,51 @@ export class ChatHandler {
           }>;
         };
       }>;
+      usage?: {
+        prompt_tokens: number;
+        completion_tokens: number;
+        total_tokens: number;
+      };
     };
 
+    // Report token usage if available
+    const usage = json.usage;
+    if (usage?.prompt_tokens !== undefined && usage?.completion_tokens !== undefined) {
+      const usageData = {
+        prompt_tokens: usage.prompt_tokens,
+        completion_tokens: usage.completion_tokens,
+        total_tokens: usage.total_tokens,
+        prompt_tokens_details: {
+          cached_tokens: 0,
+        },
+      };
+      progress.report(
+        new vscode.LanguageModelDataPart(
+          new TextEncoder().encode(JSON.stringify(usageData)),
+          USAGE_DATA_PART_MIME,
+        ),
+      );
+    }
+
     const message = json.choices?.[0]?.message;
+    if (reasoningOut) {
+      reasoningOut.fields = extractReasoningFields(message ?? {});
+    }
+    const reasoningContent = extractReasoning(message ?? {});
     const content = message?.content;
     const toolCalls = message?.tool_calls;
 
-    if (!content && (!toolCalls || toolCalls.length === 0)) {
+    if (!content && !reasoningContent && (!toolCalls || toolCalls.length === 0)) {
       throw new Error('No response content');
+    }
+
+    // Report reasoning content first (before main content)
+    if (reasoningContent) {
+      progress.report(
+        new vscode.LanguageModelThinkingPart(
+          reasoningContent,
+        ) as unknown as vscode.LanguageModelResponsePart,
+      );
     }
 
     if (content) {
@@ -359,6 +418,7 @@ export class ChatHandler {
     response: Response,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
+    reasoningOut?: ReasoningCollector,
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -415,6 +475,12 @@ export class ChatHandler {
             choices?: Array<{
               delta?: {
                 content?: string;
+                reasoning_content?: string;
+                reasoning?: string;
+                reasoning_details?: Array<{
+                  type: string;
+                  text?: string;
+                }>;
                 tool_calls?: Array<{
                   index: number;
                   id?: string;
@@ -427,10 +493,37 @@ export class ChatHandler {
               };
               finish_reason?: string | null;
             }>;
+            usage?: {
+              prompt_tokens: number;
+              completion_tokens: number;
+              total_tokens: number;
+            };
           };
           try {
             parsed = JSON.parse(data) as typeof parsed;
           } catch {
+            continue;
+          }
+
+          // Report usage if this is a usage-only chunk (no choices)
+          if (!parsed.choices && parsed.usage) {
+            const u = parsed.usage;
+            if (typeof u.prompt_tokens === 'number' && typeof u.completion_tokens === 'number') {
+              const usageData = {
+                prompt_tokens: u.prompt_tokens,
+                completion_tokens: u.completion_tokens,
+                total_tokens: u.total_tokens,
+                prompt_tokens_details: {
+                  cached_tokens: 0,
+                },
+              };
+              progress.report(
+                new vscode.LanguageModelDataPart(
+                  new TextEncoder().encode(JSON.stringify(usageData)),
+                  USAGE_DATA_PART_MIME,
+                ),
+              );
+            }
             continue;
           }
 
@@ -440,6 +533,35 @@ export class ChatHandler {
           const content = choice.delta?.content;
           if (content) {
             progress.report(new vscode.LanguageModelTextPart(content));
+          }
+
+          // Surface reasoning content as thinking parts
+          const reasoning = extractReasoning(choice.delta ?? {});
+          if (reasoning) {
+            progress.report(
+              new vscode.LanguageModelThinkingPart(
+                reasoning,
+              ) as unknown as vscode.LanguageModelResponsePart,
+            );
+          }
+
+          // Accumulate reasoning fields from deltas
+          if (reasoningOut && choice.delta) {
+            const df = extractReasoningFields(choice.delta);
+            if (df) {
+              if (!reasoningOut.fields) reasoningOut.fields = {};
+              if (df.reasoning_content)
+                reasoningOut.fields.reasoning_content =
+                  (reasoningOut.fields.reasoning_content ?? '') + df.reasoning_content;
+              if (df.reasoning)
+                reasoningOut.fields.reasoning =
+                  (reasoningOut.fields.reasoning ?? '') + df.reasoning;
+              if (df.reasoning_details) {
+                if (!reasoningOut.fields.reasoning_details)
+                  reasoningOut.fields.reasoning_details = [];
+                reasoningOut.fields.reasoning_details.push(...df.reasoning_details);
+              }
+            }
           }
 
           // Accumulate tool call deltas
@@ -500,6 +622,13 @@ export class ChatHandler {
     token: vscode.CancellationToken,
   ): Promise<void> {
     const translated = ChatHandler.translateMessages(messages);
+
+    // Backfill reasoning from cache into assistant messages
+    this.reasoningCacheService.backfillReasoning(
+      translated,
+      this.ctx.model.preserveReasoning === 1,
+    );
+
     const body = ChatHandler.buildRequestBody(translated, this.ctx);
 
     const url = this.ctx.provider.baseUrl.replace(/\/+$/, '') + '/chat/completions';
@@ -532,6 +661,8 @@ export class ChatHandler {
       },
     };
 
+    const reasoningCollector: ReasoningCollector = { fields: null };
+
     let error: string | undefined;
     let cancelled = false;
 
@@ -547,10 +678,21 @@ export class ChatHandler {
       });
 
       if (this.ctx.model.streaming === 1) {
-        await ChatHandler.handleStreaming(response, capturingProgress, token);
+        await ChatHandler.handleStreaming(response, capturingProgress, token, reasoningCollector);
       } else {
-        await ChatHandler.handleNonStreaming(response, capturingProgress);
+        await ChatHandler.handleNonStreaming(response, capturingProgress, reasoningCollector);
       }
+
+      // Cache reasoning after successful response
+      this.reasoningCacheService.cacheReasoning(
+        translated,
+        reasoningCollector.fields,
+        {
+          content: responseContent,
+          firstToolCallId: responseToolCalls[0]?.id,
+        },
+        this.ctx.model.preserveReasoning === 1,
+      );
     } catch (e) {
       if (token.isCancellationRequested || (e instanceof Error && e.name === 'AbortError')) {
         cancelled = true;
@@ -568,6 +710,7 @@ export class ChatHandler {
             messages: translated,
             responseContent,
             responseToolCalls,
+            responseReasoning: extractReasoning(reasoningCollector.fields ?? {}),
             modelName: `${this.ctx.provider.name}/${this.ctx.model.id}`,
             modelOptions: Object.fromEntries(
               Object.entries(body).filter(
@@ -599,4 +742,14 @@ export class ChatHandler {
       }
     }
   }
+}
+
+/**
+ * Mutable wrapper passed to streaming/non-streaming
+ * handlers to capture raw reasoning fields from
+ * responses.
+ */
+export interface ReasoningCollector {
+  /** The collected reasoning fields, or `null` if none. */
+  fields: ReasoningFields | null;
 }

@@ -11,6 +11,10 @@ import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js'
 import { ProviderManager, type ResetCallback } from './services/provider-manager/index.js';
 import { ModelRegistry } from './services/model-registry/index.js';
 import { getDefaults } from './services/model-defaults/index.js';
+import { TokenCounter } from './services/token-counter/index.js';
+import { ReasoningCacheRepository } from './repositories/index.js';
+import { ReasoningCacheService } from './services/reasoning-cache/index.js';
+import { ReasoningCacheCleanupService } from './services/reasoning-cache-cleanup/index.js';
 
 /**
  * Dependencies required to create an
@@ -25,6 +29,8 @@ export interface ExtensionContextDeps {
   resetCallback: ResetCallback;
   /** Base path for chat debug log files. */
   logsBasePath: string;
+  /** Absolute path to the extension directory for loading assets. */
+  extensionPath: string;
   /** Optional callback to refresh the chat debug tree view. */
   onTreeRefresh?: () => void;
 }
@@ -61,6 +67,12 @@ export class ExtensionContext {
   /** Chat debug cleanup service. */
   readonly chatDebugCleanup: ChatDebugCleanupService;
 
+  /** Token counting service. */
+  readonly tokenCounter: TokenCounter;
+
+  /** Reasoning cache cleanup service. */
+  readonly reasoningCacheCleanup: ReasoningCacheCleanupService;
+
   /**
    * Creates a new ExtensionContext.
    *
@@ -72,6 +84,9 @@ export class ExtensionContext {
     const modelRepo = new ModelRepository(deps.db);
     const settingsRepo = new SettingsRepository(deps.db);
     const sessionMappingRepo = new SessionMappingRepository(deps.db);
+    const reasoningCacheRepo = new ReasoningCacheRepository(deps.db);
+    const reasoningCacheService = new ReasoningCacheService(reasoningCacheRepo);
+
     this.chatDebugSettings = new ChatDebugSettingsService(settingsRepo);
     this.sessionTracker = new SessionTracker(sessionMappingRepo);
     this.chatDebugLogger = new ChatDebugLogger(
@@ -86,12 +101,15 @@ export class ExtensionContext {
       sessionMappingRepo,
       deps.onTreeRefresh,
     );
+    this.tokenCounter = new TokenCounter(deps.extensionPath);
     this.modelRegistry = new ModelRegistry(
       modelRepo,
       providerRepo,
       deps.secrets,
       getDefaults,
       this.chatDebugLogger,
+      this.tokenCounter,
+      reasoningCacheService,
     );
     this.providerManager = new ProviderManager(
       providerRepo,
@@ -99,5 +117,6 @@ export class ExtensionContext {
       deps.resetCallback,
       this.modelRegistry,
     );
+    this.reasoningCacheCleanup = new ReasoningCacheCleanupService(reasoningCacheRepo);
   }
 }

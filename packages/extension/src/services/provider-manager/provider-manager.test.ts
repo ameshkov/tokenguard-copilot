@@ -72,12 +72,22 @@ describe('ProviderManager', () => {
       delete: vi.fn().mockResolvedValue(undefined),
     };
     resetCallback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const mockReasoningCacheService = {
+      backfillReasoning: vi.fn(),
+      cacheReasoning: vi.fn(),
+    };
     modelRegistry = new ModelRegistry(
       modelRepo,
       repo,
       secrets as unknown as vscode.SecretStorage,
       () => null,
       { logRequest: vi.fn() } as unknown as import('../chat-debug-logger/index.js').ChatDebugLogger,
+      {
+        countTokens: vi.fn(),
+        countMessageTokens: vi.fn(),
+        initialize: vi.fn(),
+      } as unknown as import('../token-counter/index.js').TokenCounter,
+      mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
     );
     manager = new ProviderManager(
       repo,

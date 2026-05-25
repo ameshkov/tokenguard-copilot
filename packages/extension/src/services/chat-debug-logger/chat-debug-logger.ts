@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
 import type { OpenAIMessage, OpenAITool } from '../chat-handler/index.js';
+import { extractReasoning } from '../../utils/reasoning.js';
 
 /** Input data for logging a chat request-response pair. */
 export interface LogRequestInput {
@@ -17,16 +18,16 @@ export interface LogRequestInput {
     name: string;
     arguments: string;
   }>;
+  /** Reasoning content from the model response (pre-extracted display string). */
+  responseReasoning?: string | null;
   /** Display name of the model (e.g. "provider/model-id"). */
   modelName: string;
   /** Sampling parameters and other model options. */
   modelOptions: Record<string, unknown>;
   /** Tool definitions sent with the request. */
   tools: OpenAITool[] | undefined;
-
   /** Tool calling mode ('auto' or 'required'). */
   toolMode?: 'auto' | 'required';
-
   /** When the request started. */
   startTime: Date;
   /** When the request completed. */
@@ -230,19 +231,28 @@ export class ChatDebugLogger {
       const label = formatRoleLabel(msg);
       sections.push(`### Message ${i + 1} (${label})`);
       sections.push('');
-      sections.push('~~~md');
 
+      // Reasoning block (first, if present)
+      const msgReasoning = extractReasoning(msg);
+      if (msgReasoning) {
+        sections.push('~~~md');
+        sections.push('🧠 Reasoning');
+        sections.push(msgReasoning);
+        sections.push('~~~');
+        sections.push('');
+      }
+
+      // Content + tool calls block
+      sections.push('~~~md');
       if (msg.content) {
         sections.push(msg.content);
       }
-
       if (msg.tool_calls) {
         for (const tc of msg.tool_calls) {
           sections.push('');
           sections.push(`🛠️ ${tc.function.name} ${tc.function.arguments}`);
         }
       }
-
       sections.push('~~~');
       sections.push('');
     }
@@ -264,6 +274,17 @@ export class ChatDebugLogger {
         sections.push('*Request was cancelled. Partial response:*');
         sections.push('');
       }
+
+      // Render response reasoning when present
+      if (input.responseReasoning) {
+        sections.push('### Reasoning');
+        sections.push('');
+        sections.push('~~~');
+        sections.push(input.responseReasoning);
+        sections.push('~~~');
+        sections.push('');
+      }
+
       sections.push('### Assistant');
       sections.push('');
       sections.push('~~~md');

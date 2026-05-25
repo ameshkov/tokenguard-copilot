@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@microsoft/tiktokenizer": "1.0.2",
     "@tokenguard/shared": "workspace:*",
     "drizzle-orm": "1.0.0-rc.2"
   },

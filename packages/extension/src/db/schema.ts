@@ -150,3 +150,32 @@ export type SessionMapping = typeof sessionMappings.$inferSelect;
 
 /** TypeScript type for inserting a new session mapping. */
 export type NewSessionMapping = typeof sessionMappings.$inferInsert;
+
+/**
+ * Reasoning cache table — persists reasoning content from
+ * assistant responses so that multi-turn conversations
+ * maintain chain-of-thought continuity.
+ *
+ * Each row stores reasoning fields extracted from an
+ * assistant message, keyed by a conversation fingerprint
+ * and the assistant message's zero-based index.
+ */
+export const reasoningCache = sqliteTable(
+  'reasoning_cache',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    fingerprint: text('fingerprint').notNull(),
+    assistantIndex: integer('assistant_index').notNull(),
+    reasoningContent: text('reasoning_content'),
+    reasoning: text('reasoning'),
+    reasoningDetails: text('reasoning_details'),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [unique().on(table.fingerprint, table.assistantIndex)],
+);
+
+/** TypeScript type for a selected reasoning cache row. */
+export type ReasoningCacheRow = typeof reasoningCache.$inferSelect;
+
+/** TypeScript type for inserting a new reasoning cache row. */
+export type NewReasoningCacheRow = typeof reasoningCache.$inferInsert;

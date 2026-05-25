@@ -13,6 +13,7 @@ const baseInput: LogRequestInput = {
   ],
   responseContent: 'Hi there!',
   responseToolCalls: [],
+  responseReasoning: null,
   modelName: 'my-provider/test-model',
   modelOptions: { reasoningEffort: 'high' },
   tools: undefined,
@@ -221,6 +222,90 @@ describe('ChatDebugLogger', () => {
       const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
       expect(md).not.toContain('sk-secret-key');
       expect(md).not.toContain('Bearer sk-secret');
+    });
+
+    it('renders reasoning_content in messages section', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Think step by step' },
+          {
+            role: 'assistant',
+            content: 'The answer is 42.',
+            reasoning_content: 'First, I need to compute the answer...',
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🧠 Reasoning');
+      expect(md).toContain('First, I need to compute the answer...');
+    });
+
+    it('renders reasoning (Anthropic plaintext) in messages section', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Explain quantum' },
+          {
+            role: 'assistant',
+            content: 'Here is my explanation.',
+            reasoning: 'I think about quantum mechanics...',
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🧠 Reasoning');
+      expect(md).toContain('I think about quantum mechanics...');
+    });
+
+    it('renders reasoning_details in messages section', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Complex question' },
+          {
+            role: 'assistant',
+            content: 'Final answer.',
+            reasoning_details: [
+              { type: 'text', text: 'Step 1: Analyze\n' },
+              { type: 'text', text: 'Step 2: Compute' },
+            ],
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🧠 Reasoning');
+      expect(md).toContain('Step 1: Analyze');
+      expect(md).toContain('Step 2: Compute');
+    });
+
+    it('renders responseReasoning in response section', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        responseReasoning: 'Let me reason about this problem...',
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('### Reasoning');
+      expect(md).toContain('Let me reason about this problem...');
+    });
+
+    it('omits response reasoning section when responseReasoning is null', () => {
+      const md = ChatDebugLogger.formatLogMarkdown(baseInput, 'test-request-id');
+      expect(md).not.toContain('### Reasoning');
+    });
+
+    it('omits response reasoning section when responseReasoning is undefined', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        responseReasoning: undefined,
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).not.toContain('### Reasoning');
+    });
+
+    it('omits message reasoning when no reasoning fields are present', () => {
+      const md = ChatDebugLogger.formatLogMarkdown(baseInput, 'test-request-id');
+      expect(md).not.toContain('🧠 Reasoning');
     });
   });
 

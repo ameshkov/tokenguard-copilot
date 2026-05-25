@@ -6,6 +6,8 @@ import type { Model, Provider } from '../../db/schema.js';
 import { ChatHandler, type ChatContext, type OpenAITool } from '../chat-handler/chat-handler.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { ModelDefaults } from '../model-defaults/model-defaults.js';
+import type { TokenCounter } from '../token-counter/index.js';
+import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
 
 /**
  * Manages model lifecycle: fetch from providers, persist
@@ -39,6 +41,8 @@ export class ModelRegistry {
    * @param getDefaults - Lookup function for bundled model
    *   defaults (used for reasoning effort translation).
    * @param chatDebugLogger - Logger for debug log files.
+   * @param tokenCounter - Token counting service for
+   *   provideTokenCount.
    */
   constructor(
     private readonly modelRepo: ModelRepository,
@@ -46,6 +50,8 @@ export class ModelRegistry {
     private readonly secrets: vscode.SecretStorage,
     private readonly getDefaults: (modelId: string) => ModelDefaults | null,
     private readonly chatDebugLogger: ChatDebugLogger,
+    private readonly tokenCounter: TokenCounter,
+    private readonly reasoningCacheService: ReasoningCacheService,
   ) {}
 
   /**
@@ -370,10 +376,15 @@ export class ModelRegistry {
           workspaceFolderUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
         };
 
-        const handler = new ChatHandler(ctx);
+        const handler = new ChatHandler(ctx, this.reasoningCacheService);
         await handler.handle(messages, progress, token);
       },
-      provideTokenCount: async () => 0,
+      provideTokenCount: async (_model, text) => {
+        if (typeof text === 'string') {
+          return this.tokenCounter.countTokens(text);
+        }
+        return this.tokenCounter.countMessageTokens(text);
+      },
     });
 
     // Force Copilot Chat to re-query model info through the

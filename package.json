@@ -32,7 +32,8 @@
         {
           "id": "tokenguardCopilotChatDebugLogs",
           "name": "TokenGuard Logs",
-          "when": "tokenguard-copilot.chatDebugEnabled"
+          "when": "tokenguard-copilot.chatDebugEnabled",
+          "icon": "$(output)"
         }
       ]
     },
@@ -77,17 +78,20 @@
         {
           "command": "tokenguard-copilot.disableChatDebugLogging",
           "when": "view == tokenguardCopilotChatDebugLogs",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "$(stop)"
         },
         {
           "command": "tokenguard-copilot.clearChatDebugLogs",
           "when": "view == tokenguardCopilotChatDebugLogs",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "$(trash)"
         },
         {
           "command": "tokenguard-copilot.refreshChatDebugLogs",
           "when": "view == tokenguardCopilotChatDebugLogs",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "$(refresh)"
         }
       ]
     }
