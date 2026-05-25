@@ -119,4 +119,45 @@ describe('TokenCounter', () => {
     const result = await counter.countMessageTokens(msg);
     expect(result).toBe(4);
   });
+
+  it('counts image tokens using OpenAI tile formula', async () => {
+    const vscodeModule = await import('vscode');
+    // Minimal 4×4 PNG — after scaling to 768px shortest
+    // side, this becomes 768×768 → 2×2 tiles = 4 tiles
+    // → 4×170 + 85 = 765
+    const pngBytes = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+      0x52, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x04, 0x08, 0x06, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00,
+    ]);
+    const msg = {
+      role: 1,
+      content: [new vscodeModule.LanguageModelDataPart(pngBytes, 'image/png')],
+    } as unknown as vscode.LanguageModelChatRequestMessage;
+    const result = await counter.countMessageTokens(msg);
+    // Base (4) + image tokens (765) = 769
+    expect(result).toBe(769);
+  });
+
+  it('uses fallback for unsupported image format', async () => {
+    const vscodeModule = await import('vscode');
+    const msg = {
+      role: 1,
+      content: [new vscodeModule.LanguageModelDataPart(new Uint8Array([0, 0, 0, 0]), 'image/bmp')],
+    } as unknown as vscode.LanguageModelChatRequestMessage;
+    const result = await counter.countMessageTokens(msg);
+    // Base (4) + fallback (2000) = 2004
+    expect(result).toBe(2004);
+  });
+
+  it('uses fallback for empty image data', async () => {
+    const vscodeModule = await import('vscode');
+    const msg = {
+      role: 1,
+      content: [new vscodeModule.LanguageModelDataPart(new Uint8Array(0), 'image/jpeg')],
+    } as unknown as vscode.LanguageModelChatRequestMessage;
+    const result = await counter.countMessageTokens(msg);
+    // Base (4) + fallback (2000) = 2004
+    expect(result).toBe(2004);
+  });
 });

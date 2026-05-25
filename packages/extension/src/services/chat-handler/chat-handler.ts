@@ -505,8 +505,8 @@ export class ChatHandler {
             continue;
           }
 
-          // Report usage if this is a usage-only chunk (no choices)
-          if (!parsed.choices && parsed.usage) {
+          // Report usage when present in any chunk
+          if (parsed.usage) {
             const u = parsed.usage;
             if (typeof u.prompt_tokens === 'number' && typeof u.completion_tokens === 'number') {
               const usageData = {
@@ -524,7 +524,6 @@ export class ChatHandler {
                 ),
               );
             }
-            continue;
           }
 
           const choice = parsed.choices?.[0];
