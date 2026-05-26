@@ -20,7 +20,10 @@ describe('ModelDefaults types', () => {
       inputCostPer1M: 2.5,
       outputCostPer1M: 10.0,
       supportedCapabilities: [],
-      supportedReasoningEfforts: ['none', 'low', 'medium', 'high', 'xhigh'],
+      reasoningEffortMap: {
+        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
+        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
+      },
     };
     expect(entry.match.type).toBe('exact');
   });
@@ -33,7 +36,10 @@ describe('ModelDefaults types', () => {
       inputCostPer1M: 2.5,
       outputCostPer1M: 10.0,
       supportedCapabilities: [],
-      supportedReasoningEfforts: ['none', 'low', 'medium', 'high', 'xhigh'],
+      reasoningEffortMap: {
+        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
+        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
+      },
     };
     expect(entry.match.type).toBe('regex');
   });
@@ -47,7 +53,10 @@ describe('ModelDefaults types', () => {
       outputCostPer1M: 10.0,
       cachedInputCostPer1M: 1.25,
       supportedCapabilities: [],
-      supportedReasoningEfforts: ['none', 'low', 'medium', 'high', 'xhigh'],
+      reasoningEffortMap: {
+        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
+        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
+      },
     };
     expect(entry.cachedInputCostPer1M).toBe(1.25);
   });
@@ -59,7 +68,10 @@ describe('ModelDefaults types', () => {
       inputCostPer1M: 2.5,
       outputCostPer1M: 10.0,
       supportedCapabilities: [],
-      supportedReasoningEfforts: ['none', 'low', 'medium', 'high', 'xhigh'],
+      reasoningEffortMap: {
+        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
+        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
+      },
     };
     expect(defaults).not.toHaveProperty('match');
   });
@@ -108,17 +120,6 @@ describe('model-defaults.json schema validation', () => {
     }
   });
 
-  it('supportedReasoningEfforts should be a string array when present', () => {
-    for (const entry of entries) {
-      if (entry.supportedReasoningEfforts !== undefined) {
-        expect(Array.isArray(entry.supportedReasoningEfforts)).toBe(true);
-        for (const effort of entry.supportedReasoningEfforts) {
-          expect(typeof effort).toBe('string');
-        }
-      }
-    }
-  });
-
   it('every regex pattern should be a valid RegExp', () => {
     for (const entry of entries) {
       if (entry.match.type === 'regex') {
@@ -146,14 +147,21 @@ describe('model-defaults.json schema validation', () => {
     }
   });
 
-  it('entries must not have both supportedReasoningEfforts and reasoningEffortMap', () => {
+  it('every entry should have reasoningEffortMap when reasoning_effort capability is present', () => {
     for (const entry of entries) {
-      if (entry.reasoningEffortMap !== undefined) {
-        expect(entry.supportedReasoningEfforts).toBeUndefined();
+      if (entry.supportedCapabilities?.includes('reasoning_effort')) {
+        expect(entry.reasoningEffortMap).toBeDefined();
       }
     }
   });
 
+  it('every entry should have reasoningEffortMap when reasoning_effort capability is present', () => {
+    for (const entry of entries) {
+      if (entry.supportedCapabilities?.includes('reasoning_effort')) {
+        expect(entry.reasoningEffortMap).toBeDefined();
+      }
+    }
+  });
   it('preserveReasoning should be a boolean when present', () => {
     for (const entry of entries) {
       if (entry.preserveReasoning !== undefined) {
@@ -167,12 +175,13 @@ describe('getDefaults', () => {
   it('should return defaults for an exact model ID match', () => {
     const result = getDefaults('gpt-5.4');
     expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(1050000);
-    expect(result!.maxTokens).toBe(32768);
+    expect(result!.contextSize).toBe(272000);
+    expect(result!.maxTokens).toBe(65500);
     expect(result!.inputCostPer1M).toBe(2.5);
     expect(result!.outputCostPer1M).toBe(15.0);
     expect(result!.supportedCapabilities).toContain('vision');
-    expect(result!.supportedReasoningEfforts).toContain('xhigh');
+    expect(result!.reasoningEffortMap).toBeDefined();
+    expect(Object.keys(result!.reasoningEffortMap!)).toContain('xhigh');
   });
 
   it('should return defaults for a regex pattern match', () => {
@@ -207,12 +216,10 @@ describe('getDefaults', () => {
     expect(result).not.toHaveProperty('match');
   });
 
-  it('should handle cachedInputCostPer1M being undefined', () => {
-    // qwen-3.6-max-preview does not have
-    // cachedInputCostPer1M
-    const result = getDefaults('qwen-3.6-max-preview');
+  it('should include cachedInputCostPer1M when present', () => {
+    const result = getDefaults('qwen-3.6-plus');
     expect(result).not.toBeNull();
-    expect(result!.cachedInputCostPer1M).toBeUndefined();
+    expect(result!.cachedInputCostPer1M).toBe(0.05);
   });
 
   it('should include reasoningEffortMap when present', () => {
@@ -228,6 +235,20 @@ describe('getDefaults', () => {
     });
   });
 
+  it('should include reasoningEffortMap for models with reasoning_effort capability', () => {
+    const result = getDefaults('gpt-5.4');
+    expect(result).not.toBeNull();
+    expect(result!.reasoningEffortMap).toBeDefined();
+    expect(Object.keys(result!.reasoningEffortMap!)).toContain('low');
+    expect(Object.keys(result!.reasoningEffortMap!)).toContain('high');
+  });
+
+  it('should include defaultReasoningEffort for reasoningEffortMap models', () => {
+    const result = getDefaults('deepseek-v4-pro');
+    expect(result).not.toBeNull();
+    expect(result!.defaultReasoningEffort).toBe('high');
+  });
+
   it('should include preserveReasoning when present', () => {
     const result = getDefaults('kimi-k2.6');
     expect(result).not.toBeNull();
@@ -240,9 +261,10 @@ describe('getDefaults', () => {
     expect(result!.preserveReasoning).toBeUndefined();
   });
 
-  it('should omit reasoningEffortMap for standard models', () => {
+  it('should include reasoningEffortMap for all reasoning models', () => {
     const result = getDefaults('gpt-5.4');
     expect(result).not.toBeNull();
-    expect(result!.reasoningEffortMap).toBeUndefined();
+    expect(result!.reasoningEffortMap).toBeDefined();
+    expect(Object.keys(result!.reasoningEffortMap!).length).toBeGreaterThan(0);
   });
 });

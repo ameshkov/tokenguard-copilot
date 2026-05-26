@@ -53,7 +53,6 @@ describe('ProviderManager', () => {
     topP: null,
     frequencyPenalty: null,
     presencePenalty: null,
-    supportedReasoningEfforts: null,
     defaultReasoningEffort: null,
     reasoningEffortMap: null,
     preserveReasoning: false,
@@ -449,6 +448,32 @@ describe('ProviderManager', () => {
 
       expect(resetCallback).toHaveBeenCalled();
       expect(listener).toHaveBeenCalled();
+    });
+
+    it('unregisters all models via disposeAll', async () => {
+      vi.spyOn(modelRegistry, 'disposeAll');
+      await manager.resetAll();
+
+      expect(modelRegistry.disposeAll).toHaveBeenCalled();
+    });
+
+    it('disposes models after callback but before event', async () => {
+      const callOrder: string[] = [];
+      resetCallback.mockImplementation(() => {
+        callOrder.push('callback');
+        return Promise.resolve();
+      });
+      vi.spyOn(modelRegistry, 'disposeAll').mockImplementation(() => {
+        callOrder.push('disposeAll');
+      });
+      const listener = vi.fn(() => {
+        callOrder.push('event');
+      });
+      manager.onProvidersChanged(listener);
+
+      await manager.resetAll();
+
+      expect(callOrder).toEqual(['callback', 'disposeAll', 'event']);
     });
   });
 });

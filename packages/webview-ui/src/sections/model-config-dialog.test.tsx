@@ -121,7 +121,6 @@ describe('ModelConfigDialog', () => {
       name: 'GPT-4o',
       maxContextWindowTokens: 128000,
       maxOutputTokens: 16384,
-      supportedReasoningEfforts: null,
       defaultReasoningEffort: null,
       vision: null,
     };
@@ -162,7 +161,6 @@ describe('ModelConfigDialog', () => {
       topP: null,
       frequencyPenalty: null,
       presencePenalty: null,
-      supportedReasoningEfforts: null,
       defaultReasoningEffort: null,
       reasoningEffortMap: null,
       preserveReasoning: false,
@@ -190,7 +188,6 @@ describe('ModelConfigDialog', () => {
       topP: null,
       frequencyPenalty: null,
       presencePenalty: null,
-      supportedReasoningEfforts: null,
       defaultReasoningEffort: null,
       reasoningEffortMap: null,
       preserveReasoning: false,
@@ -269,7 +266,6 @@ describe('ModelConfigDialog', () => {
       topP: null,
       frequencyPenalty: null,
       presencePenalty: null,
-      supportedReasoningEfforts: null,
       defaultReasoningEffort: null,
       reasoningEffortMap: null,
       preserveReasoning: false,
@@ -287,5 +283,69 @@ describe('ModelConfigDialog', () => {
     render(<ModelConfigDialog {...baseProps} error="Something went wrong" />);
 
     expect(screen.getByText('Something went wrong')).toBeDefined();
+  });
+
+  it('shows "None" option in default effort dropdown when no reasoningEffortMap', async () => {
+    const defaults: ModelDefaultsResult = {
+      contextSize: 128000,
+      maxTokens: 16384,
+      inputCostPer1M: 2.5,
+      outputCostPer1M: 10,
+      supportedCapabilities: ['reasoning_effort'],
+      defaultReasoningEffort: 'medium',
+    };
+
+    render(<ModelConfigDialog {...baseProps} defaults={defaults} />);
+
+    // The "None" option (value="") should be present when the map is empty
+    const select = document.querySelector('vscode-single-select');
+    expect(select).not.toBeNull();
+    expect(select!.querySelector('vscode-option[value=""]')?.textContent).toBe('None');
+  });
+
+  it('hides "None" option in default effort dropdown when reasoningEffortMap is present', () => {
+    const defaults: ModelDefaultsResult = {
+      contextSize: 1050000,
+      maxTokens: 32768,
+      inputCostPer1M: 0.435,
+      outputCostPer1M: 0.87,
+      supportedCapabilities: ['reasoning_effort'],
+      reasoningEffortMap: {
+        none: { thinking: { type: 'disabled' } },
+        high: { reasoning_effort: 'high', thinking: { type: 'enabled' } },
+        xhigh: { reasoning_effort: 'max', thinking: { type: 'enabled' } },
+      },
+      defaultReasoningEffort: 'high',
+      preserveReasoning: true,
+    };
+
+    render(<ModelConfigDialog {...baseProps} defaults={defaults} />);
+
+    // The "None" option should NOT be present
+    const select = document.querySelector('vscode-single-select');
+    expect(select).not.toBeNull();
+    expect(select!.querySelector('vscode-option[value=""]')).toBeNull();
+  });
+
+  it('pre-fills defaultReasoningEffort from defaults with reasoningEffortMap', () => {
+    const defaults: ModelDefaultsResult = {
+      contextSize: 128000,
+      maxTokens: 16384,
+      inputCostPer1M: 2.5,
+      outputCostPer1M: 10,
+      supportedCapabilities: ['reasoning_effort'],
+      reasoningEffortMap: {
+        low: { reasoning_effort: 'low' },
+        medium: { reasoning_effort: 'medium' },
+        high: { reasoning_effort: 'high' },
+      },
+      defaultReasoningEffort: 'medium',
+    };
+
+    render(<ModelConfigDialog {...baseProps} defaults={defaults} />);
+
+    const select = document.querySelector('vscode-single-select');
+    expect(select).not.toBeNull();
+    expect(select!.getAttribute('value')).toBe('medium');
   });
 });

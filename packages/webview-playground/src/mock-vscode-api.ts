@@ -76,7 +76,6 @@ function buildModelInfo(providerId: string, modelId: string, config: ModelConfig
     topP: config.topP,
     frequencyPenalty: config.frequencyPenalty,
     presencePenalty: config.presencePenalty,
-    supportedReasoningEfforts: config.supportedReasoningEfforts,
     defaultReasoningEffort: config.defaultReasoningEffort,
     reasoningEffortMap: config.reasoningEffortMap,
     preserveReasoning: config.preserveReasoning,

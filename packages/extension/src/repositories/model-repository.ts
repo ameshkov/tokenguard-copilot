@@ -114,7 +114,6 @@ export class ModelRepository {
         | 'topP'
         | 'frequencyPenalty'
         | 'presencePenalty'
-        | 'supportedReasoningEfforts'
         | 'defaultReasoningEffort'
         | 'reasoningEffortMap'
         | 'preserveReasoning'

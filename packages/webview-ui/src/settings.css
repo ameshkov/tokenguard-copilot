@@ -110,7 +110,7 @@ vscode-table {
   gap: 8px;
 }
 
-/* ── Chat debug ────────────────────────────────── */
+/* ── Debugging ──────────────────────────────────── */
 .chat-debug-section__buttons {
   display: flex;
   gap: 8px;

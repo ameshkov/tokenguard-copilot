@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tokenguard/shared": "workspace:*",
+    "@vscode/codicons": "0.0.45",
     "@vscode-elements/elements": "2.5.1",
     "chart.js": "4.5.1",
     "react": "19.2.6",

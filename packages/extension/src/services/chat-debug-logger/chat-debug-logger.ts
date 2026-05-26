@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
-import type { OpenAIMessage, OpenAITool } from '../chat-handler/index.js';
+import type { OpenAIMessage, OpenAITool, ChatUsage } from '../chat-handler/index.js';
 import { extractReasoning } from '../../utils/reasoning.js';
 
 /** Input data for logging a chat request-response pair. */
@@ -38,6 +38,8 @@ export interface LogRequestInput {
   error: string | undefined;
   /** Workspace folder URI for computing workspace ID. */
   workspaceFolderUri: string;
+  /** Token usage from the API response, or null if unavailable. */
+  usage?: ChatUsage | null;
 }
 
 const SENSITIVE_KEYS = new Set([
@@ -214,6 +216,35 @@ export class ChatDebugLogger {
       sections.push('');
       sections.push('```json');
       sections.push(JSON.stringify(toolJson, null, 2));
+      sections.push('```');
+      sections.push('');
+      sections.push('</details>');
+    }
+
+    // Usage details
+    if (input.usage) {
+      const u = input.usage;
+      const total = u.promptTokens + u.completionTokens;
+      let summary = `usage: prompt ${u.promptTokens} | completion ${u.completionTokens} | total ${total}`;
+      if (u.cachedTokens > 0) summary += ` | cached ${u.cachedTokens}`;
+      if (u.reasoningTokens > 0) summary += ` | reasoning ${u.reasoningTokens}`;
+      sections.push('<details>');
+      sections.push(`<summary>${summary}</summary>`);
+      sections.push('');
+      sections.push('```json');
+      sections.push(
+        JSON.stringify(
+          {
+            promptTokens: u.promptTokens,
+            completionTokens: u.completionTokens,
+            totalTokens: total,
+            cachedTokens: u.cachedTokens,
+            reasoningTokens: u.reasoningTokens,
+          },
+          null,
+          2,
+        ),
+      );
       sections.push('```');
       sections.push('');
       sections.push('</details>');

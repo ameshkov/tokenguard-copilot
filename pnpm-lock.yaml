@@ -98,6 +98,9 @@ importers:
       '@tokenguard/webview-ui':
         specifier: workspace:*
         version: link:../webview-ui
+      '@vscode/codicons':
+        specifier: 0.0.45
+        version: 0.0.45
       react:
         specifier: 19.2.6
         version: 19.2.6
@@ -132,6 +135,9 @@ importers:
       '@vscode-elements/elements':
         specifier: 2.5.1
         version: 2.5.1(@vscode/codicons@0.0.45)
+      '@vscode/codicons':
+        specifier: 0.0.45
+        version: 0.0.45
       chart.js:
         specifier: 4.5.1
         version: 4.5.1

@@ -82,7 +82,6 @@ function mockModel(overrides: Partial<Model> = {}): Model {
     topP: null,
     frequencyPenalty: null,
     presencePenalty: null,
-    supportedReasoningEfforts: null,
     defaultReasoningEffort: null,
     reasoningEffortMap: null,
     preserveReasoning: 0,
@@ -319,27 +318,36 @@ describe('ChatHandler', () => {
       expect(body.presence_penalty).toBe(-0.5);
     });
 
-    it('includes standard reasoning_effort field', () => {
+    it('includes reasoningEffortMap entry into body when effort level matches', () => {
       const ctx = {
         ...baseContext,
         model: {
           ...baseContext.model,
-          supportedReasoningEfforts: '["low","medium","high"]',
           defaultReasoningEffort: 'medium',
         },
         reasoningEffort: 'medium',
-        defaults: null,
+        defaults: {
+          contextSize: 128000,
+          maxTokens: 16384,
+          inputCostPer1M: 1,
+          outputCostPer1M: 2,
+          supportedCapabilities: ['reasoning_effort'],
+          reasoningEffortMap: {
+            low: { reasoning_effort: 'low' },
+            medium: { reasoning_effort: 'medium' },
+            high: { reasoning_effort: 'high' },
+          },
+        },
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
       expect(body.reasoning_effort).toBe('medium');
     });
 
-    it('merges reasoningEffortMap entry into body', () => {
+    it('merges reasoningEffortMap entry into body with custom fields', () => {
       const ctx = {
         ...baseContext,
         model: {
           ...baseContext.model,
-          supportedReasoningEfforts: '["none","high"]',
           defaultReasoningEffort: 'high',
         },
         reasoningEffort: 'high',
@@ -350,8 +358,9 @@ describe('ChatHandler', () => {
           outputCostPer1M: 2,
           supportedCapabilities: ['reasoning_effort'],
           reasoningEffortMap: {
-            none: { extra_body: { enable_thinking: false } },
+            none: { reasoning_effort: null },
             high: {
+              reasoning_effort: 'high',
               extra_body: {
                 enable_thinking: true,
                 preserve_thinking: true,
@@ -361,33 +370,35 @@ describe('ChatHandler', () => {
         },
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
-      expect(body.reasoning_effort).toBeUndefined();
+      expect(body.reasoning_effort).toBe('high');
       expect(body.extra_body).toEqual({
         enable_thinking: true,
         preserve_thinking: true,
       });
     });
 
-    it('uses standard reasoning_effort when no map', () => {
+    it('omits reasoning_effort when effort level is not in reasoningEffortMap', () => {
       const ctx = {
         ...baseContext,
         model: {
           ...baseContext.model,
-          supportedReasoningEfforts: '["low","medium","high"]',
-          defaultReasoningEffort: 'high',
+          defaultReasoningEffort: 'ultra',
         },
-        reasoningEffort: 'high',
+        reasoningEffort: 'ultra',
         defaults: {
           contextSize: 128000,
           maxTokens: 16384,
           inputCostPer1M: 1,
           outputCostPer1M: 2,
           supportedCapabilities: ['reasoning_effort'],
+          reasoningEffortMap: {
+            low: { reasoning_effort: 'low' },
+            high: { reasoning_effort: 'high' },
+          },
         },
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
-      expect(body.reasoning_effort).toBe('high');
-      expect(body.extra_body).toBeUndefined();
+      expect(body.reasoning_effort).toBeUndefined();
     });
 
     it('includes tools, tool_choice, and parallel_tool_calls when tools provided', () => {

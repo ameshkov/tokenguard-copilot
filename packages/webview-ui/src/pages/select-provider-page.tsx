@@ -46,7 +46,7 @@ export function SelectProviderPage(props: SelectProviderPageProps): React.JSX.El
             <vscode-label htmlFor="provider-select">Provider</vscode-label>
             <vscode-single-select
               id="provider-select"
-              onChange={(e: React.FormEvent<HTMLElement>) => {
+              onchange={(e: Event) => {
                 const el = e.currentTarget as HTMLElement & {
                   value: string;
                 };

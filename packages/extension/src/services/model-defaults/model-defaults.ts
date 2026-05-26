@@ -37,20 +37,15 @@ export interface ModelDefaultsEntry {
   /** Supported model capabilities (e.g., "reasoning_effort",
    *  "vision"). */
   supportedCapabilities: string[];
-  /** Supported reasoning effort levels for this model
-   *  (e.g., "low", "medium", "high"). Present only on models
-   *  that use the standard `reasoning_effort` field.
-   *  Mutually exclusive with `reasoningEffortMap`. */
-  supportedReasoningEfforts?: string[];
   /** Maps reasoning effort level names to provider-specific
-   *  chat completion body parameters. Each value is an object
-   *  merged into the outgoing request body. When present,
-   *  `supportedReasoningEfforts` MUST be omitted — the map
+   *  chat completion body parameters. When present, the map
    *  keys define supported efforts. */
   reasoningEffortMap?: Record<string, Record<string, unknown>>;
+  /** Default reasoning effort level. When `reasoningEffortMap`
+   *  is present, this must be one of its keys. */
+  defaultReasoningEffort?: string;
   /** When true, preserve `reasoning_content` from responses
-   *  and inject it into subsequent requests. Pre-fills the
-   *  model's preserveReasoning setting. */
+   *  and inject it into subsequent requests. */
   preserveReasoning?: boolean;
 }
 
@@ -74,13 +69,13 @@ export interface ModelDefaults {
   /** Supported model capabilities (e.g., "reasoning_effort",
    *  "vision"). */
   supportedCapabilities: string[];
-  /** Supported reasoning effort levels for this model.
-   *  Mutually exclusive with `reasoningEffortMap`. */
-  supportedReasoningEfforts?: string[];
   /** Maps reasoning effort level names to provider-specific
-   *  chat completion body parameters. When present,
-   *  `supportedReasoningEfforts` MUST be omitted. */
+   *  chat completion body parameters. When present, the map
+   *  keys define supported efforts. */
   reasoningEffortMap?: Record<string, Record<string, unknown>>;
+  /** Default reasoning effort level. When `reasoningEffortMap`
+   *  is present, this must be one of its keys. */
+  defaultReasoningEffort?: string;
   /** When true, preserve `reasoning_content` from responses
    *  and inject it into subsequent requests. */
   preserveReasoning?: boolean;
@@ -143,12 +138,9 @@ function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
     outputCostPer1M: entry.outputCostPer1M,
     cachedInputCostPer1M: entry.cachedInputCostPer1M,
     supportedCapabilities: [...entry.supportedCapabilities],
-    supportedReasoningEfforts:
-      entry.supportedReasoningEfforts !== undefined
-        ? [...entry.supportedReasoningEfforts]
-        : undefined,
     reasoningEffortMap:
       entry.reasoningEffortMap !== undefined ? { ...entry.reasoningEffortMap } : undefined,
+    defaultReasoningEffort: entry.defaultReasoningEffort,
     preserveReasoning: entry.preserveReasoning,
   };
 }

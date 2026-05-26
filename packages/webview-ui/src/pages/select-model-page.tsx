@@ -69,7 +69,7 @@ export function SelectModelPage(props: SelectModelPageProps): React.JSX.Element 
             <vscode-single-select
               id="model-select"
               ref={selectRef}
-              onChange={(e: React.FormEvent<HTMLElement>) => {
+              onchange={(e: Event) => {
                 const el = e.currentTarget as HTMLElement & { value: string };
                 setSelectedId(el.value);
               }}

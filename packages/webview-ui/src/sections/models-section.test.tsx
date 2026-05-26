@@ -32,7 +32,6 @@ const sampleModel: ModelInfo = {
   topP: null,
   frequencyPenalty: null,
   presencePenalty: null,
-  supportedReasoningEfforts: null,
   defaultReasoningEffort: null,
   reasoningEffortMap: null,
   preserveReasoning: false,

@@ -7,6 +7,8 @@ import { sendRequest } from '../vscode-api.js';
 export interface GlobalActionsProps {
   /** Called after a successful settings reset to refresh the UI. */
   onReset: () => void;
+  /** Called after a successful statistics reset to refresh the UI. */
+  onStatsReset?: () => void;
 }
 
 /**
@@ -17,7 +19,7 @@ export interface GlobalActionsProps {
  * @returns The danger zone element.
  */
 export function GlobalActions(props: GlobalActionsProps): React.JSX.Element {
-  const { onReset } = props;
+  const { onReset, onStatsReset } = props;
 
   // Reset All Settings state
   const [showSettingsConfirm, setShowSettingsConfirm] = useState(false);
@@ -61,6 +63,8 @@ export function GlobalActions(props: GlobalActionsProps): React.JSX.Element {
 
     if (!result.success) {
       setError(result.error ?? 'Reset failed');
+    } else {
+      onStatsReset?.();
     }
   };
 

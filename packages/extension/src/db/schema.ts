@@ -45,7 +45,6 @@ export const models = sqliteTable(
     topP: real('top_p'),
     frequencyPenalty: real('frequency_penalty'),
     presencePenalty: real('presence_penalty'),
-    supportedReasoningEfforts: text('supported_reasoning_efforts'),
     defaultReasoningEffort: text('default_reasoning_effort'),
     reasoningEffortMap: text('reasoning_effort_map'),
     preserveReasoning: integer('preserve_reasoning').notNull().default(0),

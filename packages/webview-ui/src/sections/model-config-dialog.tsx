@@ -46,7 +46,6 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
   const [topP, setTopP] = useState('');
   const [frequencyPenalty, setFrequencyPenalty] = useState('');
   const [presencePenalty, setPresencePenalty] = useState('');
-  const [supportedReasoningEfforts, setSupportedReasoningEfforts] = useState('');
   const [defaultReasoningEffort, setDefaultReasoningEffort] = useState('');
   const [reasoningEffortMap, setReasoningEffortMap] = useState<Record<string, string>>({});
   const [newEffortName, setNewEffortName] = useState('');
@@ -75,7 +74,6 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       setPresencePenalty(
         editingModel.presencePenalty !== null ? String(editingModel.presencePenalty) : '',
       );
-      setSupportedReasoningEfforts(editingModel.supportedReasoningEfforts ?? '');
       setDefaultReasoningEffort(editingModel.defaultReasoningEffort ?? '');
       if (editingModel.reasoningEffortMap) {
         try {
@@ -128,10 +126,6 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         setVision(fetchedModel.vision);
         filled.vision = 'provider';
       }
-      if (fetchedModel.supportedReasoningEfforts !== null) {
-        setSupportedReasoningEfforts(JSON.stringify(fetchedModel.supportedReasoningEfforts));
-        filled.supportedReasoningEfforts = 'provider';
-      }
       if (fetchedModel.defaultReasoningEffort !== null) {
         setDefaultReasoningEffort(fetchedModel.defaultReasoningEffort);
         filled.defaultReasoningEffort = 'provider';
@@ -164,20 +158,24 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         setVision(true);
         filled.vision = 'defaults';
       }
-      if (defaults.supportedReasoningEfforts && !filled.supportedReasoningEfforts) {
-        setSupportedReasoningEfforts(JSON.stringify(defaults.supportedReasoningEfforts));
-        filled.supportedReasoningEfforts = 'defaults';
-      }
-      if (defaults.reasoningEffortMap && !filled.supportedReasoningEfforts) {
+      if (defaults.reasoningEffortMap) {
         // Build efforts from map keys
-        const mapKeys = Object.keys(defaults.reasoningEffortMap);
-        setSupportedReasoningEfforts(JSON.stringify(mapKeys));
         const entries: Record<string, string> = {};
         for (const [key, val] of Object.entries(defaults.reasoningEffortMap)) {
           entries[key] = JSON.stringify(val);
         }
         setReasoningEffortMap(entries);
-        filled.supportedReasoningEfforts = 'defaults';
+        if (Object.keys(entries).length > 0) {
+          filled.reasoningEffortMap = 'defaults';
+        }
+        // Pre-fill default reasoning effort from defaults
+        if (defaults.defaultReasoningEffort && !filled.defaultReasoningEffort) {
+          setDefaultReasoningEffort(defaults.defaultReasoningEffort);
+          filled.defaultReasoningEffort = 'defaults';
+        }
+      } else if (defaults.defaultReasoningEffort && !filled.defaultReasoningEffort) {
+        setDefaultReasoningEffort(defaults.defaultReasoningEffort);
+        filled.defaultReasoningEffort = 'defaults';
       }
       if (defaults.preserveReasoning !== undefined) {
         setPreserveReasoning(defaults.preserveReasoning);
@@ -226,7 +224,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         newErrors.presencePenalty = 'Must be between -2 and 2';
       }
     }
-    for (const name of effortNames) {
+    for (const name of Object.keys(reasoningEffortMap)) {
       const params = reasoningEffortMap[name];
       if (params && params.trim()) {
         try {
@@ -274,19 +272,9 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
     e.preventDefault();
     if (!validate()) return;
 
-    /** Parses the effort names from the JSON array string. */
-    const effortNames = (): string[] => {
-      try {
-        const parsed = JSON.parse(supportedReasoningEfforts) as unknown;
-        return Array.isArray(parsed) ? (parsed as string[]) : [];
-      } catch {
-        return [];
-      }
-    };
-
     /** Builds the JSON string for reasoningEffortMap. */
     const buildReasoningEffortMapJson = (): string | null => {
-      const names = effortNames();
+      const names = Object.keys(reasoningEffortMap);
       const map: Record<string, Record<string, unknown>> = {};
       let hasEntries = false;
       for (const name of names) {
@@ -313,7 +301,6 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       topP: topP !== '' ? Number(topP) : null,
       frequencyPenalty: frequencyPenalty !== '' ? Number(frequencyPenalty) : null,
       presencePenalty: presencePenalty !== '' ? Number(presencePenalty) : null,
-      supportedReasoningEfforts: supportedReasoningEfforts || null,
       defaultReasoningEffort: defaultReasoningEffort || null,
       reasoningEffortMap: buildReasoningEffortMapJson(),
       preserveReasoning,
@@ -344,18 +331,8 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
     return <small className="model-config-dialog__prefill-hint">{label}</small>;
   };
 
-  /** Parses effort names from the JSON array state. */
-  const getEffortNames = (): string[] => {
-    if (!supportedReasoningEfforts) return [];
-    try {
-      const parsed = JSON.parse(supportedReasoningEfforts) as unknown;
-      return Array.isArray(parsed) ? (parsed as string[]) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const effortNames = getEffortNames();
+  /** Returns effort names from the reasoningEffortMap keys. */
+  const effortNames = Object.keys(reasoningEffortMap);
 
   const addEffort = () => {
     const name = newEffortName.trim();
@@ -373,19 +350,13 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         return;
       }
     }
-    const updated = [...effortNames, name];
-    setSupportedReasoningEfforts(JSON.stringify(updated));
-    if (params) {
-      setReasoningEffortMap((prev) => ({ ...prev, [name]: params }));
-    }
+    setReasoningEffortMap((prev) => ({ ...prev, [name]: params }));
     setNewEffortName('');
     setNewEffortParams('');
     clearError('newEffortParams');
   };
 
   const removeEffort = (name: string) => {
-    const updated = effortNames.filter((n) => n !== name);
-    setSupportedReasoningEfforts(updated.length > 0 ? JSON.stringify(updated) : '');
     setReasoningEffortMap((prev) => {
       const next = { ...prev };
       delete next[name];
@@ -489,7 +460,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
 
           <div className="model-config-dialog__section">
             <h3 className="model-config-dialog__section-title">Reasoning</h3>
-            {prefillHint('supportedReasoningEfforts')}
+            {prefillHint('reasoningEffortMap')}
 
             {effortNames.length > 0 && (
               <vscode-table bordered-rows className="model-config-dialog__efforts-table">
@@ -566,31 +537,30 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               <vscode-form-helper severity="error">{errors.newEffortParams}</vscode-form-helper>
             )}
 
-            {effortNames.length > 0 && (
-              <FormGroup>
-                <Label htmlFor="model-default-effort">Default Reasoning Effort</Label>
-                <vscode-single-select
-                  id="model-default-effort"
-                  value={defaultReasoningEffort}
-                  disabled={loading || undefined}
-                  onchange={(e: Event) =>
-                    setDefaultReasoningEffort((e.target as HTMLSelectElement).value)
-                  }
-                >
+            <FormGroup>
+              <Label htmlFor="model-default-effort">Default Reasoning Effort</Label>
+              <vscode-single-select
+                id="model-default-effort"
+                value={defaultReasoningEffort}
+                disabled={loading || undefined}
+                onchange={(e: Event) =>
+                  setDefaultReasoningEffort((e.target as HTMLSelectElement).value)
+                }
+              >
+                {Object.keys(reasoningEffortMap).length === 0 && (
                   <vscode-option value="">None</vscode-option>
-                  {effortNames.map((name) => (
-                    <vscode-option
-                      key={name}
-                      value={name}
-                      selected={name === defaultReasoningEffort || undefined}
-                    >
-                      {name}
-                    </vscode-option>
-                  ))}
-                </vscode-single-select>
-              </FormGroup>
-            )}
-
+                )}
+                {effortNames.map((name) => (
+                  <vscode-option
+                    key={name}
+                    value={name}
+                    selected={name === defaultReasoningEffort || undefined}
+                  >
+                    {name}
+                  </vscode-option>
+                ))}
+              </vscode-single-select>
+            </FormGroup>
             <FormGroup>
               <vscode-checkbox
                 checked={preserveReasoning || undefined}

@@ -26,7 +26,7 @@ describe('ChatDebugSection', () => {
   it('renders section header', async () => {
     render(<ChatDebugSection />);
     await waitFor(() => {
-      expect(screen.getByText('Chat Debug')).toBeDefined();
+      expect(screen.getByText('Debugging')).toBeDefined();
     });
   });
 

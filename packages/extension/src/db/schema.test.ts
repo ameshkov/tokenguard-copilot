@@ -28,7 +28,6 @@ describe('models table', () => {
     expect(columns).toHaveProperty('topP');
     expect(columns).toHaveProperty('frequencyPenalty');
     expect(columns).toHaveProperty('presencePenalty');
-    expect(columns).toHaveProperty('supportedReasoningEfforts');
     expect(columns).toHaveProperty('defaultReasoningEffort');
     expect(columns).toHaveProperty('preserveReasoning');
     expect(columns).toHaveProperty('inputCostPer1m');

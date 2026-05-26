@@ -15,14 +15,14 @@ import {
 import { sendRequest } from '../vscode-api.js';
 
 /**
- * Chat Debug settings section.
+ * Debugging settings section.
  *
  * Displays an enabled toggle, TTL input, and action
  * buttons for inspecting and clearing debug logs.
  * Fetches current settings on mount and persists
  * changes via the host message protocol.
  *
- * @returns The chat debug section element.
+ * @returns The debugging section element.
  */
 export function ChatDebugSection(): React.JSX.Element {
   const [enabled, setEnabled] = useState(false);
@@ -102,7 +102,7 @@ export function ChatDebugSection(): React.JSX.Element {
 
   return (
     <div className="chat-debug-section">
-      <SectionHeader title="Chat Debug" />
+      <SectionHeader title="Debugging" />
       <p>
         When enabled, the extension logs all model requests and responses to disk for debugging
         purposes.
@@ -110,7 +110,7 @@ export function ChatDebugSection(): React.JSX.Element {
 
       {enabled && (
         <p className="chat-debug-section__hint">
-          A <strong>Chat Debug Logs</strong> panel appears in the Explorer sidebar when logging is
+          A <strong>TokenGuard Logs</strong> panel appears in the Explorer sidebar when logging is
           enabled. Expand a session to browse individual request logs.
         </p>
       )}

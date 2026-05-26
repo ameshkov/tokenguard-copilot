@@ -451,7 +451,8 @@ export class SettingsPanel {
    * Builds the HTML content for the webview.
    *
    * Reads the HTML template from assets/webview/settings.html and
-   * interpolates dynamic placeholders (nonce, script URI, CSP source).
+   * interpolates dynamic placeholders (nonce, script URI, style URIs,
+   * CSP source).
    *
    * @param webview - The webview to generate HTML for.
    * @returns The full HTML string for the webview.
@@ -463,6 +464,10 @@ export class SettingsPanel {
 
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'settings-app.css'),
+    );
+
+    const codiconStyleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'codicon.css'),
     );
 
     const nonce = getNonce();
@@ -479,6 +484,7 @@ export class SettingsPanel {
       .replaceAll('{{nonce}}', nonce)
       .replaceAll('{{scriptUri}}', scriptUri.toString())
       .replaceAll('{{styleUri}}', styleUri.toString())
+      .replaceAll('{{codiconStyleUri}}', codiconStyleUri.toString())
       .replaceAll('{{cspSource}}', webview.cspSource);
   }
 }

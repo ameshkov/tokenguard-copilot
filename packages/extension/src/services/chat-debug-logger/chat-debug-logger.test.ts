@@ -307,6 +307,61 @@ describe('ChatDebugLogger', () => {
       const md = ChatDebugLogger.formatLogMarkdown(baseInput, 'test-request-id');
       expect(md).not.toContain('🧠 Reasoning');
     });
+
+    it('renders usage details with all fields populated', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        usage: {
+          promptTokens: 150,
+          completionTokens: 42,
+          cachedTokens: 10,
+          reasoningTokens: 8,
+        },
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain(
+        'usage: prompt 150 | completion 42 | total 192 | cached 10 | reasoning 8',
+      );
+      expect(md).toContain('"promptTokens": 150');
+      expect(md).toContain('"completionTokens": 42');
+      expect(md).toContain('"totalTokens": 192');
+      expect(md).toContain('"cachedTokens": 10');
+      expect(md).toContain('"reasoningTokens": 8');
+    });
+
+    it('renders usage summary without cached/reasoning labels when those are zero', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        usage: {
+          promptTokens: 100,
+          completionTokens: 20,
+          cachedTokens: 0,
+          reasoningTokens: 0,
+        },
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      // Summary line omits cached/reasoning when zero
+      expect(md).toContain('usage: prompt 100 | completion 20 | total 120');
+      expect(md).not.toContain('| cached 0');
+      expect(md).not.toContain('| reasoning 0');
+      // JSON block still contains the fields
+      expect(md).toContain('"cachedTokens": 0');
+      expect(md).toContain('"reasoningTokens": 0');
+    });
+
+    it('omits usage section when usage is null', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        usage: null,
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).not.toContain('usage:');
+    });
+
+    it('omits usage section when usage is undefined', () => {
+      const md = ChatDebugLogger.formatLogMarkdown(baseInput, 'test-request-id');
+      expect(md).not.toContain('usage:');
+    });
   });
 
   describe('logRequest', () => {

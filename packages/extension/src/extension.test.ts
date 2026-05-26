@@ -261,3 +261,81 @@ describe('deactivate', () => {
     expect(() => deactivate()).not.toThrow();
   });
 });
+
+describe('activate resetCallback', () => {
+  let context: vscode.ExtensionContext;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    context = {
+      subscriptions: [],
+      globalStorageUri: {
+        fsPath: '/mock/storage',
+      },
+      secrets: {
+        store: vi.fn(),
+        get: vi.fn(),
+        delete: vi.fn(),
+      },
+    } as unknown as vscode.ExtensionContext;
+  });
+
+  it('should delete all rows from all 6 tables', async () => {
+    // Arrange
+    const deleteMock = vi.fn().mockReturnValue({ run: vi.fn() });
+    mockDb.delete = deleteMock;
+    mockDb.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        all: vi.fn().mockReturnValue([]),
+      }),
+    });
+
+    await activate(context);
+
+    // Get the resetCallback passed to ExtensionContext
+    const resetCallback = vi.mocked(ExtensionContext).mock.calls[0]?.[0]?.resetCallback;
+    await resetCallback();
+
+    // Assert: delete called for each of the 6 tables
+    expect(deleteMock).toHaveBeenCalledTimes(6);
+  });
+
+  it('should delete all SecretStorage keys for each provider', async () => {
+    // Arrange: 3 providers
+    mockDb.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        all: vi.fn().mockReturnValue([{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }]),
+      }),
+    });
+    const deleteMock = vi.fn().mockReturnValue({ run: vi.fn() });
+    mockDb.delete = deleteMock;
+
+    await activate(context);
+
+    const resetCallback = vi.mocked(ExtensionContext).mock.calls[0]?.[0]?.resetCallback;
+    await resetCallback();
+
+    // Assert: secrets.delete called for each provider
+    expect(context.secrets.delete).toHaveBeenCalledTimes(3);
+    expect(context.secrets.delete).toHaveBeenCalledWith('tokenguard-copilot.provider.p1');
+  });
+
+  it('should handle empty database (no providers)', async () => {
+    mockDb.select = vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        all: vi.fn().mockReturnValue([]),
+      }),
+    });
+    const deleteMock = vi.fn().mockReturnValue({ run: vi.fn() });
+    mockDb.delete = deleteMock;
+
+    await activate(context);
+
+    const resetCallback = vi.mocked(ExtensionContext).mock.calls[0]?.[0]?.resetCallback;
+    await resetCallback();
+
+    // Assert: deletes still happen (no early returns), no secrets to clean
+    expect(deleteMock).toHaveBeenCalledTimes(6);
+    expect(context.secrets.delete).not.toHaveBeenCalled();
+  });
+});

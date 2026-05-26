@@ -225,6 +225,7 @@ export class ProviderManager {
    */
   async resetAll(): Promise<void> {
     await this.resetCallback();
+    this.modelRegistry.disposeAll();
     this.emitter.fire();
   }
 }

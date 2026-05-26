@@ -18,7 +18,6 @@ export interface ModelInfo {
   topP: number | null;
   frequencyPenalty: number | null;
   presencePenalty: number | null;
-  supportedReasoningEfforts: string | null;
   defaultReasoningEffort: string | null;
   reasoningEffortMap: string | null;
   preserveReasoning: boolean;
@@ -33,7 +32,6 @@ export interface FetchedModel {
   name: string | null;
   maxContextWindowTokens: number | null;
   maxOutputTokens: number | null;
-  supportedReasoningEfforts: string[] | null;
   defaultReasoningEffort: string | null;
   vision: boolean | null;
 }
@@ -46,8 +44,14 @@ export interface ModelDefaultsResult {
   outputCostPer1M: number;
   cachedInputCostPer1M?: number;
   supportedCapabilities: string[];
-  supportedReasoningEfforts?: string[];
+  /** Maps reasoning effort level names to provider-specific
+   *  chat completion body parameters. */
   reasoningEffortMap?: Record<string, Record<string, unknown>>;
+  /** Default reasoning effort level for this model. When
+   *  reasoningEffortMap is present, this must be one of its
+   *  keys. */
+  defaultReasoningEffort?: string;
+  /** When true, preserve reasoning tokens between turns. */
   preserveReasoning?: boolean;
 }
 
@@ -70,7 +74,6 @@ export interface ModelConfig {
   topP: number | null;
   frequencyPenalty: number | null;
   presencePenalty: number | null;
-  supportedReasoningEfforts: string | null;
   defaultReasoningEffort: string | null;
   reasoningEffortMap: string | null;
   preserveReasoning: boolean;

@@ -139,7 +139,6 @@ export class ModelRegistry {
       topP: config.topP,
       frequencyPenalty: config.frequencyPenalty,
       presencePenalty: config.presencePenalty,
-      supportedReasoningEfforts: config.supportedReasoningEfforts,
       defaultReasoningEffort: config.defaultReasoningEffort,
       reasoningEffortMap: config.reasoningEffortMap,
       preserveReasoning: config.preserveReasoning ? 1 : 0,
@@ -184,7 +183,6 @@ export class ModelRegistry {
       topP: config.topP,
       frequencyPenalty: config.frequencyPenalty,
       presencePenalty: config.presencePenalty,
-      supportedReasoningEfforts: config.supportedReasoningEfforts,
       defaultReasoningEffort: config.defaultReasoningEffort,
       reasoningEffortMap: config.reasoningEffortMap,
       preserveReasoning: config.preserveReasoning ? 1 : 0,
@@ -308,20 +306,22 @@ export class ModelRegistry {
 
       modelMap.set(identifier, { model, provider });
 
-      // Parse supported reasoning efforts for
-      // configurationSchema.
+      // Parse reasoning effort map for
+      // configurationSchema. Use the keys of the
+      // reasoningEffortMap as the available effort levels.
       let configurationSchema: Record<string, unknown> | undefined;
-      const efforts = model.supportedReasoningEfforts;
-      if (efforts) {
+      const effortMapRaw = model.reasoningEffortMap;
+      if (effortMapRaw) {
         try {
-          const parsed = JSON.parse(efforts) as string[];
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          const parsed = JSON.parse(effortMapRaw) as Record<string, unknown>;
+          const keys = Object.keys(parsed);
+          if (keys.length > 0) {
             configurationSchema = {
               properties: {
                 reasoningEffort: {
                   type: 'string',
-                  enum: parsed,
-                  default: model.defaultReasoningEffort ?? parsed[0],
+                  enum: keys,
+                  default: model.defaultReasoningEffort ?? keys[0],
                 },
               },
             };
@@ -508,7 +508,6 @@ function toModelInfo(row: Model): ModelInfo {
     topP: row.topP,
     frequencyPenalty: row.frequencyPenalty,
     presencePenalty: row.presencePenalty,
-    supportedReasoningEfforts: row.supportedReasoningEfforts,
     defaultReasoningEffort: row.defaultReasoningEffort,
     reasoningEffortMap: row.reasoningEffortMap ?? null,
     preserveReasoning: row.preserveReasoning === 1,
@@ -529,7 +528,6 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
   const capabilities = entry.capabilities as Record<string, unknown> | undefined;
   const limits = capabilities?.limits as Record<string, unknown> | undefined;
 
-  const supportedEfforts = entry.supportedReasoningEfforts;
   const defaultEffort = entry.defaultReasoningEffort;
 
   return {
@@ -541,9 +539,6 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
         : null,
     maxOutputTokens:
       typeof limits?.max_output_tokens === 'number' ? limits.max_output_tokens : null,
-    supportedReasoningEfforts: Array.isArray(supportedEfforts)
-      ? (supportedEfforts as string[])
-      : null,
     defaultReasoningEffort: typeof defaultEffort === 'string' ? defaultEffort : null,
     vision: typeof entry.vision === 'boolean' ? entry.vision : null,
   };

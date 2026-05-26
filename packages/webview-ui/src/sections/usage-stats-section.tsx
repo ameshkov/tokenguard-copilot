@@ -37,6 +37,12 @@ export interface UsageStatsSectionProps {
   providers: ProviderInfo[];
   /** All models for filter dropdowns. */
   models: ModelInfo[];
+  /**
+   * External trigger to re-fetch stats.
+   * Increment this value to force a refresh (e.g. after
+   * resetting statistics from the Danger Zone section).
+   */
+  refreshTrigger?: number;
 }
 
 /** Period filter options. */
@@ -168,7 +174,7 @@ function buildChartOptions(
  * @returns The usage stats section element.
  */
 export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Element {
-  const { providers, models } = props;
+  const { providers, models, refreshTrigger } = props;
 
   const [period, setPeriod] = useState<Period>('last7d');
   const [selectedProviderIds, setSelectedProviderIds] = useState<string[]>([]);
@@ -245,7 +251,7 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
     } finally {
       setLoading(false);
     }
-  }, [period, selectedProviderIds, selectedModelIds]);
+  }, [period, selectedProviderIds, selectedModelIds, refreshTrigger]);
 
   useEffect(() => {
     void fetchStats();
@@ -264,7 +270,7 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
         reasoning: 0,
       };
       entry.input += r.promptTokens - r.cachedTokens;
-      entry.output += r.completionTokens;
+      entry.output += r.completionTokens - r.reasoningTokens;
       entry.cached += r.cachedTokens;
       entry.reasoning += r.reasoningTokens;
       byDate.set(r.date, entry);
@@ -290,13 +296,12 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
         <h2 className="section-header__title">Usage Stats</h2>
         <vscode-button
           secondary
+          icon="refresh"
           aria-label="Refresh usage stats"
-          title="Refresh"
+          title="Refresh usage stats"
           disabled={loading || undefined}
           onclick={() => void fetchStats()}
-        >
-          <vscode-icon name="refresh" slot="content-before" />
-        </vscode-button>
+        ></vscode-button>
       </div>
 
       {/* Filters */}

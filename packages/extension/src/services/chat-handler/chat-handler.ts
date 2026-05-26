@@ -263,21 +263,9 @@ export class ChatHandler {
 
     // Reasoning effort
     const effortLevel = ctx.reasoningEffort ?? ctx.model.defaultReasoningEffort;
-    if (
-      effortLevel !== null &&
-      effortLevel !== undefined &&
-      ctx.model.supportedReasoningEfforts !== null
-    ) {
-      const effortMap = ctx.defaults?.reasoningEffortMap ?? null;
-
-      if (effortMap && effortLevel in effortMap) {
-        // Merge provider-specific parameters
-        const mapEntry = effortMap[effortLevel];
-        Object.assign(body, mapEntry);
-      } else {
-        // Standard reasoning_effort field
-        body.reasoning_effort = effortLevel;
-      }
+    const effortMap = ctx.defaults?.reasoningEffortMap ?? null;
+    if (effortLevel && effortMap && effortLevel in effortMap) {
+      Object.assign(body, effortMap[effortLevel]);
     }
 
     // Tool definitions
@@ -796,6 +784,7 @@ export class ChatHandler {
             endTime,
             cancelled,
             error,
+            usage: usageCollector?.usage ?? null,
             workspaceFolderUri: this.ctx.workspaceFolderUri,
           });
         } catch {

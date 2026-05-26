@@ -4,12 +4,13 @@
       "type": "exact",
       "value": "qwen-3.6-plus"
     },
-    "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 0.325,
-    "outputCostPer1M": 1.95,
-    "cachedInputCostPer1M": 0.0325,
+    "contextSize": 262144,
+    "maxTokens": 65500,
+    "inputCostPer1M": 1.125,
+    "outputCostPer1M": 3,
+    "cachedInputCostPer1M": 0.05,
     "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "enable_thinking": false
@@ -24,13 +25,15 @@
   {
     "match": {
       "type": "exact",
-      "value": "qwen-3.6-max-preview"
+      "value": "qwen-3.7-max"
     },
-    "contextSize": 262000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 1.04,
-    "outputCostPer1M": 6.24,
+    "contextSize": 262144,
+    "maxTokens": 65500,
+    "inputCostPer1M": 5.625,
+    "outputCostPer1M": 7.5,
+    "cachedInputCostPer1M": 0.25,
     "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "enable_thinking": false
@@ -48,10 +51,12 @@
       "value": "qwen-3.6-27b"
     },
     "contextSize": 262000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 0.32,
     "outputCostPer1M": 3.2,
+    "cachedInputCostPer1M": 0.32,
     "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "enable_thinking": false
@@ -69,11 +74,12 @@
       "value": "qwen-3.6-35b-a3b"
     },
     "contextSize": 262000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 0.15,
     "outputCostPer1M": 1.0,
     "cachedInputCostPer1M": 0.05,
     "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "enable_thinking": false
@@ -91,11 +97,12 @@
       "value": "kimi-k2.6"
     },
     "contextSize": 262000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 0.74,
     "outputCostPer1M": 3.5,
     "cachedInputCostPer1M": 0.15,
     "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -117,11 +124,12 @@
       "value": "glm-5.1"
     },
     "contextSize": 203000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 1.05,
     "outputCostPer1M": 3.5,
     "cachedInputCostPer1M": 0.525,
     "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -143,11 +151,12 @@
       "value": "deepseek-v4-pro"
     },
     "contextSize": 1050000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 1.74,
-    "outputCostPer1M": 3.48,
-    "cachedInputCostPer1M": 0.0145,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.435,
+    "outputCostPer1M": 0.87,
+    "cachedInputCostPer1M": 0.003625,
     "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -175,11 +184,12 @@
       "value": "deepseek-v4-flash"
     },
     "contextSize": 1050000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 0.14,
     "outputCostPer1M": 0.28,
     "cachedInputCostPer1M": 0.0028,
     "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -207,11 +217,12 @@
       "value": "mimo-v2.5-pro"
     },
     "contextSize": 1050000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 1.0,
     "outputCostPer1M": 3.0,
     "cachedInputCostPer1M": 0.2,
     "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -228,127 +239,491 @@
   },
   {
     "match": {
-      "type": "exact",
-      "value": "gpt-5.5"
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.5-pro$"
     },
     "contextSize": 1050000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 5.0,
-    "outputCostPer1M": 30.0,
+    "maxTokens": 65500,
+    "inputCostPer1M": 30,
+    "outputCostPer1M": 180,
+    "cachedInputCostPer1M": 30,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["none", "low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "gpt-5.4"
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.5$"
+    },
+    "contextSize": 272000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 5.0,
+    "outputCostPer1M": 30.0,
+    "cachedInputCostPer1M": 0.5,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.4-pro$"
     },
     "contextSize": 1050000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
+    "inputCostPer1M": 30,
+    "outputCostPer1M": 180,
+    "cachedInputCostPer1M": 30,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.4$"
+    },
+    "contextSize": 272000,
+    "maxTokens": 65500,
     "inputCostPer1M": 2.5,
     "outputCostPer1M": 15.0,
     "cachedInputCostPer1M": 0.25,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["none", "low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "gpt-5.3-codex"
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.3-codex$"
     },
     "contextSize": 400000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 1.75,
     "outputCostPer1M": 14.0,
     "cachedInputCostPer1M": 0.175,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "gpt-5.4-mini"
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.4-mini$"
     },
     "contextSize": 400000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 0.75,
     "outputCostPer1M": 4.5,
     "cachedInputCostPer1M": 0.075,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "gpt-5.2"
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.4-nano$"
     },
     "contextSize": 400000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.2,
+    "outputCostPer1M": 1.25,
+    "cachedInputCostPer1M": 0.02,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)gpt-5.2$"
+    },
+    "contextSize": 400000,
+    "maxTokens": 65500,
     "inputCostPer1M": 1.75,
     "outputCostPer1M": 14.0,
     "cachedInputCostPer1M": 0.175,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["none", "low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "opus-4.5"
+      "type": "regex",
+      "value": "(^|/|-)opus-4.5$"
     },
     "contextSize": 200000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 5.0,
+    "maxTokens": 65500,
+    "inputCostPer1M": 11.25,
     "outputCostPer1M": 25.0,
+    "cachedInputCostPer1M": 0.5,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "opus-4.6"
+      "type": "regex",
+      "value": "(^|/|-)opus-4.6$"
     },
     "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 5.0,
+    "maxTokens": 65500,
+    "inputCostPer1M": 11.25,
     "outputCostPer1M": 25.0,
+    "cachedInputCostPer1M": 0.5,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh", "max"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      },
+      "max": {
+        "reasoning_effort": "max",
+        "reasoning": { "effort": "max" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "opus-4.7"
+      "type": "regex",
+      "value": "(^|/|-)opus-4.6-fast$"
     },
     "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 5.0,
-    "outputCostPer1M": 25.0,
+    "maxTokens": 65500,
+    "inputCostPer1M": 67.5,
+    "outputCostPer1M": 150.0,
+    "cachedInputCostPer1M": 3,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh", "max"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      },
+      "max": {
+        "reasoning_effort": "max",
+        "reasoning": { "effort": "max" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "sonnet-4.5"
+      "type": "regex",
+      "value": "(^|/|-)opus-4.7$"
     },
     "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 3.0,
+    "maxTokens": 65500,
+    "inputCostPer1M": 11.25,
+    "outputCostPer1M": 25.0,
+    "cachedInputCostPer1M": 0.5,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      },
+      "max": {
+        "reasoning_effort": "max",
+        "reasoning": { "effort": "max" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)opus-4.7-fast$"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 67.5,
+    "outputCostPer1M": 150.0,
+    "cachedInputCostPer1M": 3,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      },
+      "max": {
+        "reasoning_effort": "max",
+        "reasoning": { "effort": "max" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)sonnet-4.5$"
+    },
+    "contextSize": 200000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 6.75,
     "outputCostPer1M": 15.0,
+    "cachedInputCostPer1M": 0.3,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "sonnet-4.6"
+      "type": "regex",
+      "value": "(^|/)sonnet-4.6$"
     },
-    "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 3.0,
+    "contextSize": 200000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 6.75,
     "outputCostPer1M": 15.0,
+    "cachedInputCostPer1M": 0.3,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   },
   {
     "match": {
@@ -356,11 +731,12 @@
       "value": "^kimi-k2"
     },
     "contextSize": 262000,
-    "maxTokens": 32768,
+    "maxTokens": 65500,
     "inputCostPer1M": 0.74,
     "outputCostPer1M": 3.5,
     "cachedInputCostPer1M": 0.15,
     "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
         "thinking": {
@@ -379,25 +755,67 @@
   {
     "match": {
       "type": "regex",
-      "value": "^opus-4\\."
+      "value": "(^|/)opus-4\\."
     },
-    "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 5.0,
+    "contextSize": 200000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 11.25,
     "outputCostPer1M": 25.0,
+    "cachedInputCostPer1M": 0.5,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh", "max"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      },
+      "max": {
+        "reasoning_effort": "max",
+        "reasoning": { "effort": "max" }
+      }
+    }
   },
   {
     "match": {
       "type": "regex",
-      "value": "^sonnet-4\\."
+      "value": "(^|/)sonnet-4\\."
     },
-    "contextSize": 1000000,
-    "maxTokens": 32768,
-    "inputCostPer1M": 3.0,
+    "contextSize": 200000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 6.75,
     "outputCostPer1M": 15.0,
+    "cachedInputCostPer1M": 0.3,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "supportedReasoningEfforts": ["low", "medium", "high", "xhigh"]
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
   }
 ]

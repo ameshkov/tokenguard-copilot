@@ -6,7 +6,14 @@ import { registerCommands } from './commands/index.js';
 import { ExtensionContext } from './context.js';
 import { createDb } from './db/connection.js';
 import { runMigrations } from './db/migrate.js';
-import { providers, models, usageRecords } from './db/schema.js';
+import {
+  providers,
+  models,
+  usageRecords,
+  settings,
+  sessionMappings,
+  reasoningCache,
+} from './db/schema.js';
 import { createStatusBarItem } from './ui/status-bar/status-bar.js';
 import { ChatDebugTreeViewProvider } from './ui/tree-views/index.js';
 
@@ -49,6 +56,11 @@ export async function activate(context: vscode.ExtensionContext) {
         db.delete(models).run();
         db.delete(providers).run();
 
+        // Delete remaining tables (no FK dependencies)
+        db.delete(settings).run();
+        db.delete(sessionMappings).run();
+        db.delete(reasoningCache).run();
+
         // Delete all provider secrets
         for (const p of allProviders) {
           await context.secrets.delete(`tokenguard-copilot.provider.${p.id}`);
@@ -87,9 +99,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(localCtx.reasoningCacheCleanup.startPeriodicCleanup());
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.enableChatDebugLogging', async () => {
+    vscode.commands.registerCommand('tokenguard-copilot.enableDebuggingLogging', async () => {
       const answer = await vscode.window.showInformationMessage(
-        'Enable chat debug logging? This will record request and response data for debugging.',
+        'Enable debug logging? This will record request and response data for debugging.',
         { modal: true },
         'Enable',
       );
@@ -105,7 +117,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.disableChatDebugLogging', () => {
+    vscode.commands.registerCommand('tokenguard-copilot.disableDebuggingLogging', () => {
       localCtx.chatDebugSettings.updateSettings({ enabled: false });
       void vscode.commands.executeCommand(
         'setContext',
@@ -116,13 +128,13 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.refreshChatDebugLogs', () => {
+    vscode.commands.registerCommand('tokenguard-copilot.refreshDebuggingLogs', () => {
       treeViewProvider.refresh();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.clearChatDebugLogs', async () => {
+    vscode.commands.registerCommand('tokenguard-copilot.clearDebuggingLogs', async () => {
       const answer = await vscode.window.showWarningMessage(
         'This will permanently delete all debug logs. This action cannot be undone.',
         { modal: true },

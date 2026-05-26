@@ -49,26 +49,26 @@
         "category": "TokenGuard Copilot"
       },
       {
-        "command": "tokenguard-copilot.enableChatDebugLogging",
-        "title": "Enable Chat Debug Logging",
+        "command": "tokenguard-copilot.enableDebuggingLogging",
+        "title": "Enable Debugging Logging",
         "category": "TokenGuard Copilot",
         "icon": "$(play)"
       },
       {
-        "command": "tokenguard-copilot.disableChatDebugLogging",
-        "title": "Disable Chat Debug Logging",
+        "command": "tokenguard-copilot.disableDebuggingLogging",
+        "title": "Disable Debugging Logging",
         "category": "TokenGuard Copilot",
         "icon": "$(stop)"
       },
       {
-        "command": "tokenguard-copilot.clearChatDebugLogs",
-        "title": "Clear Chat Debug Logs",
+        "command": "tokenguard-copilot.clearDebuggingLogs",
+        "title": "Clear Debugging Logs",
         "category": "TokenGuard Copilot",
         "icon": "$(trash)"
       },
       {
-        "command": "tokenguard-copilot.refreshChatDebugLogs",
-        "title": "Refresh Chat Debug Logs",
+        "command": "tokenguard-copilot.refreshDebuggingLogs",
+        "title": "Refresh Debugging Logs",
         "category": "TokenGuard Copilot",
         "icon": "$(refresh)"
       }
@@ -76,19 +76,19 @@
     "menus": {
       "view/title": [
         {
-          "command": "tokenguard-copilot.disableChatDebugLogging",
+          "command": "tokenguard-copilot.disableDebuggingLogging",
           "when": "view == tokenguardCopilotChatDebugLogs",
           "group": "navigation",
           "icon": "$(stop)"
         },
         {
-          "command": "tokenguard-copilot.clearChatDebugLogs",
+          "command": "tokenguard-copilot.clearDebuggingLogs",
           "when": "view == tokenguardCopilotChatDebugLogs",
           "group": "navigation",
           "icon": "$(trash)"
         },
         {
-          "command": "tokenguard-copilot.refreshChatDebugLogs",
+          "command": "tokenguard-copilot.refreshDebuggingLogs",
           "when": "view == tokenguardCopilotChatDebugLogs",
           "group": "navigation",
           "icon": "$(refresh)"

@@ -56,7 +56,6 @@ describe('ModelRegistry', () => {
     topP: null,
     frequencyPenalty: null,
     presencePenalty: null,
-    supportedReasoningEfforts: null,
     defaultReasoningEffort: null,
     reasoningEffortMap: null,
     preserveReasoning: false,
@@ -532,10 +531,11 @@ describe('ModelRegistry', () => {
       });
     });
 
-    it('attaches configurationSchema for models with supportedReasoningEfforts', () => {
+    it('attaches configurationSchema for models with reasoningEffortMap', () => {
       registry.addModel(providerId, 'o3', {
         ...validConfig,
-        supportedReasoningEfforts: '["low","medium","high"]',
+        reasoningEffortMap:
+          '{"low":{"reasoning_effort":"low"},"medium":{"reasoning_effort":"medium"},"high":{"reasoning_effort":"high"}}',
         defaultReasoningEffort: 'medium',
       });
       mockRegister.mockClear();
@@ -558,7 +558,7 @@ describe('ModelRegistry', () => {
       });
     });
 
-    it('omits configurationSchema for models without supportedReasoningEfforts', () => {
+    it('omits configurationSchema for models without reasoningEffortMap', () => {
       registry.addModel(providerId, 'gpt-4o', validConfig);
       mockRegister.mockClear();
 

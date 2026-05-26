@@ -66,6 +66,10 @@ export function SettingsApp(): React.JSX.Element {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [page, setPage] = useState<Page>({ type: 'settings' });
 
+  // Stats refresh trigger — incremented to force UsageStatsSection
+  // to re-fetch after a stats reset.
+  const [statsRefreshKey, setStatsRefreshKey] = useState(0);
+
   // Provider form state (shared by add/edit provider pages).
   const [providerLoading, setProviderLoading] = useState(false);
   const [providerError, setProviderError] = useState<string | null>(null);
@@ -394,13 +398,18 @@ export function SettingsApp(): React.JSX.Element {
             onEdit={(m) => setPage({ type: 'editModel', model: m })}
             onRemove={(providerId, modelId) => handleRemoveModel(providerId, modelId)}
           />
-          <UsageStatsSection providers={providers} models={models} />
+          <UsageStatsSection
+            providers={providers}
+            models={models}
+            refreshTrigger={statsRefreshKey}
+          />
           <ChatDebugSection />
           <GlobalActions
             onReset={() => {
               void fetchProviders();
               void fetchModels();
             }}
+            onStatsReset={() => setStatsRefreshKey((k) => k + 1)}
           />
         </main>
       );
