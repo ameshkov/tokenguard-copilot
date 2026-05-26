@@ -291,6 +291,42 @@ export class ChatHandler {
   }
 
   /**
+   * Extracts token usage from a parsed chat completion
+   * response JSON body.
+   *
+   * Reads `usage.prompt_tokens`,
+   * `usage.completion_tokens`,
+   * `usage.prompt_tokens_details.cached_tokens`, and
+   * `usage.completion_tokens_details.reasoning_tokens`.
+   * Missing fields default to 0.
+   *
+   * @param json - Parsed response JSON.
+   * @returns ChatUsage object or null if `usage` is
+   *   absent.
+   */
+  static extractUsageFromResponse(json: Record<string, unknown>): ChatUsage | null {
+    const usage = json.usage as Record<string, unknown> | undefined;
+    if (!usage) return null;
+
+    const promptTokens = typeof usage.prompt_tokens === 'number' ? usage.prompt_tokens : 0;
+    const completionTokens =
+      typeof usage.completion_tokens === 'number' ? usage.completion_tokens : 0;
+
+    const details = usage.prompt_tokens_details as Record<string, unknown> | undefined;
+    const cachedTokens = typeof details?.cached_tokens === 'number' ? details.cached_tokens : 0;
+
+    const completionDetails = usage.completion_tokens_details as
+      | Record<string, unknown>
+      | undefined;
+    const reasoningTokens =
+      typeof completionDetails?.reasoning_tokens === 'number'
+        ? completionDetails.reasoning_tokens
+        : 0;
+
+    return { promptTokens, completionTokens, cachedTokens, reasoningTokens };
+  }
+
+  /**
    * Handles a non-streaming response from the
    * `/chat/completions` endpoint.
    *
@@ -306,6 +342,7 @@ export class ChatHandler {
     response: Response,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     reasoningOut?: ReasoningCollector,
+    usageOut?: UsageCollector,
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -357,6 +394,13 @@ export class ChatHandler {
           new TextEncoder().encode(JSON.stringify(usageData)),
           USAGE_DATA_PART_MIME,
         ),
+      );
+    }
+
+    // Collect usage for the usage tracker
+    if (usageOut) {
+      usageOut.usage = ChatHandler.extractUsageFromResponse(
+        json as unknown as Record<string, unknown>,
       );
     }
 
@@ -419,6 +463,7 @@ export class ChatHandler {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
     reasoningOut?: ReasoningCollector,
+    usageOut?: UsageCollector,
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -524,6 +569,14 @@ export class ChatHandler {
                 ),
               );
             }
+
+            // Also capture for UsageTracker (only on final chunk
+            // where usage is non-null)
+            if (usageOut && !usageOut.usage) {
+              usageOut.usage = ChatHandler.extractUsageFromResponse(
+                parsed as unknown as Record<string, unknown>,
+              );
+            }
           }
 
           const choice = parsed.choices?.[0];
@@ -619,6 +672,7 @@ export class ChatHandler {
     messages: readonly vscode.LanguageModelChatRequestMessage[],
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
+    usageCollector?: UsageCollector,
   ): Promise<void> {
     const translated = ChatHandler.translateMessages(messages);
 
@@ -677,9 +731,20 @@ export class ChatHandler {
       });
 
       if (this.ctx.model.streaming === 1) {
-        await ChatHandler.handleStreaming(response, capturingProgress, token, reasoningCollector);
+        await ChatHandler.handleStreaming(
+          response,
+          capturingProgress,
+          token,
+          reasoningCollector,
+          usageCollector,
+        );
       } else {
-        await ChatHandler.handleNonStreaming(response, capturingProgress, reasoningCollector);
+        await ChatHandler.handleNonStreaming(
+          response,
+          capturingProgress,
+          reasoningCollector,
+          usageCollector,
+        );
       }
 
       // Cache reasoning after successful response
@@ -751,4 +816,25 @@ export class ChatHandler {
 export interface ReasoningCollector {
   /** The collected reasoning fields, or `null` if none. */
   fields: ReasoningFields | null;
+}
+
+/**
+ * Token usage extracted from a chat completion response.
+ * Mirrors {@link TokenUsage} from the usage-tracker module
+ * but defined here to avoid circular imports.
+ */
+export interface ChatUsage {
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
+  reasoningTokens: number;
+}
+
+/**
+ * Mutable wrapper passed to streaming/non-streaming
+ * handlers to capture usage data for recording.
+ */
+export interface UsageCollector {
+  /** Collected usage data, or null if not yet available. */
+  usage: ChatUsage | null;
 }

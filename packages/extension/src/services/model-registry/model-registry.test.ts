@@ -96,6 +96,10 @@ describe('ModelRegistry', () => {
       countTokens: vi.fn().mockResolvedValue(0),
       countMessageTokens: vi.fn().mockResolvedValue(0),
     };
+    const mockUsageTracker = {
+      recordUsage: vi.fn(),
+      recordError: vi.fn(),
+    };
     registry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -104,6 +108,7 @@ describe('ModelRegistry', () => {
       mockLogger,
       mockTokenCounter as unknown as import('../token-counter/index.js').TokenCounter,
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
+      mockUsageTracker as unknown as import('../usage-tracker/index.js').UsageTracker,
     );
   });
 
@@ -302,6 +307,40 @@ describe('ModelRegistry', () => {
       registry.addModel(providerId, 'gpt-4o', validConfig);
       const models = registry.getModels('other-provider');
       expect(models).toHaveLength(0);
+    });
+  });
+
+  describe('getAllModels', () => {
+    it('returns both active and removed models', () => {
+      registry.addModel(providerId, 'gpt-4o', validConfig);
+      registry.addModel(providerId, 'gpt-4o-mini', validConfig);
+      registry.removeModel(providerId, 'gpt-4o');
+
+      const allModels = registry.getAllModels();
+      expect(allModels).toHaveLength(2);
+    });
+
+    it('filters by providerId', () => {
+      registry.addModel(providerId, 'gpt-4o', validConfig);
+      const models = registry.getAllModels('other-provider');
+      expect(models).toHaveLength(0);
+    });
+  });
+
+  describe('getAllModelsWithStatus', () => {
+    it('includes removed flag for active models', () => {
+      registry.addModel(providerId, 'gpt-4o', validConfig);
+      const all = registry.getAllModelsWithStatus();
+      expect(all).toHaveLength(1);
+      expect(all[0].removed).toBe(false);
+    });
+
+    it('includes removed flag for removed models', () => {
+      registry.addModel(providerId, 'gpt-4o', validConfig);
+      registry.removeModel(providerId, 'gpt-4o');
+      const all = registry.getAllModelsWithStatus();
+      expect(all).toHaveLength(1);
+      expect(all[0].removed).toBe(true);
     });
   });
 

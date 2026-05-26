@@ -79,6 +79,22 @@ export interface ModelConfig {
   cachedInputCostPer1m: number | null;
 }
 
+/** Fetch usage statistics. */
+export interface GetUsageStatsRequest extends WebviewRequest {
+  type: 'getUsageStats';
+  period?: string;
+  providerIds?: string[];
+  modelIds?: string[];
+}
+
+/** Reset usage statistics. */
+export interface ResetUsageStatsRequest extends WebviewRequest {
+  type: 'resetUsageStats';
+  scope: 'all' | 'provider' | 'model';
+  providerId?: string;
+  modelId?: string;
+}
+
 // ---- Requests: webview → host ----
 
 /** Base for all request messages. */
@@ -191,7 +207,9 @@ export type WebviewCommand =
   | GetModelDefaultsRequest
   | GetChatDebugSettingsRequest
   | UpdateChatDebugSettingsRequest
-  | ClearChatDebugLogsRequest;
+  | ClearChatDebugLogsRequest
+  | GetUsageStatsRequest
+  | ResetUsageStatsRequest;
 
 // ---- Responses: host → webview ----
 
@@ -315,4 +333,71 @@ export type HostMessage =
   | GetModelDefaultsResponse
   | GetChatDebugSettingsResponse
   | UpdateChatDebugSettingsResponse
-  | ClearChatDebugLogsResponse;
+  | ClearChatDebugLogsResponse
+  | GetUsageStatsResponse
+  | ResetUsageStatsResponse;
+
+// ---- Usage Stats types ----
+
+/** A single daily usage record. */
+export interface UsageRecordInfo {
+  providerId: string;
+  modelId: string;
+  date: string;
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
+  reasoningTokens: number;
+  requestCount: number;
+  errorCount: number;
+  estimatedCost: number;
+}
+
+/** Named entity entry for filter dropdowns. */
+export interface NamedEntityInfo {
+  name: string;
+  removed: boolean;
+}
+
+/** Per-model cost breakdown entry. */
+export interface PerModelBreakdown {
+  providerId: string;
+  modelId: string;
+  displayName: string | null;
+  inputCostPer1m: number | null;
+  outputCostPer1m: number | null;
+  cachedInputCostPer1m: number | null;
+  promptTokens: number;
+  completionTokens: number;
+  cachedTokens: number;
+  reasoningTokens: number;
+  estimatedCost: number;
+}
+
+/** Aggregated usage statistics summary. */
+export interface UsageStatsSummary {
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalCachedTokens: number;
+  totalReasoningTokens: number;
+  totalRequestCount: number;
+  totalErrorCount: number;
+  totalEstimatedCost: number;
+  providerNames: Record<string, NamedEntityInfo>;
+  modelNames: Record<string, NamedEntityInfo>;
+  perModelBreakdown: PerModelBreakdown[];
+}
+
+/** Response to GetUsageStatsRequest. */
+export interface GetUsageStatsResponse extends HostResponse {
+  type: 'getUsageStatsResult';
+  records: UsageRecordInfo[];
+  summary: UsageStatsSummary;
+}
+
+/** Response to ResetUsageStatsRequest. */
+export interface ResetUsageStatsResponse extends HostResponse {
+  type: 'resetUsageStatsResult';
+  success: boolean;
+  error?: string;
+}

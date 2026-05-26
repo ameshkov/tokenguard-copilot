@@ -18,12 +18,18 @@ beforeEach(() => {
 });
 
 describe('GlobalActions', () => {
-  it('renders Reset Statistics button as disabled', () => {
+  it('renders the Danger Zone heading', () => {
     render(<GlobalActions onReset={vi.fn()} />);
-    const btn = screen.getByRole('button', {
-      name: 'Reset Statistics',
-    });
-    expect(btn).toHaveProperty('disabled', true);
+    expect(screen.getByText('Danger Zone')).toBeDefined();
+  });
+
+  it('renders Reset Statistics button', () => {
+    render(<GlobalActions onReset={vi.fn()} />);
+    expect(
+      screen.getByRole('button', {
+        name: 'Reset Statistics',
+      }),
+    ).toBeDefined();
   });
 
   it('renders Reset All Settings button', () => {
@@ -35,7 +41,20 @@ describe('GlobalActions', () => {
     ).toBeDefined();
   });
 
-  it('shows confirmation dialog on click', async () => {
+  it('shows stats confirmation dialog on click', async () => {
+    const user = userEvent.setup();
+    render(<GlobalActions onReset={vi.fn()} />);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Reset Statistics',
+      }),
+    );
+
+    expect(screen.getByText(/Delete all usage statistics/)).toBeDefined();
+  });
+
+  it('shows settings confirmation dialog on click', async () => {
     const user = userEvent.setup();
     render(<GlobalActions onReset={vi.fn()} />);
 
@@ -62,7 +81,7 @@ describe('GlobalActions', () => {
     expect(screen.queryByText(/permanently delete/)).toBeNull();
   });
 
-  it('calls sendRequest on confirm', async () => {
+  it('calls sendRequest on settings confirm', async () => {
     const user = userEvent.setup();
     const onReset = vi.fn();
     vi.mocked(sendRequest).mockResolvedValue({
@@ -91,5 +110,32 @@ describe('GlobalActions', () => {
       type: 'resetSettings',
     });
     expect(onReset).toHaveBeenCalled();
+  });
+
+  it('calls sendRequest on stats confirm', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sendRequest).mockResolvedValue({
+      type: 'resetUsageStatsResult',
+      requestId: 'r1',
+      success: true,
+    });
+
+    render(<GlobalActions onReset={vi.fn()} />);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Reset Statistics',
+      }),
+    );
+
+    const buttons = screen.getAllByRole('button', {
+      name: 'Reset Statistics',
+    });
+    await user.click(buttons[1]);
+
+    expect(sendRequest).toHaveBeenCalledWith({
+      type: 'resetUsageStats',
+      scope: 'all',
+    });
   });
 });

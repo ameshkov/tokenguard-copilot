@@ -18,7 +18,11 @@ import type {
   GetChatDebugSettingsResponse,
   UpdateChatDebugSettingsResponse,
   ClearChatDebugLogsResponse,
+  GetUsageStatsResponse,
+  ResetUsageStatsResponse,
+  UsageStatsSummary,
 } from '@tokenguard/shared';
+import type { UsageRecord } from '../../db/schema.js';
 
 /**
  * Manages the settings webview panel.
@@ -315,6 +319,81 @@ export class SettingsPanel {
             }
             break;
           }
+          case 'getUsageStats': {
+            const filter = {
+              providerId: message.providerIds?.length === 1 ? message.providerIds[0] : undefined,
+              modelId: message.modelIds?.length === 1 ? message.modelIds[0] : undefined,
+              dateFrom: periodToDateFrom(message.period),
+              dateTo: periodToDateTo(message.period),
+            };
+            const records = appCtx.usageTracker.getStats(filter);
+
+            // If multiple providers/models are selected,
+            // filter in-memory (the repo only supports
+            // single ID).
+            let filtered = records;
+            if (message.providerIds && message.providerIds.length > 1) {
+              filtered = filtered.filter((r) => message.providerIds!.includes(r.providerId));
+            }
+            if (message.modelIds && message.modelIds.length > 1) {
+              filtered = filtered.filter((r) => message.modelIds!.includes(r.modelId));
+            }
+
+            const summary = computeSummary(filtered, appCtx);
+
+            const usageRecords = filtered.map((r) => ({
+              providerId: r.providerId,
+              modelId: r.modelId,
+              date: r.date,
+              promptTokens: r.promptTokens,
+              completionTokens: r.completionTokens,
+              cachedTokens: r.cachedTokens,
+              reasoningTokens: r.reasoningTokens,
+              requestCount: r.requestCount,
+              errorCount: r.errorCount,
+              estimatedCost: r.estimatedCost,
+            }));
+
+            await this.panel.webview.postMessage({
+              type: 'getUsageStatsResult',
+              requestId: message.requestId,
+              records: usageRecords,
+              summary,
+            } satisfies GetUsageStatsResponse);
+            break;
+          }
+          case 'resetUsageStats': {
+            try {
+              const scope =
+                message.scope === 'all'
+                  ? ({ scope: 'all' } as const)
+                  : message.scope === 'provider'
+                    ? ({
+                        scope: 'provider' as const,
+                        providerId: message.providerId!,
+                      } as const)
+                    : ({
+                        scope: 'model' as const,
+                        providerId: message.providerId!,
+                        modelId: message.modelId!,
+                      } as const);
+              appCtx.usageTracker.resetStats(scope);
+              await this.panel.webview.postMessage({
+                type: 'resetUsageStatsResult',
+                requestId: message.requestId,
+                success: true,
+              } satisfies ResetUsageStatsResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'resetUsageStatsResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies ResetUsageStatsResponse);
+            }
+            break;
+          }
         }
       },
       null,
@@ -402,6 +481,159 @@ export class SettingsPanel {
       .replaceAll('{{styleUri}}', styleUri.toString())
       .replaceAll('{{cspSource}}', webview.cspSource);
   }
+}
+
+/**
+ * Converts a period string to a dateFrom ISO string.
+ *
+ * @param period - The period identifier.
+ * @returns ISO date string or undefined for "all".
+ */
+function periodToDateFrom(period?: string): string | undefined {
+  const now = new Date();
+  switch (period) {
+    case 'today':
+      return now.toISOString().slice(0, 10);
+    case 'last24h': {
+      const d = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    }
+    case 'last7d': {
+      const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    }
+    case 'last30d': {
+      const d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return d.toISOString().slice(0, 10);
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Converts a period string to a dateTo ISO string.
+ *
+ * @param period - The period identifier.
+ * @returns ISO date string or undefined for "all".
+ */
+function periodToDateTo(period?: string): string | undefined {
+  if (!period || period === 'all') return undefined;
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Computes a usage summary from filtered records.
+ *
+ * @param records - Filtered usage records.
+ * @param appCtx - Application context for model lookups
+ *   and provider/model names.
+ * @returns Aggregated summary with per-model breakdown
+ *   and entity filter info maps.
+ */
+function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsSummary {
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+  let totalCachedTokens = 0;
+  let totalReasoningTokens = 0;
+  let totalRequestCount = 0;
+  let totalErrorCount = 0;
+  let totalEstimatedCost = 0;
+
+  const perModel = new Map<
+    string,
+    {
+      providerId: string;
+      modelId: string;
+      displayName: string | null;
+      inputCostPer1m: number | null;
+      outputCostPer1m: number | null;
+      cachedInputCostPer1m: number | null;
+      promptTokens: number;
+      completionTokens: number;
+      cachedTokens: number;
+      reasoningTokens: number;
+      estimatedCost: number;
+    }
+  >();
+
+  for (const r of records) {
+    totalPromptTokens += r.promptTokens;
+    totalCompletionTokens += r.completionTokens;
+    totalCachedTokens += r.cachedTokens;
+    totalReasoningTokens += r.reasoningTokens;
+    totalRequestCount += r.requestCount;
+    totalErrorCount += r.errorCount;
+    totalEstimatedCost += r.estimatedCost;
+
+    const key = `${r.providerId}:${r.modelId}`;
+    const existing = perModel.get(key);
+    if (existing) {
+      existing.promptTokens += r.promptTokens;
+      existing.completionTokens += r.completionTokens;
+      existing.cachedTokens += r.cachedTokens;
+      existing.reasoningTokens += r.reasoningTokens;
+      existing.estimatedCost += r.estimatedCost;
+    } else {
+      const allModels = appCtx.modelRegistry.getAllModels(r.providerId);
+      const model = allModels.find((m) => m.id === r.modelId);
+      perModel.set(key, {
+        providerId: r.providerId,
+        modelId: r.modelId,
+        displayName: model?.displayName ?? r.modelId,
+        inputCostPer1m: model?.inputCostPer1m ?? null,
+        outputCostPer1m: model?.outputCostPer1m ?? null,
+        cachedInputCostPer1m: model?.cachedInputCostPer1m ?? null,
+        promptTokens: r.promptTokens,
+        completionTokens: r.completionTokens,
+        cachedTokens: r.cachedTokens,
+        reasoningTokens: r.reasoningTokens,
+        estimatedCost: r.estimatedCost,
+      });
+    }
+  }
+
+  // Build provider names map (all providers including removed
+  // that have usage data).
+  const providerNames: Record<string, { name: string; removed: boolean }> = {};
+  const allProviders = appCtx.providerManager.getAllProvidersWithStatus();
+  const providerIdsInRecords = new Set(records.map((r) => r.providerId));
+  for (const p of allProviders) {
+    if (providerIdsInRecords.has(p.id)) {
+      providerNames[p.id] = {
+        name: p.name,
+        removed: p.removed,
+      };
+    }
+  }
+
+  // Build model names map (all models including removed that
+  // have usage data).
+  const modelNames: Record<string, { name: string; removed: boolean }> = {};
+  const allModelsWithStatus = appCtx.modelRegistry.getAllModelsWithStatus();
+  const modelKeysInRecords = new Set(records.map((r) => `${r.providerId}:${r.modelId}`));
+  for (const m of allModelsWithStatus) {
+    const key = `${m.providerId}:${m.id}`;
+    if (modelKeysInRecords.has(key)) {
+      modelNames[key] = {
+        name: m.displayName ?? m.id,
+        removed: m.removed,
+      };
+    }
+  }
+
+  return {
+    totalPromptTokens,
+    totalCompletionTokens,
+    totalCachedTokens,
+    totalReasoningTokens,
+    totalRequestCount,
+    totalErrorCount,
+    totalEstimatedCost,
+    providerNames,
+    modelNames,
+    perModelBreakdown: [...perModel.values()],
+  };
 }
 
 /**

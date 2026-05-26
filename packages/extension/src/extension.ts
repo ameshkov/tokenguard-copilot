@@ -134,7 +134,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
   );
 
-  context.subscriptions.push(createStatusBarItem());
+  context.subscriptions.push(createStatusBarItem(localCtx.providerManager, localCtx.usageTracker));
 }
 
 export function deactivate() {

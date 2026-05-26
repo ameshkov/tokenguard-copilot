@@ -115,6 +115,21 @@ export class ProviderManager {
   }
 
   /**
+   * Returns all providers including removed, with the
+   * `removed` flag from the database row.
+   *
+   * @returns Array of provider info objects with status.
+   */
+  getAllProvidersWithStatus(): (ProviderInfo & {
+    removed: boolean;
+  })[] {
+    return this.providerRepo.findAll().map((row) => ({
+      ...toProviderInfo(row),
+      removed: row.removed === 1,
+    }));
+  }
+
+  /**
    * Edits an existing provider.
    *
    * Validates inputs, updates the provider row, and optionally

@@ -8,7 +8,14 @@
  */
 
 import type { ProviderInfo, ModelInfo, ModelConfig } from '@tokenguard/shared';
-import { sampleProviders, sampleModels, sampleFetchedModels, sampleDefaults } from './fixtures.js';
+import {
+  sampleProviders,
+  sampleModels,
+  sampleFetchedModels,
+  sampleDefaults,
+  sampleUsageRecords,
+  sampleUsageSummary,
+} from './fixtures.js';
 
 /** Simulated async delay for read operations (ms). */
 const MOCK_DELAY_MS = 80;
@@ -31,6 +38,9 @@ let chatDebugSettings = {
   enabled: false,
   ttlHours: 24,
 };
+
+/** In-memory usage records for the mock. */
+let usageRecords: typeof sampleUsageRecords = [...sampleUsageRecords];
 
 /**
  * Dispatches a mock response back to the window after a
@@ -230,9 +240,26 @@ function handleMessage(msg: any): void {
     case 'resetSettings':
       providers = [];
       models = [];
+      usageRecords = [];
       chatDebugSettings = { enabled: false, ttlHours: 24 };
       respondSlow(requestId, {
         type: 'resetSettingsResult',
+        success: true,
+      });
+      break;
+
+    case 'getUsageStats':
+      respond(requestId, {
+        type: 'getUsageStatsResult',
+        records: usageRecords,
+        summary: sampleUsageSummary,
+      });
+      break;
+
+    case 'resetUsageStats':
+      usageRecords = [];
+      respondSlow(requestId, {
+        type: 'resetUsageStatsResult',
         success: true,
       });
       break;

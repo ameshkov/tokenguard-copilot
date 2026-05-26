@@ -73,7 +73,10 @@ vi.mock('./db/migrate.js', () => ({
 const mockExtensionContext = vi.hoisted(() =>
   vi.fn(function () {
     return {
-      providerManager: {},
+      providerManager: {
+        getProviders: vi.fn(),
+        onProvidersChanged: vi.fn(),
+      },
       modelRegistry: {
         registerAll: vi.fn(),
         disposeAll: vi.fn(),
@@ -97,6 +100,10 @@ const mockExtensionContext = vi.hoisted(() =>
       },
       reasoningCacheCleanup: {
         startPeriodicCleanup: vi.fn(() => ({ dispose: vi.fn() })),
+      },
+      usageTracker: {
+        getStats: vi.fn().mockReturnValue([]),
+        onStatsChanged: vi.fn(),
       },
     };
   }),
@@ -150,7 +157,16 @@ describe('activate', () => {
     const { createStatusBarItem } = await import('./ui/status-bar/status-bar.js');
     await activate(context);
 
-    expect(createStatusBarItem).toHaveBeenCalled();
+    expect(createStatusBarItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        getProviders: expect.any(Function),
+        onProvidersChanged: expect.any(Function),
+      }),
+      expect.objectContaining({
+        getStats: expect.any(Function),
+        onStatsChanged: expect.any(Function),
+      }),
+    );
   });
 
   it('should create a DatabaseSync with the correct path', async () => {

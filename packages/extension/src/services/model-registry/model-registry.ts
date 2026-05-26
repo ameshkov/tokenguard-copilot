@@ -3,11 +3,17 @@ import type { ModelInfo, FetchedModel, ModelConfig } from '@tokenguard/shared';
 import type { ModelRepository } from '../../repositories/model-repository.js';
 import type { ProviderRepository } from '../../repositories/provider-repository.js';
 import type { Model, Provider } from '../../db/schema.js';
-import { ChatHandler, type ChatContext, type OpenAITool } from '../chat-handler/chat-handler.js';
+import {
+  ChatHandler,
+  type ChatContext,
+  type OpenAITool,
+  type UsageCollector,
+} from '../chat-handler/chat-handler.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { ModelDefaults } from '../model-defaults/model-defaults.js';
 import type { TokenCounter } from '../token-counter/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
+import type { UsageTracker } from '../usage-tracker/index.js';
 
 /**
  * Manages model lifecycle: fetch from providers, persist
@@ -52,6 +58,7 @@ export class ModelRegistry {
     private readonly chatDebugLogger: ChatDebugLogger,
     private readonly tokenCounter: TokenCounter,
     private readonly reasoningCacheService: ReasoningCacheService,
+    private readonly usageTracker: UsageTracker,
   ) {}
 
   /**
@@ -203,6 +210,32 @@ export class ModelRegistry {
    */
   getModels(providerId?: string): ModelInfo[] {
     return this.modelRepo.findActive(providerId).map(toModelInfo);
+  }
+
+  /**
+   * Returns all models including removed, optionally
+   * filtered by provider.
+   *
+   * @param providerId - Optional provider ID filter.
+   * @returns Array of all model info objects.
+   */
+  getAllModels(providerId?: string): ModelInfo[] {
+    return this.modelRepo.findAll(providerId).map(toModelInfo);
+  }
+
+  /**
+   * Returns all models including removed, with the
+   * `removed` flag from the database row.
+   *
+   * @returns Array of model info objects with status.
+   */
+  getAllModelsWithStatus(): (ModelInfo & {
+    removed: boolean;
+  })[] {
+    return this.modelRepo.findAll().map((row) => ({
+      ...toModelInfo(row),
+      removed: row.removed === 1,
+    }));
   }
 
   /**
@@ -377,7 +410,25 @@ export class ModelRegistry {
         };
 
         const handler = new ChatHandler(ctx, this.reasoningCacheService);
-        await handler.handle(messages, progress, token);
+        const usageCollector: UsageCollector = { usage: null };
+
+        try {
+          await handler.handle(messages, progress, token, usageCollector);
+        } catch (e) {
+          // Record error
+          this.usageTracker.recordError(entry.model.providerId, entry.model.id);
+          throw e;
+        }
+
+        // Record successful usage
+        const usage = usageCollector.usage;
+        this.usageTracker.recordUsage(entry.model.providerId, entry.model.id, {
+          promptTokens: usage?.promptTokens ?? 0,
+          completionTokens: usage?.completionTokens ?? 0,
+          cachedTokens: usage?.cachedTokens ?? 0,
+          reasoningTokens: usage?.reasoningTokens ?? 0,
+          success: true,
+        });
       },
       provideTokenCount: async (_model, text) => {
         if (typeof text === 'string') {

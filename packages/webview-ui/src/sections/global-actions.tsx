@@ -1,37 +1,44 @@
 import { useState } from 'react';
-import type { ResetSettingsResponse } from '@tokenguard/shared';
-import { Button, ConfirmDialog } from '../components/index.js';
+import type { ResetSettingsResponse, ResetUsageStatsResponse } from '@tokenguard/shared';
+import { Button, ConfirmDialog, SectionHeader } from '../components/index.js';
 import { sendRequest } from '../vscode-api.js';
 
 /** Props for the {@link GlobalActions} component. */
 export interface GlobalActionsProps {
-  /** Called after a successful reset to refresh the UI. */
+  /** Called after a successful settings reset to refresh the UI. */
   onReset: () => void;
 }
 
 /**
- * Global actions section with Reset Statistics (stub) and
- * Reset All Settings (working).
+ * Danger zone section with destructive actions:
+ * Reset Statistics and Reset All Settings.
  *
  * @param props - Component props.
- * @returns The global actions element.
+ * @returns The danger zone element.
  */
 export function GlobalActions(props: GlobalActionsProps): React.JSX.Element {
   const { onReset } = props;
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [resetting, setResetting] = useState(false);
+
+  // Reset All Settings state
+  const [showSettingsConfirm, setShowSettingsConfirm] = useState(false);
+  const [resettingSettings, setResettingSettings] = useState(false);
+
+  // Reset Statistics state
+  const [showStatsConfirm, setShowStatsConfirm] = useState(false);
+  const [resettingStats, setResettingStats] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
-  const handleReset = async () => {
-    setResetting(true);
+  const handleResetSettings = async () => {
+    setResettingSettings(true);
     setError(null);
 
     const response = await sendRequest<ResetSettingsResponse>({
       type: 'resetSettings',
     });
 
-    setResetting(false);
-    setShowConfirm(false);
+    setResettingSettings(false);
+    setShowSettingsConfirm(false);
 
     if (!response.success) {
       setError(response.error ?? 'Reset failed');
@@ -40,28 +47,62 @@ export function GlobalActions(props: GlobalActionsProps): React.JSX.Element {
     }
   };
 
+  const handleResetStats = async () => {
+    setResettingStats(true);
+    setError(null);
+
+    const result = await sendRequest<ResetUsageStatsResponse>({
+      type: 'resetUsageStats',
+      scope: 'all',
+    });
+
+    setResettingStats(false);
+    setShowStatsConfirm(false);
+
+    if (!result.success) {
+      setError(result.error ?? 'Reset failed');
+    }
+  };
+
   return (
     <div className="global-actions">
-      <vscode-divider />
+      <SectionHeader title="Danger Zone" />
       <div className="global-actions__buttons">
-        <Button variant="secondary" disabled>
-          Reset Statistics
+        <Button
+          variant="secondary"
+          onClick={() => setShowStatsConfirm(true)}
+          disabled={resettingStats}
+        >
+          {resettingStats ? 'Resetting…' : 'Reset Statistics'}
         </Button>
-        <Button variant="secondary" onClick={() => setShowConfirm(true)} disabled={resetting}>
-          {resetting ? 'Resetting...' : 'Reset All Settings'}
+        <Button
+          variant="secondary"
+          onClick={() => setShowSettingsConfirm(true)}
+          disabled={resettingSettings}
+        >
+          {resettingSettings ? 'Resetting…' : 'Reset All Settings'}
         </Button>
       </div>
-      {showConfirm && (
+      {showStatsConfirm && (
+        <ConfirmDialog
+          message="Delete all usage statistics? This action cannot be undone."
+          confirmLabel={resettingStats ? 'Resetting…' : 'Reset Statistics'}
+          onConfirm={() => void handleResetStats()}
+          onCancel={resettingStats ? undefined : () => setShowStatsConfirm(false)}
+          loading={resettingStats}
+        />
+      )}
+      {showSettingsConfirm && (
         <ConfirmDialog
           message={
             'This will permanently delete all providers, ' +
             'models, and usage data. This action cannot ' +
             'be undone.'
           }
-          confirmLabel={resetting ? 'Resetting…' : 'Reset All Settings'}
-          onConfirm={() => void handleReset()}
-          onCancel={resetting ? undefined : () => setShowConfirm(false)}
-          loading={resetting}
+          confirmLabel={resettingSettings ? 'Resetting…' : 'Reset All Settings'}
+          onConfirm={() => void handleResetSettings()}
+          onCancel={resettingSettings ? undefined : () => setShowSettingsConfirm(false)}
+          loading={resettingSettings}
         />
       )}
       {error && <div className="error-banner">{error}</div>}

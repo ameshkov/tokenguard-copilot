@@ -88,6 +88,10 @@ describe('ProviderManager', () => {
         initialize: vi.fn(),
       } as unknown as import('../token-counter/index.js').TokenCounter,
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
+      {
+        recordUsage: vi.fn(),
+        recordError: vi.fn(),
+      } as unknown as import('../usage-tracker/index.js').UsageTracker,
     );
     manager = new ProviderManager(
       repo,
@@ -210,6 +214,35 @@ describe('ProviderManager', () => {
         updatedAt: '2026-01-01T00:00:00Z',
       });
       expect(manager.getAllProviders()).toHaveLength(2);
+    });
+  });
+
+  describe('getAllProvidersWithStatus', () => {
+    it('includes removed flag for active providers', () => {
+      repo.insert({
+        id: 'p1',
+        name: 'A',
+        baseUrl: 'https://a.com',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      });
+      const all = manager.getAllProvidersWithStatus();
+      expect(all).toHaveLength(1);
+      expect(all[0].removed).toBe(false);
+    });
+
+    it('includes removed flag for removed providers', () => {
+      repo.insert({
+        id: 'p1',
+        name: 'A',
+        baseUrl: 'https://a.com',
+        removed: 1,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      });
+      const all = manager.getAllProvidersWithStatus();
+      expect(all).toHaveLength(1);
+      expect(all[0].removed).toBe(true);
     });
   });
 

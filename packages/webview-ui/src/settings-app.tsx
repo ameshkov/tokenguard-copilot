@@ -394,7 +394,7 @@ export function SettingsApp(): React.JSX.Element {
             onEdit={(m) => setPage({ type: 'editModel', model: m })}
             onRemove={(providerId, modelId) => handleRemoveModel(providerId, modelId)}
           />
-          <UsageStatsSection />
+          <UsageStatsSection providers={providers} models={models} />
           <ChatDebugSection />
           <GlobalActions
             onReset={() => {

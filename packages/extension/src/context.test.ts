@@ -10,6 +10,8 @@ import { ChatDebugSettingsService } from './services/chat-debug-settings/index.j
 import { SessionTracker } from './services/session-tracker/index.js';
 import { ChatDebugLogger } from './services/chat-debug-logger/index.js';
 import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js';
+import { ReasoningCacheCleanupService } from './services/reasoning-cache-cleanup/index.js';
+import { UsageTracker } from './services/usage-tracker/index.js';
 import type { Database } from './db/connection.js';
 
 vi.mock('vscode', () => {
@@ -99,5 +101,19 @@ describe('ExtensionContext', () => {
     const ctx = new ExtensionContext(deps);
     expect(ctx.chatDebugCleanup).toBeDefined();
     expect(ctx.chatDebugCleanup).toBeInstanceOf(ChatDebugCleanupService);
+  });
+
+  it('exposes reasoningCacheCleanup', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    expect(ctx.reasoningCacheCleanup).toBeDefined();
+    expect(ctx.reasoningCacheCleanup).toBeInstanceOf(ReasoningCacheCleanupService);
+  });
+
+  it('exposes usageTracker', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    expect(ctx.usageTracker).toBeDefined();
+    expect(ctx.usageTracker).toBeInstanceOf(UsageTracker);
   });
 });

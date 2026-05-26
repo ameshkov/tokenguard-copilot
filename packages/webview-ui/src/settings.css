@@ -127,6 +127,11 @@ vscode-table {
 }
 
 /* ── Usage stats ──────────────────────────────────── */
+.usage-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .usage-stats-filters {
   display: flex;
   flex-wrap: wrap;
@@ -137,12 +142,76 @@ vscode-table {
   min-width: 140px;
   flex: 1 1 0;
 }
+.usage-stats-loading {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
 .usage-stats-chart-placeholder {
   padding: 24px;
   text-align: center;
   color: var(--vscode-descriptionForeground);
   border: 1px dashed var(--vscode-panel-border, var(--vscode-widget-border, transparent));
   border-radius: 4px;
+}
+.usage-stats-summary {
+  margin-top: 16px;
+}
+.usage-stats-summary h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.usage-stats-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.usage-stats-summary__item {
+  padding: 8px 12px;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+  border-radius: 4px;
+  background-color: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+.usage-stats-summary__label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 2px;
+}
+.usage-stats-summary__value {
+  font-size: 1.2em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.usage-stats-summary__detail {
+  font-size: 0.75em;
+  font-weight: 400;
+  color: var(--vscode-descriptionForeground);
+}
+.usage-stats-breakdown {
+  margin-top: 16px;
+}
+.usage-stats-breakdown h4 {
+  font-size: 0.95em;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--vscode-descriptionForeground);
+}
+.usage-stats-breakdown__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+.usage-stats-breakdown__table th,
+.usage-stats-breakdown__table td {
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+}
+.usage-stats-breakdown__table th {
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground);
 }
 
 /* ── Models section ─────────────────────────────── */

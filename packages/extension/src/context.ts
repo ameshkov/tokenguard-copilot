@@ -15,6 +15,8 @@ import { TokenCounter } from './services/token-counter/index.js';
 import { ReasoningCacheRepository } from './repositories/index.js';
 import { ReasoningCacheService } from './services/reasoning-cache/index.js';
 import { ReasoningCacheCleanupService } from './services/reasoning-cache-cleanup/index.js';
+import { UsageRecordRepository } from './repositories/index.js';
+import { UsageTracker } from './services/usage-tracker/index.js';
 
 /**
  * Dependencies required to create an
@@ -73,6 +75,9 @@ export class ExtensionContext {
   /** Reasoning cache cleanup service. */
   readonly reasoningCacheCleanup: ReasoningCacheCleanupService;
 
+  /** Usage tracker service. */
+  readonly usageTracker: UsageTracker;
+
   /**
    * Creates a new ExtensionContext.
    *
@@ -102,6 +107,8 @@ export class ExtensionContext {
       deps.onTreeRefresh,
     );
     this.tokenCounter = new TokenCounter(deps.extensionPath);
+    const usageRecordRepo = new UsageRecordRepository(deps.db);
+    this.usageTracker = new UsageTracker(usageRecordRepo, modelRepo);
     this.modelRegistry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -110,6 +117,7 @@ export class ExtensionContext {
       this.chatDebugLogger,
       this.tokenCounter,
       reasoningCacheService,
+      this.usageTracker,
     );
     this.providerManager = new ProviderManager(
       providerRepo,
