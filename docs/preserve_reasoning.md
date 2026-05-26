@@ -286,9 +286,11 @@ conversation regardless of how many turns have elapsed.
 3. SHA-256(prefixParts.join('\0') + '\0' + keyPart)
 ```
 
-The fingerprint is stable across turns because it only considers
-messages *before* the first assistant message. New user messages
-appended after the first assistant message do not change the hash.
+The fingerprint is stable across turns because it considers the
+prefix (all messages before the first assistant response) and
+a key part derived *from* that first assistant response. New
+user messages appended after the first assistant response do
+not change the hash.
 
 **Two code paths use this fingerprint:**
 

@@ -480,7 +480,7 @@
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {
-        "reasoning_effort": null
+        "reasoning": { "effort": "none" }
       },
       "low": {
         "reasoning_effort": "low",
@@ -513,6 +513,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
@@ -524,6 +527,10 @@
       "high": {
         "reasoning_effort": "high",
         "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
       }
     }
   },
@@ -540,6 +547,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
@@ -555,10 +565,6 @@
       "xhigh": {
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
-      },
-      "max": {
-        "reasoning_effort": "max",
-        "reasoning": { "effort": "max" }
       }
     }
   },
@@ -575,6 +581,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
@@ -590,10 +599,6 @@
       "xhigh": {
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
-      },
-      "max": {
-        "reasoning_effort": "max",
-        "reasoning": { "effort": "max" }
       }
     }
   },
@@ -610,6 +615,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
@@ -625,10 +633,6 @@
       "xhigh": {
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
-      },
-      "max": {
-        "reasoning_effort": "max",
-        "reasoning": { "effort": "max" }
       }
     }
   },
@@ -645,6 +649,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
@@ -660,17 +667,13 @@
       "xhigh": {
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
-      },
-      "max": {
-        "reasoning_effort": "max",
-        "reasoning": { "effort": "max" }
       }
     }
   },
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)sonnet-4.5$"
+      "value": "(^|/|-)sonnet-4.5$"
     },
     "contextSize": 200000,
     "maxTokens": 65500,
@@ -680,6 +683,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
@@ -691,13 +697,51 @@
       "high": {
         "reasoning_effort": "high",
         "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
       }
     }
   },
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)sonnet-4.6$"
+      "value": "(^|/|-)haiku-4.5$"
+    },
+    "contextSize": 200000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 2.25,
+    "outputCostPer1M": 5.0,
+    "cachedInputCostPer1M": 0.1,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)sonnet-4.6$"
     },
     "contextSize": 200000,
     "maxTokens": 65500,
@@ -707,6 +751,9 @@
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
       "low": {
         "reasoning_effort": "low",
         "reasoning": { "effort": "low" }
