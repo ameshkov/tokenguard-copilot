@@ -19,7 +19,7 @@ function noopReasoningCacheService(): ReasoningCacheService {
 }
 
 vi.mock('vscode', () => ({
-  LanguageModelChatMessageRole: { User: 1, Assistant: 2 },
+  LanguageModelChatMessageRole: { User: 1, Assistant: 2, System: 3 },
   LanguageModelTextPart: class {
     constructor(public value: string) {}
   },
@@ -139,6 +139,24 @@ function mockToken(
 }
 
 describe('ChatHandler', () => {
+  describe('mapRole', () => {
+    it('maps User to user', () => {
+      expect(ChatHandler.mapRole(1 as vscode.LanguageModelChatMessageRole)).toBe('user');
+    });
+
+    it('maps Assistant to assistant', () => {
+      expect(ChatHandler.mapRole(2 as vscode.LanguageModelChatMessageRole)).toBe('assistant');
+    });
+
+    it('maps System to system', () => {
+      expect(ChatHandler.mapRole(3 as vscode.LanguageModelChatMessageRole)).toBe('system');
+    });
+
+    it('defaults unknown roles to user', () => {
+      expect(ChatHandler.mapRole(99 as vscode.LanguageModelChatMessageRole)).toBe('user');
+    });
+  });
+
   describe('translateMessages', () => {
     it('translates User role to user', async () => {
       const vscodeModule = await import('vscode');
@@ -154,6 +172,14 @@ describe('ChatHandler', () => {
       const messages = [mockMessage(2, [part as unknown as Record<string, unknown>])];
       const result = ChatHandler.translateMessages(messages);
       expect(result).toEqual([{ role: 'assistant', content: 'Hi there' }]);
+    });
+
+    it('translates System role to system', async () => {
+      const vscodeModule = await import('vscode');
+      const part = new vscodeModule.LanguageModelTextPart('You are a helpful assistant');
+      const messages = [mockMessage(3, [part as unknown as Record<string, unknown>])];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result).toEqual([{ role: 'system', content: 'You are a helpful assistant' }]);
     });
 
     it('concatenates multiple text parts', async () => {

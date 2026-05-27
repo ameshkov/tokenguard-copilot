@@ -209,6 +209,29 @@ export class ChatHandler {
   }
 
   /**
+   * Maps a VS Code chat message role to the corresponding
+   * OpenAI message role string.
+   *
+   * VS Code's `LanguageModelChatMessageRole` enum uses
+   * `User = 1`, `Assistant = 2`, and `System = 3`
+   * (proposed `languageModelSystem` API). This method
+   * converts each to the matching OpenAI role.
+   *
+   * @param role - VS Code chat message role enum value.
+   * @returns OpenAI role string.
+   */
+  static mapRole(role: vscode.LanguageModelChatMessageRole): 'system' | 'user' | 'assistant' {
+    switch (role) {
+      case vscode.LanguageModelChatMessageRole.Assistant:
+        return 'assistant';
+      case vscode.LanguageModelChatMessageRole.System:
+        return 'system';
+      default:
+        return 'user';
+    }
+  }
+
+  /**
    * Translates VS Code chat messages into OpenAI-format
    * messages.
    *
@@ -316,8 +339,7 @@ export class ChatHandler {
         continue;
       }
 
-      const role =
-        msg.role === vscode.LanguageModelChatMessageRole.Assistant ? 'assistant' : 'user';
+      const role = ChatHandler.mapRole(msg.role);
 
       let content: string | OpenAIContentPartUnion[] | null;
       if (contentParts !== null) {

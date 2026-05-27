@@ -26,7 +26,7 @@ vi.mock('vscode', () => ({
       public mimeType: string,
     ) {}
   },
-  LanguageModelChatMessageRole: { User: 1, Assistant: 2 },
+  LanguageModelChatMessageRole: { User: 1, Assistant: 2, System: 3 },
   LanguageModelThinkingPart: class {
     constructor(
       public value: string | string[],
