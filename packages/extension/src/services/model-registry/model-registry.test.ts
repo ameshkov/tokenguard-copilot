@@ -5,7 +5,7 @@ import { ModelRepository } from '../../repositories/model-repository.js';
 import { ProviderRepository } from '../../repositories/provider-repository.js';
 import { ModelRegistry } from './model-registry.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
-import type { ModelConfig } from '@tokenguard/shared';
+import type { ModelConfig, CacheControlConfig } from '@tokenguard/shared';
 import type { Database } from '../../db/connection.js';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -62,6 +62,7 @@ describe('ModelRegistry', () => {
     inputCostPer1m: null,
     outputCostPer1m: null,
     cachedInputCostPer1m: null,
+    cacheControl: null,
   };
 
   const mockReasoningCacheService = {
@@ -593,6 +594,45 @@ describe('ModelRegistry', () => {
       registry.disposeAll();
 
       expect(mockDispose).toHaveBeenCalled();
+    });
+  });
+
+  describe('cacheControl', () => {
+    it('persists cacheControl from addModel and returns it in ModelInfo', () => {
+      const cacheControl: CacheControlConfig = {
+        enabled: true,
+        maxMarkers: 4,
+        ttl: '5m',
+      };
+      const model = registry.addModel(providerId, 'qwen-model', {
+        ...validConfig,
+        cacheControl,
+      });
+      expect(model.cacheControl).toEqual(cacheControl);
+
+      const models = registry.getModels();
+      expect(models).toHaveLength(1);
+      expect(models[0].cacheControl).toEqual(cacheControl);
+    });
+
+    it('updates cacheControl via updateModel', () => {
+      registry.addModel(providerId, 'qwen-model', validConfig);
+      const updated = registry.updateModel(providerId, 'qwen-model', {
+        ...validConfig,
+        cacheControl: {
+          enabled: true,
+          maxMarkers: 2,
+        },
+      });
+      expect(updated.cacheControl).toEqual({
+        enabled: true,
+        maxMarkers: 2,
+      });
+    });
+
+    it('returns null cacheControl when not configured', () => {
+      const model = registry.addModel(providerId, 'gpt-4o', validConfig);
+      expect(model.cacheControl).toBeNull();
     });
   });
 

@@ -59,6 +59,7 @@ describe('ProviderManager', () => {
     inputCostPer1m: null,
     outputCostPer1m: null,
     cachedInputCostPer1m: null,
+    cacheControl: null,
   };
 
   beforeEach(() => {

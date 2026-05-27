@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { ModelInfo, FetchedModel, ModelConfig } from '@tokenguard/shared';
+import type { ModelInfo, FetchedModel, ModelConfig, CacheControlConfig } from '@tokenguard/shared';
 import type { ModelRepository } from '../../repositories/model-repository.js';
 import type { ProviderRepository } from '../../repositories/provider-repository.js';
 import type { Model, Provider } from '../../db/schema.js';
@@ -145,6 +145,7 @@ export class ModelRegistry {
       inputCostPer1m: config.inputCostPer1m,
       outputCostPer1m: config.outputCostPer1m,
       cachedInputCostPer1m: config.cachedInputCostPer1m,
+      cacheControl: config.cacheControl ? JSON.stringify(config.cacheControl) : null,
       createdAt: now,
       updatedAt: now,
     });
@@ -189,6 +190,7 @@ export class ModelRegistry {
       inputCostPer1m: config.inputCostPer1m,
       outputCostPer1m: config.outputCostPer1m,
       cachedInputCostPer1m: config.cachedInputCostPer1m,
+      cacheControl: config.cacheControl ? JSON.stringify(config.cacheControl) : null,
     });
 
     if (!updated) {
@@ -397,16 +399,24 @@ export class ModelRegistry {
               }))
             : undefined;
 
+        const defaults = this.getDefaults(entry.model.id);
+
+        // Cache control: model DB value takes precedence over defaults
+        const cacheControl: CacheControlConfig | undefined = entry.model.cacheControl
+          ? (JSON.parse(entry.model.cacheControl) as CacheControlConfig)
+          : defaults?.cacheControl;
+
         const ctx: ChatContext = {
           model: entry.model,
           provider: entry.provider,
           apiKey: apiKey ?? '',
-          defaults: this.getDefaults(entry.model.id),
+          defaults,
           reasoningEffort,
           tools,
           toolMode,
           chatDebugLogger: this.chatDebugLogger,
           workspaceFolderUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
+          cacheControl,
         };
 
         const handler = new ChatHandler(ctx, this.reasoningCacheService);
@@ -514,6 +524,7 @@ function toModelInfo(row: Model): ModelInfo {
     inputCostPer1m: row.inputCostPer1m,
     outputCostPer1m: row.outputCostPer1m,
     cachedInputCostPer1m: row.cachedInputCostPer1m,
+    cacheControl: row.cacheControl ? (JSON.parse(row.cacheControl) as CacheControlConfig) : null,
   };
 }
 

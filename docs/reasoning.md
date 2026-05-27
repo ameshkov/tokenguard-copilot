@@ -197,7 +197,7 @@ use `enable_thinking` and `preserve_thinking` booleans. These are
 
 ```python
 response = client.chat.completions.create(
-    model="qwen-3.6-plus",
+    model="qwen3.6-plus",
     messages=[...],
     extra_body={
         "enable_thinking": True,
@@ -210,7 +210,7 @@ response = client.chat.completions.create(
 
 ```python
 response = client.chat.completions.create(
-    model="qwen-3.6-plus",
+    model="qwen3.6-plus",
     messages=[...],
     extra_body={"enable_thinking": False},
 )

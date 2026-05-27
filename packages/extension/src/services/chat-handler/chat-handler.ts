@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
+import type { CacheControlConfig } from '@tokenguard/shared';
 import type { ModelDefaults } from '../model-defaults/model-defaults.js';
 import type { Model, Provider } from '../../db/schema.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import { extractReasoning, extractReasoningFields } from '../../utils/reasoning.js';
 import type { ReasoningFields } from '../../utils/reasoning.js';
 import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
+import { CacheControlService } from '../cache-control/index.js';
 
 /**
  * OpenAI-format tool definition for the
@@ -44,6 +46,24 @@ interface OpenAIToolCall {
 }
 
 /**
+ * A single content part in an OpenAI-format message with an
+ * optional `cache_control` marker.
+ */
+export interface OpenAIContentPart {
+  /** Content type — always `'text'`. */
+  type: 'text';
+  /** Text content. */
+  text: string;
+  /** Cache control marker injected by the cache control service. */
+  cache_control?: {
+    /** Cache type — typically `'ephemeral'`. */
+    type: string;
+    /** Optional TTL in seconds. */
+    ttl?: number;
+  };
+}
+
+/**
  * OpenAI-format chat message for the `/chat/completions`
  * request body.
  *
@@ -53,8 +73,12 @@ interface OpenAIToolCall {
 export interface OpenAIMessage {
   /** Message role. */
   role: 'system' | 'user' | 'assistant' | 'tool';
-  /** Text content (may be null for tool-call-only messages). */
-  content: string | null;
+  /**
+   * Text content — may be a plain string, a structured content-part
+   * array (used when cache control markers are injected), or null
+   * for tool-call-only messages.
+   */
+  content: string | OpenAIContentPart[] | null;
   /** Tool calls requested by the assistant. */
   tool_calls?: OpenAIToolCall[];
   /** ID of the tool call this message responds to. */
@@ -114,6 +138,14 @@ export interface ChatContext {
    * `chatDebugLogger` is provided.
    */
   workspaceFolderUri?: string;
+
+  /**
+   * Cache control configuration for injecting
+   * `cache_control` markers into content blocks.
+   * When enabled, markers are placed on the farthest
+   * content blocks within a sliding window.
+   */
+  cacheControl?: CacheControlConfig;
 }
 
 /**
@@ -670,7 +702,13 @@ export class ChatHandler {
       this.ctx.model.preserveReasoning === 1,
     );
 
-    const body = ChatHandler.buildRequestBody(translated, this.ctx);
+    // Inject cache control markers when enabled
+    const finalMessages =
+      this.ctx.cacheControl?.enabled === true
+        ? CacheControlService.injectMarkers(translated, this.ctx.cacheControl)
+        : translated;
+
+    const body = ChatHandler.buildRequestBody(finalMessages, this.ctx);
 
     const url = this.ctx.provider.baseUrl.replace(/\/+$/, '') + '/chat/completions';
 
@@ -759,7 +797,7 @@ export class ChatHandler {
       if (this.ctx.chatDebugLogger && this.ctx.workspaceFolderUri) {
         try {
           this.ctx.chatDebugLogger.logRequest({
-            messages: translated,
+            messages: finalMessages,
             responseContent,
             responseToolCalls,
             responseReasoning: extractReasoning(reasoningCollector.fields ?? {}),

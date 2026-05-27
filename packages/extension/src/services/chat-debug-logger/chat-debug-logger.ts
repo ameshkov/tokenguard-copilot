@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
 import type { OpenAIMessage, OpenAITool, ChatUsage } from '../chat-handler/index.js';
+import { extractTextContent } from '../../utils/content.js';
 import { extractReasoning } from '../../utils/reasoning.js';
 
 /** Input data for logging a chat request-response pair. */
@@ -275,8 +276,9 @@ export class ChatDebugLogger {
 
       // Content + tool calls block
       sections.push('~~~md');
-      if (msg.content) {
-        sections.push(msg.content);
+      const textContent = extractTextContent(msg.content);
+      if (textContent) {
+        sections.push(textContent);
       }
       if (msg.tool_calls) {
         for (const tc of msg.tool_calls) {
@@ -358,7 +360,7 @@ export class ChatDebugLogger {
       // Convert messages to SessionMessage format
       const sessionMessages = input.messages.map((m) => ({
         role: m.role,
-        content: m.content ?? '',
+        content: extractTextContent(m.content),
         toolCallId: m.tool_call_id,
       }));
 

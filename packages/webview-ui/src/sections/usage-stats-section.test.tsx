@@ -87,6 +87,7 @@ const models = [
     inputCostPer1m: 10,
     outputCostPer1m: 20,
     cachedInputCostPer1m: 5,
+    cacheControl: null,
   },
 ];
 

@@ -19,6 +19,11 @@ export const sampleProviders: ProviderInfo[] = [
     name: 'Anthropic',
     baseUrl: 'https://api.anthropic.com/v1',
   },
+  {
+    id: 'prov-alibaba',
+    name: 'Alibaba',
+    baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+  },
 ];
 
 /** Sample configured models for the mock API. */
@@ -41,6 +46,7 @@ export const sampleModels: ModelInfo[] = [
     inputCostPer1m: 2.5,
     outputCostPer1m: 10.0,
     cachedInputCostPer1m: 1.25,
+    cacheControl: null,
   },
   {
     id: 'claude-sonnet-4-20250514',
@@ -61,6 +67,30 @@ export const sampleModels: ModelInfo[] = [
     inputCostPer1m: 3.0,
     outputCostPer1m: 15.0,
     cachedInputCostPer1m: 0.3,
+    cacheControl: null,
+  },
+  {
+    id: 'qwen3-235b-a22b',
+    providerId: 'prov-alibaba',
+    displayName: 'Qwen3 235B A22B',
+    maxContextWindowTokens: 131_072,
+    maxOutputTokens: 16_384,
+    streaming: true,
+    vision: false,
+    temperature: null,
+    topP: null,
+    frequencyPenalty: null,
+    presencePenalty: null,
+    defaultReasoningEffort: null,
+    reasoningEffortMap: null,
+    preserveReasoning: false,
+    inputCostPer1m: 0.3,
+    outputCostPer1m: 1.2,
+    cachedInputCostPer1m: 0.03,
+    cacheControl: {
+      enabled: true,
+      maxMarkers: 4,
+    },
   },
 ];
 

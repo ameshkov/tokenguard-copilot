@@ -42,4 +42,18 @@ describe('runMigrations', () => {
 
     raw.close();
   });
+
+  it('should create cache_control column on models table', () => {
+    const raw = new DatabaseSync(':memory:');
+    raw.exec('PRAGMA foreign_keys = ON');
+    const db = createDb(raw);
+
+    runMigrations(db, MIGRATIONS_DIR);
+
+    const columns = raw.prepare('PRAGMA table_info(models)').all() as Array<{ name: string }>;
+    const columnNames = columns.map((c: { name: string }) => c.name);
+    expect(columnNames).toContain('cache_control');
+
+    raw.close();
+  });
 });

@@ -1,8 +1,8 @@
 [
   {
     "match": {
-      "type": "exact",
-      "value": "qwen-3.6-plus"
+      "type": "regex",
+      "value": "(^|/)qwen3.6-plus$"
     },
     "contextSize": 262144,
     "maxTokens": 65500,
@@ -20,12 +20,16 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true
+    "preserveReasoning": true,
+    "cacheControl": {
+      "enabled": true,
+      "maxMarkers": 4
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "qwen-3.7-max"
+      "type": "regex",
+      "value": "(^|/)qwen3.7-max$"
     },
     "contextSize": 262144,
     "maxTokens": 65500,
@@ -43,12 +47,16 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true
+    "preserveReasoning": true,
+    "cacheControl": {
+      "enabled": true,
+      "maxMarkers": 4
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "qwen-3.6-27b"
+      "type": "regex",
+      "value": "(^|/)qwen3.6-27b$"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -66,12 +74,16 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true
+    "preserveReasoning": true,
+    "cacheControl": {
+      "enabled": true,
+      "maxMarkers": 4
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "qwen-3.6-35b-a3b"
+      "type": "regex",
+      "value": "(^|/)qwen3.6-35b-a3b$"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -89,12 +101,16 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true
+    "preserveReasoning": true,
+    "cacheControl": {
+      "enabled": true,
+      "maxMarkers": 4
+    }
   },
   {
     "match": {
-      "type": "exact",
-      "value": "kimi-k2.6"
+      "type": "regex",
+      "value": "(^|/)kimi-k2.6$"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -120,8 +136,8 @@
   },
   {
     "match": {
-      "type": "exact",
-      "value": "glm-5.1"
+      "type": "regex",
+      "value": "(^|/)glm-5.1$"
     },
     "contextSize": 203000,
     "maxTokens": 65500,
@@ -147,8 +163,8 @@
   },
   {
     "match": {
-      "type": "exact",
-      "value": "deepseek-v4-pro"
+      "type": "regex",
+      "value": "(^|/)deepseek-v4-pro$"
     },
     "contextSize": 1050000,
     "maxTokens": 65500,
@@ -180,8 +196,8 @@
   },
   {
     "match": {
-      "type": "exact",
-      "value": "deepseek-v4-flash"
+      "type": "regex",
+      "value": "(^|/)deepseek-v4-flash$"
     },
     "contextSize": 1050000,
     "maxTokens": 65500,
@@ -213,15 +229,41 @@
   },
   {
     "match": {
-      "type": "exact",
-      "value": "mimo-v2.5-pro"
+      "type": "regex",
+      "value": "(^|/)mimo-v2.5-pro$"
     },
     "contextSize": 1050000,
     "maxTokens": 65500,
-    "inputCostPer1M": 1.0,
-    "outputCostPer1M": 3.0,
-    "cachedInputCostPer1M": 0.2,
+    "inputCostPer1M": 0.435,
+    "outputCostPer1M": 0.87,
+    "cachedInputCostPer1M": 0.003625,
     "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)mimo-v2.5$"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.435,
+    "outputCostPer1M": 0.87,
+    "cachedInputCostPer1M": 0.003625,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {

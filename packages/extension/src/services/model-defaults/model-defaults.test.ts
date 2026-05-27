@@ -217,7 +217,7 @@ describe('getDefaults', () => {
   });
 
   it('should include cachedInputCostPer1M when present', () => {
-    const result = getDefaults('qwen-3.6-plus');
+    const result = getDefaults('qwen3.6-plus');
     expect(result).not.toBeNull();
     expect(result!.cachedInputCostPer1M).toBe(0.05);
   });
@@ -259,6 +259,21 @@ describe('getDefaults', () => {
     const result = getDefaults('gpt-5.4');
     expect(result).not.toBeNull();
     expect(result!.preserveReasoning).toBeUndefined();
+  });
+
+  it('should include cacheControl for Qwen models', () => {
+    const result = getDefaults('qwen3.7-max');
+    expect(result).not.toBeNull();
+    expect(result!.cacheControl).toBeDefined();
+    expect(result!.cacheControl!.enabled).toBe(true);
+    expect(result!.cacheControl!.maxMarkers).toBe(4);
+    expect(result!.cacheControl!.ttl).toBeUndefined();
+  });
+
+  it('should omit cacheControl for models without it', () => {
+    const result = getDefaults('deepseek-v4-flash');
+    expect(result).not.toBeNull();
+    expect(result!.cacheControl).toBeUndefined();
   });
 
   it('should include reasoningEffortMap for all reasoning models', () => {

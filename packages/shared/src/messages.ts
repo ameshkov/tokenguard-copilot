@@ -1,3 +1,16 @@
+/** Cache control TTL enum. Maps to seconds only at wire-format level. */
+export type CacheControlTtl = '5m' | '1h';
+
+/** Cache control injection configuration for a model. */
+export interface CacheControlConfig {
+  /** Whether cache control injection is enabled. */
+  enabled: boolean;
+  /** Maximum number of cache control markers to inject. */
+  maxMarkers: number;
+  /** Optional TTL. Omitted = no TTL in marker. */
+  ttl?: CacheControlTtl;
+}
+
 /** Provider metadata visible to the webview. */
 export interface ProviderInfo {
   id: string;
@@ -24,6 +37,7 @@ export interface ModelInfo {
   inputCostPer1m: number | null;
   outputCostPer1m: number | null;
   cachedInputCostPer1m: number | null;
+  cacheControl: CacheControlConfig | null;
 }
 
 /** Model info fetched from a provider's /models endpoint. */
@@ -53,6 +67,8 @@ export interface ModelDefaultsResult {
   defaultReasoningEffort?: string;
   /** When true, preserve reasoning tokens between turns. */
   preserveReasoning?: boolean;
+  /** Cache control injection configuration. */
+  cacheControl?: CacheControlConfig;
 }
 
 /** Chat debug settings visible to the webview. */
@@ -80,6 +96,7 @@ export interface ModelConfig {
   inputCostPer1m: number | null;
   outputCostPer1m: number | null;
   cachedInputCostPer1m: number | null;
+  cacheControl: CacheControlConfig | null;
 }
 
 /** Fetch usage statistics. */

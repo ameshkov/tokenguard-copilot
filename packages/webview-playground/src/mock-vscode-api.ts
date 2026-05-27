@@ -82,6 +82,7 @@ function buildModelInfo(providerId: string, modelId: string, config: ModelConfig
     inputCostPer1m: config.inputCostPer1m,
     outputCostPer1m: config.outputCostPer1m,
     cachedInputCostPer1m: config.cachedInputCostPer1m,
+    cacheControl: config.cacheControl,
   };
 }
 

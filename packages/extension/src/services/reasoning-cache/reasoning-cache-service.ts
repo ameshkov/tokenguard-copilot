@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { ReasoningCacheRepository } from '../../repositories/reasoning-cache-repository.js';
+import { extractTextContent } from '../../utils/content.js';
 import { extractReasoning, type ReasoningFields } from '../../utils/reasoning.js';
 import type { OpenAIMessage } from '../chat-handler/chat-handler.js';
 
@@ -169,7 +170,7 @@ export class ReasoningCacheService {
         break;
       }
       if (m.role === 'system' || m.role === 'user') {
-        prefixParts.push(m.content ?? '');
+        prefixParts.push(extractTextContent(m.content));
       }
     }
 
@@ -179,7 +180,7 @@ export class ReasoningCacheService {
       if (firstAssistantMsg.tool_calls?.length) {
         keyPart = firstAssistantMsg.tool_calls[0].id;
       } else {
-        keyPart = firstAssistantMsg.content ?? '';
+        keyPart = extractTextContent(firstAssistantMsg.content);
       }
     } else if (firstAssistant?.firstToolCallId) {
       // Assistant not in messages yet (Turn 1, tool

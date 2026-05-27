@@ -109,6 +109,7 @@ describe('UsageTracker', () => {
       inputCostPer1m: 10,
       outputCostPer1m: 30,
       cachedInputCostPer1m: 5,
+      cacheControl: null,
       enabled: 1,
       removed: 0,
       createdAt: '2026-05-25T00:00:00Z',

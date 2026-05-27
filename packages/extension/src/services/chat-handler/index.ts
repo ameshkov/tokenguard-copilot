@@ -3,6 +3,7 @@
  */
 export { ChatHandler } from './chat-handler.js';
 export type {
+  OpenAIContentPart,
   OpenAIMessage,
   OpenAITool,
   ChatContext,

@@ -331,4 +331,70 @@ describe('ModelRepository', () => {
       expect(repo.existsByDisplayName(null)).toBe(false);
     });
   });
+
+  describe('cacheControl column', () => {
+    it('inserts model with cacheControl JSON and parses it back', () => {
+      const now = new Date().toISOString();
+      const cacheControl = {
+        enabled: true,
+        maxMarkers: 4,
+        ttl: 300,
+      };
+      const row = repo.insert({
+        id: 'qwen-model',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        cacheControl: JSON.stringify(cacheControl),
+        createdAt: now,
+        updatedAt: now,
+      });
+      expect(row.cacheControl).toBe(JSON.stringify(cacheControl));
+      const parsed = JSON.parse(row.cacheControl!);
+      expect(parsed).toEqual(cacheControl);
+    });
+
+    it('updates cacheControl and parses it back correctly', () => {
+      const now = new Date().toISOString();
+      repo.insert({
+        id: 'qwen-model',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const newConfig = {
+        enabled: true,
+        maxMarkers: 2,
+      };
+      const updated = repo.update('qwen-model', providerId, {
+        cacheControl: JSON.stringify(newConfig),
+      });
+      expect(updated).toBeDefined();
+      const parsed = JSON.parse(updated!.cacheControl!);
+      expect(parsed).toEqual(newConfig);
+    });
+
+    it('handles model without cacheControl gracefully', () => {
+      const now = new Date().toISOString();
+      const row = repo.insert({
+        id: 'gpt-model',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        createdAt: now,
+        updatedAt: now,
+      });
+      expect(row.cacheControl).toBeNull();
+
+      const found = repo.findByKey('gpt-model', providerId);
+      expect(found).toBeDefined();
+      expect(found!.cacheControl).toBeNull();
+
+      const active = repo.findActive();
+      expect(active).toHaveLength(1);
+      expect(active[0].cacheControl).toBeNull();
+    });
+  });
 });

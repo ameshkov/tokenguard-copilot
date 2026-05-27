@@ -33,6 +33,7 @@ describe('models table', () => {
     expect(columns).toHaveProperty('inputCostPer1m');
     expect(columns).toHaveProperty('outputCostPer1m');
     expect(columns).toHaveProperty('cachedInputCostPer1m');
+    expect(columns).toHaveProperty('cacheControl');
     expect(columns).toHaveProperty('enabled');
     expect(columns).toHaveProperty('removed');
     expect(columns).toHaveProperty('createdAt');

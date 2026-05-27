@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { CacheControlConfig } from '@tokenguard/shared';
 
 /**
  * Match specification for a model defaults entry.
@@ -47,6 +48,8 @@ export interface ModelDefaultsEntry {
   /** When true, preserve `reasoning_content` from responses
    *  and inject it into subsequent requests. */
   preserveReasoning?: boolean;
+  /** Cache control injection configuration. */
+  cacheControl?: CacheControlConfig;
 }
 
 /**
@@ -79,6 +82,8 @@ export interface ModelDefaults {
   /** When true, preserve `reasoning_content` from responses
    *  and inject it into subsequent requests. */
   preserveReasoning?: boolean;
+  /** Cache control injection configuration. */
+  cacheControl?: CacheControlConfig;
 }
 
 /**
@@ -142,6 +147,7 @@ function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
       entry.reasoningEffortMap !== undefined ? { ...entry.reasoningEffortMap } : undefined,
     defaultReasoningEffort: entry.defaultReasoningEffort,
     preserveReasoning: entry.preserveReasoning,
+    cacheControl: entry.cacheControl,
   };
 }
 

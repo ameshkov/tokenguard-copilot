@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import type { FetchedModel, ModelConfig, ModelDefaultsResult, ModelInfo } from '@tokenguard/shared';
+import type {
+  CacheControlConfig,
+  CacheControlTtl,
+  FetchedModel,
+  ModelConfig,
+  ModelDefaultsResult,
+  ModelInfo,
+} from '@tokenguard/shared';
 import { Button, ConfirmDialog, FormGroup, Input, Label } from '../components/index.js';
 
 /** Props for the {@link ModelConfigDialog} component. */
@@ -54,6 +61,9 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
   const [inputCostPer1m, setInputCostPer1m] = useState('');
   const [outputCostPer1m, setOutputCostPer1m] = useState('');
   const [cachedInputCostPer1m, setCachedInputCostPer1m] = useState('');
+  const [cacheControlEnabled, setCacheControlEnabled] = useState(false);
+  const [cacheMaxMarkers, setCacheMaxMarkers] = useState('4');
+  const [cacheTtl, setCacheTtl] = useState<CacheControlTtl | ''>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [prefilledFields, setPrefilledFields] = useState<Record<string, string>>({});
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -102,6 +112,13 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       setCachedInputCostPer1m(
         editingModel.cachedInputCostPer1m !== null ? String(editingModel.cachedInputCostPer1m) : '',
       );
+      if (editingModel.cacheControl) {
+        setCacheControlEnabled(editingModel.cacheControl.enabled);
+        setCacheMaxMarkers(String(editingModel.cacheControl.maxMarkers));
+        setCacheTtl(
+          editingModel.cacheControl.ttl !== undefined ? editingModel.cacheControl.ttl : '',
+        );
+      }
       setPrefilledFields({});
       return;
     }
@@ -180,6 +197,15 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       if (defaults.preserveReasoning !== undefined) {
         setPreserveReasoning(defaults.preserveReasoning);
         filled.preserveReasoning = 'defaults';
+      }
+      if (defaults.cacheControl) {
+        setCacheControlEnabled(defaults.cacheControl.enabled);
+        setCacheMaxMarkers(String(defaults.cacheControl.maxMarkers));
+        if (defaults.cacheControl.ttl !== undefined) {
+          // Legacy numeric TTL values are silently treated as undefined
+          setCacheTtl('');
+        }
+        filled.cacheControl = 'defaults';
       }
     }
 
@@ -268,6 +294,19 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
     });
   };
 
+  /** Builds the CacheControlConfig or null. */
+  const buildCacheControl = (): CacheControlConfig | null => {
+    if (!cacheControlEnabled) return null;
+    const config: CacheControlConfig = {
+      enabled: true,
+      maxMarkers: Number(cacheMaxMarkers) || 4,
+    };
+    if (cacheTtl !== '') {
+      config.ttl = cacheTtl;
+    }
+    return config;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -307,6 +346,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       inputCostPer1m: inputCostPer1m !== '' ? Number(inputCostPer1m) : null,
       outputCostPer1m: outputCostPer1m !== '' ? Number(outputCostPer1m) : null,
       cachedInputCostPer1m: cachedInputCostPer1m !== '' ? Number(cachedInputCostPer1m) : null,
+      cacheControl: buildCacheControl(),
     };
 
     onSubmit(config);
@@ -572,6 +612,62 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               <vscode-form-helper>
                 Pass reasoning tokens from previous turns back to the model in multi-turn
                 conversations. Improves coherence but increases token usage and cost.
+              </vscode-form-helper>
+            </FormGroup>
+          </div>
+
+          <div className="model-config-dialog__section">
+            <h3 className="model-config-dialog__section-title">Caching</h3>
+            {prefillHint('cacheControl')}
+            <FormGroup>
+              <vscode-checkbox
+                checked={cacheControlEnabled || undefined}
+                disabled={loading || undefined}
+                onchange={() => setCacheControlEnabled(!cacheControlEnabled)}
+              >
+                Enable prompt caching
+              </vscode-checkbox>
+              <vscode-form-helper>
+                Automatically inject cache_control markers to enable prompt caching on supported
+                providers (e.g., Qwen via Alibaba).
+              </vscode-form-helper>
+            </FormGroup>
+            <FormGroup>
+              <Label htmlFor="cache-max-markers">Max Markers</Label>
+              <Input
+                id="cache-max-markers"
+                type="number"
+                value={cacheMaxMarkers}
+                onChange={(e) => setCacheMaxMarkers(e.target.value)}
+                disabled={loading || !cacheControlEnabled}
+              />
+              <vscode-form-helper>
+                Maximum number of cache_control markers to inject per request.
+              </vscode-form-helper>
+            </FormGroup>
+            <FormGroup>
+              <Label htmlFor="cache-ttl">TTL</Label>
+              <vscode-single-select
+                id="cache-ttl"
+                value={cacheTtl}
+                disabled={loading || !cacheControlEnabled || undefined}
+                onchange={(e: Event) =>
+                  setCacheTtl((e.target as HTMLSelectElement).value as CacheControlTtl | '')
+                }
+              >
+                <vscode-option value="" selected={cacheTtl === '' || undefined}>
+                  None
+                </vscode-option>
+                <vscode-option value="5m" selected={cacheTtl === '5m' || undefined}>
+                  5 minutes
+                </vscode-option>
+                <vscode-option value="1h" selected={cacheTtl === '1h' || undefined}>
+                  1 hour
+                </vscode-option>
+              </vscode-single-select>
+              <vscode-form-helper>
+                Optional time-to-live for cached prompts. When set, markers include a ttl field.
+                Select "None" to omit.
               </vscode-form-helper>
             </FormGroup>
           </div>

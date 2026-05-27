@@ -345,7 +345,7 @@ Each model entry can include:
 | `defaultReasoningEffort` | `string` | Default effort level (`"none"`, `"high"`, etc.) |
 | `reasoningEffortMap` | `object` | Maps effort levels to provider-specific body parameters |
 
-Example for `qwen-3.6-plus`:
+Example for `qwen3.6-plus`:
 
 ```json
 {

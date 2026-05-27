@@ -120,6 +120,7 @@ export class ModelRepository {
         | 'inputCostPer1m'
         | 'outputCostPer1m'
         | 'cachedInputCostPer1m'
+        | 'cacheControl'
         | 'enabled'
       >
     >,
