@@ -86,8 +86,8 @@ describe('ChatDebugCleanupService', () => {
    */
   function createMapping(sessionId: string, workspaceId: string, ageHours: number = 0): void {
     const timestamp = new Date(Date.now() - ageHours * 60 * 60 * 1000).toISOString();
-    mappingRepo.insertToolCallMapping({
-      toolCallId: `tc-${sessionId}`,
+    mappingRepo.insertFingerprintMapping({
+      contentFingerprint: `fp-${sessionId}`,
       sessionId,
       workspaceId,
       modelName: 'gpt-4o',

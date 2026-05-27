@@ -10,8 +10,9 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
  * Data-access layer for the `reasoning_cache` table.
  *
  * Stores and retrieves reasoning fields from assistant
- * messages, keyed by a conversation fingerprint and the
- * zero-based assistant message index.
+ * messages, keyed by a conversation fingerprint
+ * (session-level) and a message fingerprint (derived from
+ * the assistant message's content and tool calls).
  */
 export class ReasoningCacheRepository {
   constructor(private readonly db: Database) {}
@@ -20,20 +21,22 @@ export class ReasoningCacheRepository {
    * Caches reasoning fields for a specific assistant message.
    *
    * Uses upsert semantics: if a row already exists for the
-   * given fingerprint + assistantIndex, it is updated.
+   * given fingerprint + messageFingerprint, it is updated.
    *
-   * @param fingerprint - Conversation fingerprint.
-   * @param assistantIndex - Zero-based index among assistant
-   *   messages in the conversation.
+   * @param fingerprint - Session-level conversation
+   *   fingerprint.
+   * @param messageFingerprint - Per-message fingerprint
+   *   derived from the assistant message's content and tool
+   *   calls.
    * @param fields - The reasoning fields to cache.
    */
-  cache(fingerprint: string, assistantIndex: number, fields: ReasoningFields): void {
+  cache(fingerprint: string, messageFingerprint: string, fields: ReasoningFields): void {
     const now = new Date().toISOString();
     this.db
       .insert(reasoningCache)
       .values({
         fingerprint,
-        assistantIndex,
+        messageFingerprint,
         reasoningContent: fields.reasoning_content ?? null,
         reasoning: fields.reasoning ?? null,
         reasoningDetails: fields.reasoning_details
@@ -42,7 +45,7 @@ export class ReasoningCacheRepository {
         createdAt: now,
       })
       .onConflictDoUpdate({
-        target: [reasoningCache.fingerprint, reasoningCache.assistantIndex],
+        target: [reasoningCache.fingerprint, reasoningCache.messageFingerprint],
         set: {
           reasoningContent: fields.reasoning_content ?? null,
           reasoning: fields.reasoning ?? null,
@@ -59,20 +62,22 @@ export class ReasoningCacheRepository {
    * Retrieves cached reasoning fields for a specific
    * assistant message.
    *
-   * @param fingerprint - Conversation fingerprint.
-   * @param assistantIndex - Zero-based index among assistant
-   *   messages in the conversation.
+   * @param fingerprint - Session-level conversation
+   *   fingerprint.
+   * @param messageFingerprint - Per-message fingerprint
+   *   derived from the assistant message's content and tool
+   *   calls.
    * @returns The cached reasoning fields, or `null` if no
    *   cache entry exists.
    */
-  get(fingerprint: string, assistantIndex: number): ReasoningFields | null {
+  get(fingerprint: string, messageFingerprint: string): ReasoningFields | null {
     const row = this.db
       .select()
       .from(reasoningCache)
       .where(
         and(
           eq(reasoningCache.fingerprint, fingerprint),
-          eq(reasoningCache.assistantIndex, assistantIndex),
+          eq(reasoningCache.messageFingerprint, messageFingerprint),
         ),
       )
       .get() as ReasoningCacheRow | undefined;

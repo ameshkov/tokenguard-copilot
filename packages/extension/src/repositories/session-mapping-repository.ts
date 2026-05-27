@@ -2,24 +2,10 @@ import { eq, sql } from 'drizzle-orm';
 import type { Database } from '../db/connection.js';
 import { sessionMappings, type SessionMapping } from '../db/schema.js';
 
-/** Insert shape for a tool call ID mapping. */
-export interface ToolCallMappingInsert {
-  /** The tool call ID from a model response. */
-  toolCallId: string;
-  /** UUID of the session to map to. */
-  sessionId: string;
-  /** Hash of the workspace folder URI. */
-  workspaceId: string;
-  /** Display name of the model used. */
-  modelName: string;
-  /** ISO 8601 timestamp. */
-  createdAt: string;
-}
-
-/** Insert shape for a content checksum mapping. */
-export interface ChecksumMappingInsert {
-  /** SHA-256 hex digest of content. */
-  contentChecksum: string;
+/** Insert shape for a content fingerprint mapping. */
+export interface FingerprintMappingInsert {
+  /** SHA-256 hex digest of the conversation fingerprint. */
+  contentFingerprint: string;
   /** UUID of the session to map to. */
   sessionId: string;
   /** Hash of the workspace folder URI. */
@@ -33,26 +19,23 @@ export interface ChecksumMappingInsert {
 /**
  * Data access layer for the `session_mappings` table.
  *
- * Stores mappings between tool call IDs / content
- * checksums and session IDs for chat debug session
- * attribution.
+ * Stores mappings between conversation fingerprints and
+ * session IDs for chat debug session attribution.
  */
 export class SessionMappingRepository {
   constructor(private readonly db: Database) {}
 
   /**
-   * Insert a tool call ID → session mapping.
+   * Insert a content fingerprint → session mapping.
    *
-   * @param mapping - The tool call mapping to insert.
+   * @param mapping - The fingerprint mapping to insert.
    * @returns The inserted row.
-   * @throws If the tool call ID already exists (UNIQUE
-   *   constraint).
    */
-  insertToolCallMapping(mapping: ToolCallMappingInsert): SessionMapping {
+  insertFingerprintMapping(mapping: FingerprintMappingInsert): SessionMapping {
     return this.db
       .insert(sessionMappings)
       .values({
-        toolCallId: mapping.toolCallId,
+        contentFingerprint: mapping.contentFingerprint,
         sessionId: mapping.sessionId,
         workspaceId: mapping.workspaceId,
         modelName: mapping.modelName,
@@ -64,51 +47,16 @@ export class SessionMappingRepository {
   }
 
   /**
-   * Insert a content checksum → session mapping.
+   * Find a mapping by content fingerprint.
    *
-   * @param mapping - The checksum mapping to insert.
-   * @returns The inserted row.
-   */
-  insertChecksumMapping(mapping: ChecksumMappingInsert): SessionMapping {
-    return this.db
-      .insert(sessionMappings)
-      .values({
-        contentChecksum: mapping.contentChecksum,
-        sessionId: mapping.sessionId,
-        workspaceId: mapping.workspaceId,
-        modelName: mapping.modelName,
-        createdAt: mapping.createdAt,
-        updatedAt: mapping.createdAt,
-      })
-      .returning()
-      .get();
-  }
-
-  /**
-   * Find a mapping by tool call ID.
-   *
-   * @param toolCallId - The tool call ID to look up.
+   * @param fingerprint - The content fingerprint to look up.
    * @returns The matching row or `undefined`.
    */
-  findByToolCallId(toolCallId: string): SessionMapping | undefined {
+  findByContentFingerprint(fingerprint: string): SessionMapping | undefined {
     return this.db
       .select()
       .from(sessionMappings)
-      .where(eq(sessionMappings.toolCallId, toolCallId))
-      .get();
-  }
-
-  /**
-   * Find a mapping by content checksum.
-   *
-   * @param checksum - The content checksum to look up.
-   * @returns The matching row or `undefined`.
-   */
-  findByContentChecksum(checksum: string): SessionMapping | undefined {
-    return this.db
-      .select()
-      .from(sessionMappings)
-      .where(eq(sessionMappings.contentChecksum, checksum))
+      .where(eq(sessionMappings.contentFingerprint, fingerprint))
       .get();
   }
 

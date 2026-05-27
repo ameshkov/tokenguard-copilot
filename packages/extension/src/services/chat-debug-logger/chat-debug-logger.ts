@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
 import type { OpenAIMessage, OpenAITool, ChatUsage } from '../chat-handler/index.js';
-import { extractTextContent } from '../../utils/content.js';
+import { extractTextContent, extractImageParts } from '../../utils/content.js';
 import { extractReasoning } from '../../utils/reasoning.js';
 
 /** Input data for logging a chat request-response pair. */
@@ -280,6 +280,18 @@ export class ChatDebugLogger {
       if (textContent) {
         sections.push(textContent);
       }
+
+      // Image parts
+      const imageParts = extractImageParts(msg.content);
+      for (const img of imageParts) {
+        if (img.mimeType !== 'unknown') {
+          const sizeKb = (img.sizeBytes / 1024).toFixed(1);
+          sections.push(`🖼️ Image (${img.mimeType}, ${sizeKb} KB)`);
+        } else {
+          sections.push(`🖼️ Image (external URL)`);
+        }
+      }
+
       if (msg.tool_calls) {
         for (const tc of msg.tool_calls) {
           sections.push('');
@@ -357,15 +369,8 @@ export class ChatDebugLogger {
 
       const workspaceId = ChatDebugLogger.computeWorkspaceId(input.workspaceFolderUri);
 
-      // Convert messages to SessionMessage format
-      const sessionMessages = input.messages.map((m) => ({
-        role: m.role,
-        content: extractTextContent(m.content),
-        toolCallId: m.tool_call_id,
-      }));
-
       const { sessionId } = this.sessionTracker.resolveSession({
-        messages: sessionMessages,
+        messages: input.messages,
         responseContent: input.responseContent,
         workspaceId,
         modelName: input.modelName,
@@ -389,16 +394,6 @@ export class ChatDebugLogger {
       // Atomic write: temp file + rename
       writeFileSync(tmpPath, content, 'utf-8');
       renameSync(tmpPath, filePath);
-
-      // Register tool calls for session attribution
-      if (input.responseToolCalls.length > 0) {
-        this.sessionTracker.registerToolCalls({
-          sessionId,
-          toolCallIds: input.responseToolCalls.map((tc) => tc.id),
-          workspaceId,
-          modelName: input.modelName,
-        });
-      }
 
       // Fire refresh callback after successful write.
       this.onLogWrite?.();

@@ -208,9 +208,10 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
     const nameMap = response?.summary.modelNames ?? {};
     const merged = new Map<string, { name: string; removed: boolean }>();
 
+    const providerNameMap = new Map(providers.map((p) => [p.id, p.name]));
     for (const m of models) {
       merged.set(`${m.providerId}:${m.id}`, {
-        name: m.displayName ?? m.id,
+        name: m.displayName ?? `${providerNameMap.get(m.providerId) ?? m.providerId}/${m.id}`,
         removed: false,
       });
     }

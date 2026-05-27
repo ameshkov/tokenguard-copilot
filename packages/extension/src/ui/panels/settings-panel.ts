@@ -546,6 +546,9 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
   let totalErrorCount = 0;
   let totalEstimatedCost = 0;
 
+  const allProviders = appCtx.providerManager.getAllProvidersWithStatus();
+  const providerNameMap = new Map(allProviders.map((p) => [p.id, p.name]));
+
   const perModel = new Map<
     string,
     {
@@ -586,7 +589,8 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
       perModel.set(key, {
         providerId: r.providerId,
         modelId: r.modelId,
-        displayName: model?.displayName ?? r.modelId,
+        displayName:
+          model?.displayName ?? `${providerNameMap.get(r.providerId) ?? r.providerId}/${r.modelId}`,
         inputCostPer1m: model?.inputCostPer1m ?? null,
         outputCostPer1m: model?.outputCostPer1m ?? null,
         cachedInputCostPer1m: model?.cachedInputCostPer1m ?? null,
@@ -602,7 +606,6 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
   // Build provider names map (all providers including removed
   // that have usage data).
   const providerNames: Record<string, { name: string; removed: boolean }> = {};
-  const allProviders = appCtx.providerManager.getAllProvidersWithStatus();
   const providerIdsInRecords = new Set(records.map((r) => r.providerId));
   for (const p of allProviders) {
     if (providerIdsInRecords.has(p.id)) {
@@ -622,7 +625,7 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
     const key = `${m.providerId}:${m.id}`;
     if (modelKeysInRecords.has(key)) {
       modelNames[key] = {
-        name: m.displayName ?? m.id,
+        name: m.displayName ?? `${providerNameMap.get(m.providerId) ?? m.providerId}/${m.id}`,
         removed: m.removed,
       };
     }

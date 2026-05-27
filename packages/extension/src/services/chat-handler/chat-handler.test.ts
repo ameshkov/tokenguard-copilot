@@ -253,6 +253,150 @@ describe('ChatHandler', () => {
         },
       ]);
     });
+
+    it('translates user message with only an image', async () => {
+      const vscodeModule = await import('vscode');
+      const imgData = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+      const imgPart = new vscodeModule.LanguageModelDataPart(imgData, 'image/png');
+      const messages = [mockMessage(1, [imgPart as unknown as Record<string, unknown>])];
+      const result = ChatHandler.translateMessages(messages);
+      const expectedUrl = `data:image/png;base64,${Buffer.from(imgData).toString('base64')}`;
+      expect(result).toEqual([
+        {
+          role: 'user',
+          content: [{ type: 'image_url', image_url: { url: expectedUrl } }],
+        },
+      ]);
+    });
+
+    it('translates user message with text then image', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Describe this');
+      const imgData = new Uint8Array([0x89, 0x50]);
+      const imgPart = new vscodeModule.LanguageModelDataPart(imgData, 'image/png');
+      const messages = [
+        mockMessage(1, [
+          textPart as unknown as Record<string, unknown>,
+          imgPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      const expectedUrl = `data:image/png;base64,${Buffer.from(imgData).toString('base64')}`;
+      expect(result).toEqual([
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Describe this' },
+            { type: 'image_url', image_url: { url: expectedUrl } },
+          ],
+        },
+      ]);
+    });
+
+    it('translates user message with image then text', async () => {
+      const vscodeModule = await import('vscode');
+      const imgData = new Uint8Array([0xff, 0xd8]);
+      const imgPart = new vscodeModule.LanguageModelDataPart(imgData, 'image/jpeg');
+      const textPart = new vscodeModule.LanguageModelTextPart('Look at this');
+      const messages = [
+        mockMessage(1, [
+          imgPart as unknown as Record<string, unknown>,
+          textPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      const expectedUrl = `data:image/jpeg;base64,${Buffer.from(imgData).toString('base64')}`;
+      expect(result).toEqual([
+        {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: expectedUrl } },
+            { type: 'text', text: 'Look at this' },
+          ],
+        },
+      ]);
+    });
+
+    it('translates user message with multiple images', async () => {
+      const vscodeModule = await import('vscode');
+      const img1 = new Uint8Array([0x89, 0x50]);
+      const img2 = new Uint8Array([0xff, 0xd8]);
+      const imgPart1 = new vscodeModule.LanguageModelDataPart(img1, 'image/png');
+      const imgPart2 = new vscodeModule.LanguageModelDataPart(img2, 'image/jpeg');
+      const messages = [
+        mockMessage(1, [
+          imgPart1 as unknown as Record<string, unknown>,
+          imgPart2 as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result).toEqual([
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/png;base64,${Buffer.from(img1).toString('base64')}` },
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${Buffer.from(img2).toString('base64')}`,
+              },
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('keeps plain string content when no images are present', async () => {
+      const vscodeModule = await import('vscode');
+      const part = new vscodeModule.LanguageModelTextPart('Hello');
+      const messages = [mockMessage(1, [part as unknown as Record<string, unknown>])];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result).toEqual([{ role: 'user', content: 'Hello' }]);
+    });
+
+    it('ignores non-image data parts', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('text');
+      const pdfPart = new vscodeModule.LanguageModelDataPart(
+        new Uint8Array([0x25, 0x50]),
+        'application/pdf',
+      );
+      const messages = [
+        mockMessage(1, [
+          textPart as unknown as Record<string, unknown>,
+          pdfPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result).toEqual([{ role: 'user', content: 'text' }]);
+    });
+
+    it('translates tool result with image data part', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('result');
+      const imgData = new Uint8Array([0x89, 0x50]);
+      const imgPart = new vscodeModule.LanguageModelDataPart(imgData, 'image/png');
+      const toolResultPart = new vscodeModule.LanguageModelToolResultPart('call_1', [
+        textPart,
+        imgPart,
+      ]);
+      const messages = [mockMessage(1, [toolResultPart as unknown as Record<string, unknown>])];
+      const result = ChatHandler.translateMessages(messages);
+      const expectedUrl = `data:image/png;base64,${Buffer.from(imgData).toString('base64')}`;
+      expect(result).toEqual([
+        {
+          role: 'tool',
+          content: JSON.stringify([
+            { type: 'text', text: 'result' },
+            { type: 'image_url', image_url: { url: expectedUrl } },
+          ]),
+          tool_call_id: 'call_1',
+        },
+      ]);
+    });
   });
 
   describe('buildRequestBody', () => {

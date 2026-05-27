@@ -4,6 +4,7 @@ import { ReasoningCacheRepository } from '../../repositories/reasoning-cache-rep
 import { ReasoningCacheService } from './reasoning-cache-service.js';
 import type { OpenAIMessage } from '../chat-handler/chat-handler.js';
 import type { ReasoningFields } from '../../utils/reasoning.js';
+import type { FingerprintToolCall } from '../../utils/fingerprint.js';
 
 /**
  * Helper to simulate one request/response cycle:
@@ -17,7 +18,7 @@ function step(
   preserve: boolean,
   response?: {
     content: string;
-    firstToolCallId?: string;
+    toolCalls?: FingerprintToolCall[];
     fields: ReasoningFields | null;
   },
 ): OpenAIMessage[] {
@@ -60,17 +61,23 @@ describe('ReasoningCacheService', () => {
 
   it('cacheReasoning with preserveReasoning=false is a no-op', () => {
     const msgs: OpenAIMessage[] = [{ role: 'user', content: 'Hi' }];
-
-    // This would inject reasoning if enabled, but it's not
     step(svc, msgs, false, {
       content: 'Hello',
       fields: { reasoning_content: 'thinking...' },
     });
 
-    // Because preserveReasoning=false, cacheReasoning should
-    // NOT have been called and therefore get returns null
-    const cached = repo.get('irrelevant', 0);
-    expect(cached).toBeNull();
+    // Verify nothing was cached by attempting a backfill
+    // on the same conversation — reasoning should NOT
+    // appear because cacheReasoning was a no-op.
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello' },
+    ];
+    svc.backfillReasoning(t2, true);
+
+    // Placeholder injected (no cache hit), not the
+    // original 'thinking...' value.
+    expect(t2[1].reasoning_content).toBe('.');
   });
 
   it('cacheReasoning with null fields is a no-op', () => {
@@ -79,9 +86,17 @@ describe('ReasoningCacheService', () => {
       { role: 'user', content: 'Hi' },
     ];
     svc.cacheReasoning(msgs, null, { content: 'Hello' }, true);
-    // Nothing should be cached
-    const cached = repo.get('irrelevant', 0);
-    expect(cached).toBeNull();
+
+    // Verify nothing was cached by attempting a backfill.
+    const t2: OpenAIMessage[] = [
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello' },
+    ];
+    svc.backfillReasoning(t2, true);
+
+    // Placeholder injected (no cache hit), not a real value.
+    expect(t2[2].reasoning_content).toBe('.');
   });
 
   // --- Multi-turn scenarios ---
@@ -93,53 +108,52 @@ describe('ReasoningCacheService', () => {
     ];
     // On error, cacheReasoning is NOT called
     svc.backfillReasoning(turn1Messages, true);
-    // No cacheReasoning call simulates HTTP error
-    // Repository should be empty
-    const allCached = repo.get('any', 0);
-    expect(allCached).toBeNull();
+
+    // Verify nothing was cached: simulate Turn 2 and check
+    // that no reasoning was backfilled from cache.
+    const t2: OpenAIMessage[] = [
+      { role: 'system', content: 'Be helpful.' },
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Some response' },
+    ];
+    svc.backfillReasoning(t2, true);
+
+    // Only placeholder — no real reasoning was cached.
+    expect(t2[2].reasoning_content).toBe('.');
   });
 
-  it('Turn 1 text → Turn 2 backfill', () => {
-    const turn1Messages: OpenAIMessage[] = [
+  it('Turn 1 text -> Turn 2 backfill', () => {
+    const t1: OpenAIMessage[] = [
       { role: 'system', content: 'Be helpful.' },
       { role: 'user', content: 'Hello' },
     ];
-
-    // Turn 1: cache reasoning after text response
-    step(svc, turn1Messages, true, {
+    step(svc, t1, true, {
       content: 'Hi there!',
-      fields: { reasoning_content: 'I should greet the user.' },
+      fields: {
+        reasoning_content: 'I should greet the user.',
+      },
     });
 
-    // Turn 2: add assistant message to history, backfill should inject
-    const turn2Messages: OpenAIMessage[] = [
+    const t2: OpenAIMessage[] = [
       { role: 'system', content: 'Be helpful.' },
       { role: 'user', content: 'Hello' },
-      {
-        role: 'assistant',
-        content: 'Hi there!',
-        // No reasoning fields — should be backfilled
-      },
+      { role: 'assistant', content: 'Hi there!' },
       { role: 'user', content: 'How are you?' },
     ];
+    step(svc, t2, true);
 
-    step(svc, turn2Messages, true);
-
-    // Assistant message at index 0 should have reasoning injected
-    expect(turn2Messages[2].reasoning_content).toBe('I should greet the user.');
-    expect(turn2Messages[2].reasoning).toBe('I should greet the user.');
-    expect(turn2Messages[2].reasoning_details).toBeDefined();
+    expect(t2[2].reasoning_content).toBe('I should greet the user.');
+    expect(t2[2].reasoning).toBe('I should greet the user.');
+    expect(t2[2].reasoning_details).toBeDefined();
   });
 
-  it('Turn 2 second assistant → Turn 3 backfill both', () => {
-    // Turn 1
+  it('Turn 2 second assistant -> Turn 3 backfill both', () => {
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Hi' }];
     step(svc, t1, true, {
       content: 'Hello!',
       fields: { reasoning_content: 'R1' },
     });
 
-    // Turn 2
     const t2: OpenAIMessage[] = [
       { role: 'user', content: 'Hi' },
       { role: 'assistant', content: 'Hello!' },
@@ -150,39 +164,37 @@ describe('ReasoningCacheService', () => {
       fields: { reasoning_content: 'R2' },
     });
 
-    // Turn 3: both assistants should get reasoning
     const t3: OpenAIMessage[] = [
       { role: 'user', content: 'Hi' },
-      {
-        role: 'assistant',
-        content: 'Hello!',
-      },
+      { role: 'assistant', content: 'Hello!' },
       { role: 'user', content: 'More?' },
-      {
-        role: 'assistant',
-        content: 'Sure!',
-      },
+      { role: 'assistant', content: 'Sure!' },
       { role: 'user', content: 'Again?' },
     ];
-
     step(svc, t3, true);
 
-    // First assistant gets R1
     expect(t3[1].reasoning_content).toBe('R1');
-    // Second assistant gets R2
     expect(t3[3].reasoning_content).toBe('R2');
   });
 
-  it('Turn 3 fingerprint ignores second assistant', () => {
-    // Turn 1: tool call
+  it('Tool call message fingerprint and backfill', () => {
+    const toolCalls: FingerprintToolCall[] = [
+      {
+        id: 'call_1',
+        function: {
+          name: 'get_weather',
+          arguments: '{}',
+        },
+      },
+    ];
+
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Weather?' }];
     step(svc, t1, true, {
       content: '',
-      firstToolCallId: 'call_1',
+      toolCalls,
       fields: { reasoning_content: 'R1' },
     });
 
-    // Add assistant1 tool call to messages for Turn 2
     const t2: OpenAIMessage[] = [
       { role: 'user', content: 'Weather?' },
       {
@@ -210,7 +222,6 @@ describe('ReasoningCacheService', () => {
       fields: { reasoning_content: 'R2' },
     });
 
-    // Turn 3: fingerprint should still be based on first assistant (call_1)
     const t3: OpenAIMessage[] = [
       { role: 'user', content: 'Weather?' },
       {
@@ -232,50 +243,12 @@ describe('ReasoningCacheService', () => {
         content: 'Sunny',
         tool_call_id: 'call_1',
       },
-      {
-        role: 'assistant',
-        content: 'It is sunny!',
-      },
+      { role: 'assistant', content: 'It is sunny!' },
     ];
-
     step(svc, t3, true);
 
-    // Both assistants should have reasoning
     expect(t3[1].reasoning_content).toBe('R1');
     expect(t3[3].reasoning_content).toBe('R2');
-  });
-
-  it('Tool call fingerprint uses tool_calls[0].id', () => {
-    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Do something' }];
-
-    step(svc, t1, true, {
-      content: '', // No text content since tool call
-      firstToolCallId: 'call_abc',
-      fields: { reasoning_content: 'tool thinking' },
-    });
-
-    // Turn 2: fingerprint computed from tool_calls[0].id
-    const t2: OpenAIMessage[] = [
-      { role: 'user', content: 'Do something' },
-      {
-        role: 'assistant',
-        content: null,
-        tool_calls: [
-          {
-            id: 'call_abc',
-            type: 'function',
-            function: {
-              name: 'do_stuff',
-              arguments: '{}',
-            },
-          },
-        ],
-      },
-    ];
-
-    step(svc, t2, true);
-
-    expect(t2[1].reasoning_content).toBe('tool thinking');
   });
 
   it('Multiple system/user before first assistant', () => {
@@ -285,13 +258,11 @@ describe('ReasoningCacheService', () => {
       { role: 'system', content: 'C' },
       { role: 'user', content: 'D' },
     ];
-
     step(svc, msgs, true, {
       content: 'Reply',
       fields: { reasoning_content: 'multi prefix' },
     });
 
-    // Turn 2
     const t2: OpenAIMessage[] = [
       { role: 'system', content: 'A' },
       { role: 'user', content: 'B' },
@@ -299,13 +270,11 @@ describe('ReasoningCacheService', () => {
       { role: 'user', content: 'D' },
       { role: 'assistant', content: 'Reply' },
     ];
-
     step(svc, t2, true);
     expect(t2[4].reasoning_content).toBe('multi prefix');
   });
 
   it('Agent-supplied placeholder (short) replaced by cached', () => {
-    // Pre-populate cache with full reasoning
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
     step(svc, t1, true, {
       content: 'Long answer',
@@ -314,7 +283,6 @@ describe('ReasoningCacheService', () => {
       },
     });
 
-    // Turn 2: agent supplies a placeholder
     const t2: OpenAIMessage[] = [
       { role: 'user', content: 'Q' },
       {
@@ -323,24 +291,18 @@ describe('ReasoningCacheService', () => {
         reasoning_content: '.',
       },
     ];
-
     step(svc, t2, true);
 
-    // Placeholder should be replaced with cached
     expect(t2[1].reasoning_content).toBe('This is the full chain of thought.');
   });
 
   it('Agent already has full reasoning, no replacement', () => {
-    // Pre-populate cache
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
     step(svc, t1, true, {
       content: 'Answer',
-      fields: {
-        reasoning_content: 'Cached reasoning.',
-      },
+      fields: { reasoning_content: 'Cached reasoning.' },
     });
 
-    // Turn 2: agent provides its own non-trivial reasoning
     const t2: OpenAIMessage[] = [
       { role: 'user', content: 'Q' },
       {
@@ -349,15 +311,12 @@ describe('ReasoningCacheService', () => {
         reasoning_content: 'Agent-provided long reasoning.',
       },
     ];
-
     step(svc, t2, true);
 
-    // Agent's reasoning should NOT be overwritten
     expect(t2[1].reasoning_content).toBe('Agent-provided long reasoning.');
   });
 
-  it('Agent supplies one field → copied to all three', () => {
-    // Pre-populate cache
+  it('Agent supplies one field -> copied to all three', () => {
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
     step(svc, t1, true, {
       content: 'Answer',
@@ -367,7 +326,6 @@ describe('ReasoningCacheService', () => {
       },
     });
 
-    // Turn 2: agent only provides reasoning field
     const t2: OpenAIMessage[] = [
       { role: 'user', content: 'Q' },
       {
@@ -376,18 +334,14 @@ describe('ReasoningCacheService', () => {
         reasoning: 'Agent reasoning field',
       },
     ];
-
     step(svc, t2, true);
 
-    // All three fields should be populated with the longest
     expect(t2[1].reasoning_content).toBe('Agent reasoning field');
     expect(t2[1].reasoning).toBe('Agent reasoning field');
-    // reasoning_details should come from cached details
     expect(t2[1].reasoning_details).toEqual([{ type: 'text', text: 'Cached detail' }]);
   });
 
-  it('Agent supplies no reasoning fields → cached injected', () => {
-    // Pre-populate cache
+  it('Agent supplies no reasoning fields -> cached injected', () => {
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
     step(svc, t1, true, {
       content: 'Answer',
@@ -398,15 +352,10 @@ describe('ReasoningCacheService', () => {
       },
     });
 
-    // Turn 2: agent provides no reasoning fields
     const t2: OpenAIMessage[] = [
       { role: 'user', content: 'Q' },
-      {
-        role: 'assistant',
-        content: 'Answer',
-      },
+      { role: 'assistant', content: 'Answer' },
     ];
-
     step(svc, t2, true);
 
     expect(t2[1].reasoning_content).toBe('Cached thought.');
@@ -430,14 +379,11 @@ describe('ReasoningCacheService', () => {
       { role: 'assistant', content: 'Hi!' },
       { role: 'user', content: 'Again' },
     ];
-
     step(svc, t2, true);
 
-    // Check user/system messages are not touched
     expect((t2[0] as OpenAIMessage).reasoning_content).toBeUndefined();
     expect((t2[1] as OpenAIMessage).reasoning_content).toBeUndefined();
     expect((t2[3] as OpenAIMessage).reasoning_content).toBeUndefined();
-    // Assistant gets reasoning
     expect(t2[2].reasoning_content).toBe('R');
   });
 
@@ -448,9 +394,80 @@ describe('ReasoningCacheService', () => {
       fields: null,
     });
 
-    // Caching should have been skipped (fields=null)
-    // Any get should return null
-    const cached = repo.get('irrelevant', 0);
-    expect(cached).toBeNull();
+    // Verify nothing was cached by attempting a backfill.
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi!' },
+    ];
+    svc.backfillReasoning(t2, true);
+
+    // Only placeholder — null fields were not cached.
+    expect(t2[1].reasoning_content).toBe('.');
+  });
+
+  // --- Placeholder fallback ---
+
+  it('No cache and no agent reasoning -> injects placeholder', () => {
+    // Simulate Turn 2 with no prior cache entry for this
+    // assistant message content.
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    // Turn 1 returns "Answer A" with reasoning, cached OK
+    step(svc, t1, true, {
+      content: 'Answer A',
+      fields: { reasoning_content: 'R_A' },
+    });
+
+    // Turn 2 has a different assistant message "Answer B"
+    // that was NOT cached (e.g. from a rollback/re-gen).
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      { role: 'assistant', content: 'Answer B' },
+      { role: 'user', content: 'More?' },
+    ];
+    step(svc, t2, true);
+
+    // "Answer B" has no cache hit → placeholder injected
+    expect(t2[1].reasoning_content).toBe('.');
+  });
+
+  // --- Rollback resilience ---
+
+  it('Same assistant content at different index still hits cache', () => {
+    // Turn 1: two assistants with reasoning
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Hi' }];
+    step(svc, t1, true, {
+      content: 'A1',
+      fields: { reasoning_content: 'R1' },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'A1' },
+      { role: 'user', content: 'More' },
+    ];
+    step(svc, t2, true, {
+      content: 'A2',
+      fields: { reasoning_content: 'R2' },
+    });
+
+    // Now simulate rollback within the same conversation:
+    // user rolls back to after A1, re-asks, and gets A2 again
+    // but now A2 appears right after A1 (no "More" user msg).
+    // Session FP is the same ("Hi" + "A1"), and A2's message
+    // FP is the same regardless of position.
+    const rollback: OpenAIMessage[] = [
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'A1' },
+      { role: 'user', content: 'Something else' },
+      { role: 'assistant', content: 'A2' },
+      { role: 'user', content: 'Continue' },
+    ];
+    svc.backfillReasoning(rollback, true);
+
+    // Both get their reasoning: A1 via message FP, A2 via
+    // message FP (same session FP because first assistant
+    // is still "A1").
+    expect(rollback[1].reasoning_content).toBe('R1');
+    expect(rollback[3].reasoning_content).toBe('R2');
   });
 });

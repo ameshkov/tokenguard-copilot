@@ -126,18 +126,16 @@ export type Setting = typeof settings.$inferSelect;
 export type NewSetting = typeof settings.$inferInsert;
 
 /**
- * Session mappings table — maps tool call IDs and content
- * checksums to chat debug session IDs.
+ * Session mappings table — maps conversation fingerprints
+ * to chat debug session IDs.
  *
  * Used by the session tracker to attribute incoming chat
- * requests to existing sessions. Each row maps either a
- * `toolCallId` or a `contentChecksum` (or both) to a
- * `sessionId`.
+ * requests to existing sessions. Each row maps a
+ * `contentFingerprint` to a `sessionId`.
  */
 export const sessionMappings = sqliteTable('session_mappings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  toolCallId: text('tool_call_id').unique(),
-  contentChecksum: text('content_checksum'),
+  contentFingerprint: text('content_fingerprint'),
   sessionId: text('session_id').notNull(),
   workspaceId: text('workspace_id').notNull(),
   modelName: text('model_name').notNull(),
@@ -158,20 +156,22 @@ export type NewSessionMapping = typeof sessionMappings.$inferInsert;
  *
  * Each row stores reasoning fields extracted from an
  * assistant message, keyed by a conversation fingerprint
- * and the assistant message's zero-based index.
+ * (session-level) and a message fingerprint (per-message,
+ * derived from the assistant message's content and tool
+ * calls).
  */
 export const reasoningCache = sqliteTable(
   'reasoning_cache',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     fingerprint: text('fingerprint').notNull(),
-    assistantIndex: integer('assistant_index').notNull(),
+    messageFingerprint: text('message_fingerprint').notNull(),
     reasoningContent: text('reasoning_content'),
     reasoning: text('reasoning'),
     reasoningDetails: text('reasoning_details'),
     createdAt: text('created_at').notNull(),
   },
-  (table) => [unique().on(table.fingerprint, table.assistantIndex)],
+  (table) => [unique().on(table.fingerprint, table.messageFingerprint)],
 );
 
 /** TypeScript type for a selected reasoning cache row. */

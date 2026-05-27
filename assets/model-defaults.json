@@ -36,7 +36,7 @@
     "inputCostPer1M": 5.625,
     "outputCostPer1M": 7.5,
     "cachedInputCostPer1M": 0.25,
-    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "supportedCapabilities": ["reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
       "none": {

@@ -1,8 +1,14 @@
-import { createHash } from 'node:crypto';
 import type { ReasoningCacheRepository } from '../../repositories/reasoning-cache-repository.js';
-import { extractTextContent } from '../../utils/content.js';
+import {
+  computeFingerprint,
+  computeMessageFingerprint,
+  type FingerprintToolCall,
+} from '../../utils/fingerprint.js';
 import { extractReasoning, type ReasoningFields } from '../../utils/reasoning.js';
 import type { OpenAIMessage } from '../chat-handler/chat-handler.js';
+
+/** Placeholder reasoning value for cache misses. */
+const REASONING_PLACEHOLDER = '.';
 
 /**
  * Manages reasoning preservation across multi-turn
@@ -12,6 +18,18 @@ import type { OpenAIMessage } from '../chat-handler/chat-handler.js';
  * {@link ChatHandler} only needs to call two methods:
  * {@link backfillReasoning} before a request and
  * {@link cacheReasoning} after a successful response.
+ *
+ * Cache entries are keyed by a dual fingerprint:
+ * - **Session fingerprint** — stable conversation-level
+ *   hash (from {@link computeFingerprint}).
+ * - **Message fingerprint** — per-assistant-message hash
+ *   derived from the message's `content` and `tool_calls`
+ *   (from {@link computeMessageFingerprint}).
+ *
+ * This dual-key approach is resilient to conversation
+ * rollbacks in Copilot Chat: if the user rolls back and
+ * the same assistant message reappears at a different
+ * index, it still matches.
  */
 export class ReasoningCacheService {
   constructor(private readonly repo: ReasoningCacheRepository) {}
@@ -28,6 +46,10 @@ export class ReasoningCacheService {
    *   and the cached value is used instead.
    * - If no agent-supplied reasoning is present, the
    *   cached value is injected.
+   * - If neither agent reasoning nor cached reasoning
+   *   is available, a placeholder `"."` is injected so
+   *   providers that require reasoning fields always
+   *   see a value.
    *
    * No-op when `preserveReasoning` is `false` or no
    * assistant messages exist.
@@ -43,14 +65,19 @@ export class ReasoningCacheService {
     const hasAssistant = messages.some((m) => m.role === 'assistant');
     if (!hasAssistant) return;
 
-    const fingerprint = this.computeFingerprint(messages);
-    if (!fingerprint) return;
+    const sessionFp = computeFingerprint(messages);
+    if (!sessionFp) return;
 
-    let assistantIndex = 0;
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue;
 
-      const cached = this.repo.get(fingerprint, assistantIndex);
+      const msgFp = computeMessageFingerprint(
+        msg.content,
+        msg.tool_calls as FingerprintToolCall[] | undefined,
+      );
+
+      const cached = msgFp ? this.repo.get(sessionFp, msgFp) : null;
+
       const hasAgent =
         typeof msg.reasoning_content === 'string' ||
         typeof msg.reasoning === 'string' ||
@@ -82,8 +109,12 @@ export class ReasoningCacheService {
         msg.reasoning = cached.reasoning ?? longest ?? undefined;
         msg.reasoning_details =
           cached.reasoning_details ?? (longest ? [{ type: 'text', text: longest }] : undefined);
+      } else {
+        // No agent reasoning and no cache hit — inject
+        // placeholder so providers that require reasoning
+        // fields always see a value.
+        msg.reasoning_content = REASONING_PLACEHOLDER;
       }
-      assistantIndex++;
     }
   }
 
@@ -95,13 +126,13 @@ export class ReasoningCacheService {
    * can be computed.
    *
    * @param messages - The request messages (used to
-   *   compute the conversation fingerprint).
+   *   compute the session-level fingerprint).
    * @param fields - The reasoning fields extracted from
    *   the response, or `null`.
    * @param response - The assistant response content
-   *   and optional first tool call ID (used for Turn 1
-   *   fingerprint computation when the assistant
-   *   message is not yet in the messages array).
+   *   and optional tool calls (used for both session
+   *   fingerprint computation on Turn 1 and
+   *   per-message fingerprint computation).
    * @param preserveReasoning - Whether reasoning
    *   preservation is enabled for this model.
    */
@@ -110,90 +141,21 @@ export class ReasoningCacheService {
     fields: ReasoningFields | null,
     response: {
       content: string;
-      firstToolCallId?: string;
+      toolCalls?: FingerprintToolCall[];
     },
     preserveReasoning: boolean,
   ): void {
     if (!preserveReasoning || !fields) return;
 
-    const fingerprint = this.computeFingerprint(messages, response);
-    if (!fingerprint) return;
+    const sessionFp = computeFingerprint(messages, {
+      content: response.content,
+      firstToolCallId: response.toolCalls?.[0]?.id,
+    });
+    if (!sessionFp) return;
 
-    let assistantIndex = 0;
-    for (const m of messages) {
-      if (m.role === 'assistant') assistantIndex++;
-    }
+    const msgFp = computeMessageFingerprint(response.content, response.toolCalls);
+    if (!msgFp) return;
 
-    this.repo.cache(fingerprint, assistantIndex, fields);
-  }
-
-  /**
-   * Computes a stable conversation fingerprint for
-   * identifying the same conversation across turns.
-   *
-   * Collects all system and user messages in array
-   * order up to (but not including) the first assistant
-   * message. The first assistant provides the final key
-   * part: `tool_calls[0].id` when present, otherwise
-   * `content`.
-   *
-   * When the first assistant message is already in the
-   * messages array (backfill path — Turn 2+), the
-   * optional `firstAssistant` parameter is ignored.
-   *
-   * When the first assistant message is not yet in the
-   * array (cache path — Turn 1), the `firstAssistant`
-   * parameter supplies the missing data.
-   *
-   * @param firstAssistant - The response content and
-   *   optional first tool call ID from the assistant
-   *   response (used on Turn 1 when the assistant
-   *   message is not yet in the messages array).
-   * @returns SHA-256 hex fingerprint, or `null` if no
-   *   key part can be determined.
-   */
-  private computeFingerprint(
-    messages: OpenAIMessage[],
-    firstAssistant?: {
-      content: string;
-      firstToolCallId?: string;
-    },
-  ): string | null {
-    // Collect all system+user messages before the first
-    // assistant.
-    const prefixParts: string[] = [];
-    let firstAssistantMsg: OpenAIMessage | undefined;
-
-    for (const m of messages) {
-      if (m.role === 'assistant') {
-        firstAssistantMsg = m;
-        break;
-      }
-      if (m.role === 'system' || m.role === 'user') {
-        prefixParts.push(extractTextContent(m.content));
-      }
-    }
-
-    let keyPart: string | undefined;
-    if (firstAssistantMsg) {
-      // Assistant is already in messages (Turn 2+).
-      if (firstAssistantMsg.tool_calls?.length) {
-        keyPart = firstAssistantMsg.tool_calls[0].id;
-      } else {
-        keyPart = extractTextContent(firstAssistantMsg.content);
-      }
-    } else if (firstAssistant?.firstToolCallId) {
-      // Assistant not in messages yet (Turn 1, tool
-      // call).
-      keyPart = firstAssistant.firstToolCallId;
-    } else if (firstAssistant?.content !== undefined) {
-      // Assistant not in messages yet (Turn 1, text).
-      keyPart = firstAssistant.content;
-    }
-    if (!keyPart) return null;
-
-    return createHash('sha256')
-      .update(prefixParts.join('\0') + '\0' + keyPart)
-      .digest('hex');
+    this.repo.cache(sessionFp, msgFp, fields);
   }
 }

@@ -362,6 +362,77 @@ describe('ChatDebugLogger', () => {
       const md = ChatDebugLogger.formatLogMarkdown(baseInput, 'test-request-id');
       expect(md).not.toContain('usage:');
     });
+
+    it('renders image part placeholder for data-URI images', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'What is in this image?' },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Check this image:' },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+                },
+              },
+            ],
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🖼️');
+      expect(md).toContain('image/png');
+    });
+
+    it('renders image part placeholder for external URLs', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Describe this photo:' },
+              {
+                type: 'image_url',
+                image_url: { url: 'https://example.com/photo.jpg' },
+              },
+            ],
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🖼️');
+      expect(md).toContain('external URL');
+    });
+
+    it('renders multiple image parts separately', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAA=' },
+              },
+              {
+                type: 'image_url',
+                image_url: { url: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEA=' },
+              },
+            ],
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🖼️');
+      // Should contain two image lines
+      const imageLines = md.match(/🖼️/g);
+      expect(imageLines).toHaveLength(2);
+    });
   });
 
   describe('logRequest', () => {
@@ -380,7 +451,6 @@ describe('ChatDebugLogger', () => {
           sessionId: 'test-session-id',
           isNew: true,
         }),
-        registerToolCalls: () => {},
       } as unknown as SessionTracker;
       logger = new ChatDebugLogger(settingsService, sessionTracker, tmpDir);
     });
@@ -462,31 +532,6 @@ describe('ChatDebugLogger', () => {
         '/nonexistent/path/that/should/fail',
       );
       expect(() => badLogger.logRequest(baseInput)).not.toThrow();
-    });
-
-    it('registers tool calls after logging', () => {
-      const registerSpy = vi.fn();
-      sessionTracker.registerToolCalls = registerSpy;
-
-      const input: LogRequestInput = {
-        ...baseInput,
-        responseToolCalls: [{ id: 'tc_1', name: 'read_file', arguments: '{}' }],
-      };
-      logger.logRequest(input);
-
-      expect(registerSpy).toHaveBeenCalledWith({
-        sessionId: 'test-session-id',
-        toolCallIds: ['tc_1'],
-        workspaceId: ChatDebugLogger.computeWorkspaceId(baseInput.workspaceFolderUri),
-        modelName: baseInput.modelName,
-      });
-    });
-
-    it('does not register tool calls when there are none', () => {
-      const registerSpy = vi.fn();
-      sessionTracker.registerToolCalls = registerSpy;
-      logger.logRequest(baseInput);
-      expect(registerSpy).not.toHaveBeenCalled();
     });
 
     it('file content does not contain API key values', () => {

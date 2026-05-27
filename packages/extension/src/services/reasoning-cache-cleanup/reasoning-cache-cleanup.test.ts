@@ -21,33 +21,33 @@ describe('ReasoningCacheCleanupService', () => {
   });
 
   it('runCleanup deletes expired entries', () => {
-    // Insert an old entry
     const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     raw.exec(
-      `INSERT INTO reasoning_cache (fingerprint, assistant_index, reasoning_content, created_at)
-       VALUES ('old_fp', 0, 'old', '${oldDate}')`,
+      `INSERT INTO reasoning_cache (fingerprint, message_fingerprint, reasoning_content, created_at)
+       VALUES ('old_fp', 'old_msg', 'old', '${oldDate}')`,
     );
 
-    // Insert a recent entry
-    repo.cache('new_fp', 0, { reasoning_content: 'new' });
+    repo.cache('new_fp', 'new_msg', {
+      reasoning_content: 'new',
+    });
 
     svc.runCleanup();
 
-    // Old should be gone
-    expect(repo.get('old_fp', 0)).toBeNull();
-    // New should remain
-    expect(repo.get('new_fp', 0)).not.toBeNull();
-    expect(repo.get('new_fp', 0)!.reasoning_content).toBe('new');
+    expect(repo.get('old_fp', 'old_msg')).toBeNull();
+    expect(repo.get('new_fp', 'new_msg')).not.toBeNull();
+    expect(repo.get('new_fp', 'new_msg')!.reasoning_content).toBe('new');
   });
 
   it('runCleanup keeps non-expired entries', () => {
-    repo.cache('fp1', 0, { reasoning_content: 'recent' });
-    repo.cache('fp2', 1, { reasoning: 'also recent' });
+    repo.cache('fp1', 'msg_a', {
+      reasoning_content: 'recent',
+    });
+    repo.cache('fp2', 'msg_b', { reasoning: 'also recent' });
 
     svc.runCleanup();
 
-    expect(repo.get('fp1', 0)).not.toBeNull();
-    expect(repo.get('fp2', 1)).not.toBeNull();
+    expect(repo.get('fp1', 'msg_a')).not.toBeNull();
+    expect(repo.get('fp2', 'msg_b')).not.toBeNull();
   });
 
   it('startPeriodicCleanup returns a Disposable', () => {
@@ -55,22 +55,19 @@ describe('ReasoningCacheCleanupService', () => {
     expect(disposable).toHaveProperty('dispose');
     expect(typeof disposable.dispose).toBe('function');
 
-    // Should be able to dispose without errors
     disposable.dispose();
   });
 
   it('startPeriodicCleanup runs immediate cleanup', () => {
-    // Insert an old entry
     const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     raw.exec(
-      `INSERT INTO reasoning_cache (fingerprint, assistant_index, reasoning_content, created_at)
-       VALUES ('old_fp', 0, 'old', '${oldDate}')`,
+      `INSERT INTO reasoning_cache (fingerprint, message_fingerprint, reasoning_content, created_at)
+       VALUES ('old_fp', 'old_msg', 'old', '${oldDate}')`,
     );
 
     const disposable = svc.startPeriodicCleanup();
 
-    // Old should be cleaned up immediately
-    expect(repo.get('old_fp', 0)).toBeNull();
+    expect(repo.get('old_fp', 'old_msg')).toBeNull();
 
     disposable.dispose();
   });

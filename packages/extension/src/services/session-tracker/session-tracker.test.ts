@@ -22,7 +22,7 @@ describe('SessionTracker', () => {
   });
 
   describe('resolveSession', () => {
-    it('creates a new session when no matches exist', () => {
+    it('creates a new session and stores fingerprint on turn 1', () => {
       const result = tracker.resolveSession({
         messages: [
           { role: 'system', content: 'You are helpful' },
@@ -36,58 +36,37 @@ describe('SessionTracker', () => {
       expect(result.isNew).toBe(true);
     });
 
-    it('resolves via tool_call_id in messages', () => {
-      tracker.registerToolCalls({
-        sessionId: 'existing-session',
-        toolCallIds: ['tc-100'],
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      const result = tracker.resolveSession({
+    it('resolves to existing session via fingerprint on turn 2+', () => {
+      // Turn 1: system + user → response "Hi there"
+      const turn1 = tracker.resolveSession({
         messages: [
           { role: 'system', content: 'You are helpful' },
           { role: 'user', content: 'Hello' },
-          {
-            role: 'tool',
-            content: 'Tool result',
-            toolCallId: 'tc-100',
-          },
         ],
-        responseContent: 'Response',
+        responseContent: 'Hi there',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(result.sessionId).toBe('existing-session');
-      expect(result.isNew).toBe(false);
+      expect(turn1.isNew).toBe(true);
+
+      // Turn 2: messages include the assistant with
+      // content matching turn 1's responseContent
+      const turn2 = tracker.resolveSession({
+        messages: [
+          { role: 'system', content: 'You are helpful' },
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Hi there' },
+          { role: 'user', content: 'Follow-up question' },
+        ],
+        responseContent: 'Follow-up answer',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+      expect(turn2.sessionId).toBe(turn1.sessionId);
+      expect(turn2.isNew).toBe(false);
     });
 
-    it('resolves via content checksum fallback', () => {
-      const first = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'System prompt' },
-          { role: 'user', content: 'User message' },
-        ],
-        responseContent: 'Assistant response',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      const second = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'System prompt' },
-          { role: 'user', content: 'User message' },
-        ],
-        responseContent: 'Assistant response',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      expect(second.sessionId).toBe(first.sessionId);
-      expect(second.isNew).toBe(false);
-    });
-
-    it('creates new session when checksum differs', () => {
+    it('creates new session when fingerprint differs', () => {
       const first = tracker.resolveSession({
         messages: [
           { role: 'system', content: 'Prompt A' },
@@ -112,122 +91,47 @@ describe('SessionTracker', () => {
       expect(second.isNew).toBe(true);
     });
 
-    it('prioritizes tool_call_id over checksum', () => {
-      tracker.registerToolCalls({
-        sessionId: 'tc-session',
-        toolCallIds: ['tc-priority'],
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      // Also create a checksum session
-      tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'Sys' },
-          { role: 'user', content: 'Usr' },
-        ],
-        responseContent: 'Resp',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      // Request with both tool_call_id and content that
-      // would match checksum
+    it('creates session without mapping when messages are empty', () => {
       const result = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'Sys' },
-          { role: 'user', content: 'Usr' },
-          {
-            role: 'tool',
-            content: 'Result',
-            toolCallId: 'tc-priority',
-          },
-        ],
-        responseContent: 'Resp',
+        messages: [],
+        responseContent: 'Some response',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-
-      expect(result.sessionId).toBe('tc-session');
-      expect(result.isNew).toBe(false);
-    });
-  });
-
-  describe('registerToolCalls', () => {
-    it('registers multiple tool call IDs', () => {
-      tracker.registerToolCalls({
-        sessionId: 'sess-reg',
-        toolCallIds: ['tc-r1', 'tc-r2'],
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      const r1 = tracker.resolveSession({
-        messages: [
-          {
-            role: 'tool',
-            content: 'r',
-            toolCallId: 'tc-r1',
-          },
-        ],
-        responseContent: '',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-      expect(r1.sessionId).toBe('sess-reg');
-
-      const r2 = tracker.resolveSession({
-        messages: [
-          {
-            role: 'tool',
-            content: 'r',
-            toolCallId: 'tc-r2',
-          },
-        ],
-        responseContent: '',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-      expect(r2.sessionId).toBe('sess-reg');
-    });
-
-    it('skips empty tool call ID array', () => {
-      expect(() =>
-        tracker.registerToolCalls({
-          sessionId: 'sess-empty',
-          toolCallIds: [],
-          workspaceId: 'ws-1',
-          modelName: 'gpt-4o',
-        }),
-      ).not.toThrow();
+      expect(result.sessionId).toBeDefined();
+      expect(result.isNew).toBe(true);
     });
   });
 
   describe('clearMappings', () => {
     it('removes all session mappings', () => {
-      tracker.registerToolCalls({
-        sessionId: 'sess-clr',
-        toolCallIds: ['tc-clr'],
+      const first = tracker.resolveSession({
+        messages: [
+          { role: 'system', content: 'System' },
+          { role: 'user', content: 'User' },
+        ],
+        responseContent: 'Response',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
 
       tracker.clearMappings();
 
-      const result = tracker.resolveSession({
+      // Turn 2 with same fingerprint should create a new
+      // session since mappings were cleared
+      const second = tracker.resolveSession({
         messages: [
-          {
-            role: 'tool',
-            content: 'r',
-            toolCallId: 'tc-clr',
-          },
+          { role: 'system', content: 'System' },
+          { role: 'user', content: 'User' },
+          { role: 'assistant', content: 'Response' },
+          { role: 'user', content: 'Follow-up' },
         ],
-        responseContent: '',
+        responseContent: 'Follow-up answer',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(result.sessionId).not.toBe('sess-clr');
-      expect(result.isNew).toBe(true);
+      expect(second.sessionId).not.toBe(first.sessionId);
+      expect(second.isNew).toBe(true);
     });
   });
 });

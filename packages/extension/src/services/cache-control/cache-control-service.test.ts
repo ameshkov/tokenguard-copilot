@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { CacheControlConfig } from '@tokenguard/shared';
-import type { OpenAIMessage, OpenAIContentPart } from '../chat-handler/index.js';
+import type {
+  OpenAIMessage,
+  OpenAIContentPart,
+  OpenAIContentPartUnion,
+} from '../chat-handler/index.js';
 import { CacheControlService } from './cache-control-service.js';
 
 /** Helper to create a basic config. */
@@ -15,7 +19,7 @@ function cfg(overrides: Partial<CacheControlConfig> = {}): CacheControlConfig {
 /** Helper to create a simple text message. */
 function msg(
   role: OpenAIMessage['role'],
-  content: string | OpenAIContentPart[] | null,
+  content: string | OpenAIContentPartUnion[] | null,
 ): OpenAIMessage {
   return { role, content };
 }
@@ -319,5 +323,31 @@ describe('CacheControlService.injectMarkers', () => {
     expect(result[0].content).toBeNull();
     expect(result[2].content).toBeNull();
     expect(result[4].content).toBeNull();
+  });
+
+  it('places cache control on last part when message has image parts', () => {
+    const messages: OpenAIMessage[] = [
+      msg('user', 'Hello'),
+      msg('user', [
+        { type: 'text', text: 'What is in this image?' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,abc' } },
+      ]),
+    ];
+    const result = CacheControlService.injectMarkers(messages, cfg({ maxMarkers: 2 }));
+
+    expect(result[0].content).toEqual([
+      { type: 'text', text: 'Hello', cache_control: { type: 'ephemeral' } },
+    ]);
+    expect(result[1].content).toEqual([
+      {
+        type: 'text',
+        text: 'What is in this image?',
+      },
+      {
+        type: 'image_url',
+        image_url: { url: 'data:image/png;base64,abc' },
+        cache_control: { type: 'ephemeral' },
+      },
+    ]);
   });
 });

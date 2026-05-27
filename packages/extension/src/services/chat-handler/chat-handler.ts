@@ -10,6 +10,18 @@ import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-s
 import { CacheControlService } from '../cache-control/index.js';
 
 /**
+ * Converts a Uint8Array to a base64-encoded data URI.
+ *
+ * @param data - The binary data.
+ * @param mimeType - The MIME type (e.g. `'image/png'`).
+ * @returns A base64 data URI string.
+ */
+function uint8ArrayToBase64(data: Uint8Array, mimeType: string): string {
+  const base64 = Buffer.from(data).toString('base64');
+  return `data:${mimeType};base64,${base64}`;
+}
+
+/**
  * OpenAI-format tool definition for the
  * `/chat/completions` request body.
  */
@@ -64,6 +76,30 @@ export interface OpenAIContentPart {
 }
 
 /**
+ * An image URL content part for OpenAI-format messages.
+ * The URL is a base64-encoded data URI.
+ */
+interface OpenAIImageContentPart {
+  /** Content type — always `'image_url'`. */
+  type: 'image_url';
+  /** Image URL (data URI or external URL). */
+  image_url: {
+    /** The image URL. */
+    url: string;
+  };
+  /** Cache control marker injected by the cache control service. */
+  cache_control?: {
+    /** Cache type — typically `'ephemeral'`. */
+    type: string;
+    /** Optional TTL in seconds. */
+    ttl?: number;
+  };
+}
+
+/** Union of supported content part types. */
+export type OpenAIContentPartUnion = OpenAIContentPart | OpenAIImageContentPart;
+
+/**
  * OpenAI-format chat message for the `/chat/completions`
  * request body.
  *
@@ -75,10 +111,10 @@ export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   /**
    * Text content — may be a plain string, a structured content-part
-   * array (used when cache control markers are injected), or null
-   * for tool-call-only messages.
+   * array (used when cache control markers are injected or images
+   * are present), or null for tool-call-only messages.
    */
-  content: string | OpenAIContentPart[] | null;
+  content: string | OpenAIContentPartUnion[] | null;
   /** Tool calls requested by the assistant. */
   tool_calls?: OpenAIToolCall[];
   /** ID of the tool call this message responds to. */
@@ -178,7 +214,9 @@ export class ChatHandler {
    *
    * Extracts text content from `LanguageModelTextPart`
    * instances, concatenates multiple text parts per message,
-   * and maps VS Code roles to OpenAI roles.
+   * maps VS Code roles to OpenAI roles, and converts
+   * `LanguageModelDataPart` image parts to `image_url`
+   * content parts.
    *
    * @param messages - VS Code chat request messages.
    * @returns Array of OpenAI-format messages.
@@ -189,7 +227,8 @@ export class ChatHandler {
     const result: OpenAIMessage[] = [];
 
     for (const msg of messages) {
-      let content = '';
+      let textBuffer = '';
+      let contentParts: OpenAIContentPartUnion[] | null = null;
       const toolCalls: OpenAIToolCall[] = [];
       const toolResults: Array<{
         callId: string;
@@ -198,7 +237,11 @@ export class ChatHandler {
 
       for (const part of msg.content) {
         if (part instanceof vscode.LanguageModelTextPart) {
-          content += part.value;
+          if (contentParts !== null) {
+            contentParts.push({ type: 'text', text: part.value });
+          } else {
+            textBuffer += part.value;
+          }
         } else if (part instanceof vscode.LanguageModelToolCallPart) {
           toolCalls.push({
             id: part.callId,
@@ -210,14 +253,53 @@ export class ChatHandler {
           });
         } else if (part instanceof vscode.LanguageModelToolResultPart) {
           let toolContent = '';
+          const toolContentParts: OpenAIContentPartUnion[] = [];
           for (const item of part.content) {
             if (item instanceof vscode.LanguageModelTextPart) {
               toolContent += item.value;
+            } else if (
+              item instanceof vscode.LanguageModelDataPart &&
+              item.mimeType.startsWith('image/')
+            ) {
+              toolContentParts.push({
+                type: 'image_url',
+                image_url: {
+                  url: uint8ArrayToBase64(item.data, item.mimeType),
+                },
+              });
             }
+          }
+          let finalToolContent: string;
+          if (toolContentParts.length > 0) {
+            const parts: OpenAIContentPartUnion[] = [];
+            if (toolContent) {
+              parts.push({ type: 'text', text: toolContent });
+            }
+            parts.push(...toolContentParts);
+            finalToolContent = JSON.stringify(parts);
+          } else {
+            finalToolContent = toolContent || JSON.stringify(part.content);
           }
           toolResults.push({
             callId: part.callId,
-            content: toolContent || JSON.stringify(part.content),
+            content: finalToolContent,
+          });
+        } else if (
+          part instanceof vscode.LanguageModelDataPart &&
+          part.mimeType.startsWith('image/')
+        ) {
+          if (contentParts === null) {
+            contentParts = [];
+            if (textBuffer) {
+              contentParts.push({ type: 'text', text: textBuffer });
+              textBuffer = '';
+            }
+          }
+          contentParts.push({
+            type: 'image_url',
+            image_url: {
+              url: uint8ArrayToBase64(part.data, part.mimeType),
+            },
           });
         }
       }
@@ -237,9 +319,19 @@ export class ChatHandler {
       const role =
         msg.role === vscode.LanguageModelChatMessageRole.Assistant ? 'assistant' : 'user';
 
+      let content: string | OpenAIContentPartUnion[] | null;
+      if (contentParts !== null) {
+        if (textBuffer) {
+          contentParts.push({ type: 'text', text: textBuffer });
+        }
+        content = contentParts;
+      } else {
+        content = textBuffer || null;
+      }
+
       const openAIMsg: OpenAIMessage = {
         role,
-        content: content || null,
+        content,
       };
 
       if (toolCalls.length > 0) {
@@ -779,7 +871,13 @@ export class ChatHandler {
         reasoningCollector.fields,
         {
           content: responseContent,
-          firstToolCallId: responseToolCalls[0]?.id,
+          toolCalls: responseToolCalls.map((tc) => ({
+            id: tc.id,
+            function: {
+              name: tc.name,
+              arguments: tc.arguments,
+            },
+          })),
         },
         this.ctx.model.preserveReasoning === 1,
       );

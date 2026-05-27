@@ -70,8 +70,7 @@ describe('sessionMappings table', () => {
   it('should have the expected columns', () => {
     const columns = getColumns(sessionMappings);
     expect(columns).toHaveProperty('id');
-    expect(columns).toHaveProperty('toolCallId');
-    expect(columns).toHaveProperty('contentChecksum');
+    expect(columns).toHaveProperty('contentFingerprint');
     expect(columns).toHaveProperty('sessionId');
     expect(columns).toHaveProperty('workspaceId');
     expect(columns).toHaveProperty('modelName');
