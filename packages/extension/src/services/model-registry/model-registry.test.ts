@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { providers } from '../../db/schema.js';
-import { ModelRepository } from '../../repositories/model-repository.js';
-import { ProviderRepository } from '../../repositories/provider-repository.js';
+import { providers } from '../../db/index.js';
+import { ModelRepository, ProviderRepository } from '../../repositories/index.js';
 import { ModelRegistry } from './model-registry.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { ModelConfig, CacheControlConfig } from '@tokenguard/shared';
-import type { Database } from '../../db/connection.js';
+import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 const mockRegister = vi.hoisted(() =>
   vi.fn<
@@ -109,6 +109,7 @@ describe('ModelRegistry', () => {
       mockTokenCounter as unknown as import('../token-counter/index.js').TokenCounter,
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
       mockUsageTracker as unknown as import('../usage-tracker/index.js').UsageTracker,
+      createMockLogger(),
     );
   });
 

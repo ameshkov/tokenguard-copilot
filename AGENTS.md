@@ -146,8 +146,12 @@ tokenguard-copilot/
 │   │       │   ├── migrate.ts   # runMigrations() function
 │   │       │   ├── schema.ts    # Drizzle ORM table definitions
 │   │       │   └── migrations/  # Generated SQL migrations
+│   │       ├── logger/          # Centralized logging
+│   │       │   ├── index.ts     # Barrel: createLogger, Logger
+│   │       │   └── logger.ts    # Logger interface + factory
 │   │       └── test/            # Test helpers (not tests)
-│   │           └── db-setup.ts  # createTestDb() helper
+│   │           ├── db-setup.ts  # createTestDb() helper
+│   │           └── mock-logger.ts # createMockLogger() helper
 │   ├── webview-ui/              # React webview app
 │   │   ├── package.json         # @tokenguard/webview-ui
 │   │   ├── tsconfig.json
@@ -431,6 +435,32 @@ values or re-implement component styles in CSS.**
   from `test/setup.ts`). Update mocks when adding new web
   component tags that need roles or form behaviour in
   tests.
+
+### Logging
+
+The extension uses a centralized `Logger` interface backed
+by VS Code's `LogOutputChannel`. All runtime diagnostic
+logging MUST go through this interface.
+
+- **`Logger` interface**: Defined in
+  `packages/extension/src/logger/logger.ts`. Provides
+  `trace`, `debug`, `info`, `warn`, and `error` methods.
+  Services depend on the interface, not `vscode` directly.
+- **DI pattern**: The logger is created once in
+  `activate()` and injected into services via the
+  `ExtensionContext` constructor. Services receive it as a
+  constructor parameter.
+- **Mock logger in tests**: Use `createMockLogger()` from
+  `packages/extension/src/test/mock-logger.ts` in unit
+  tests. This returns a `Logger` with all `vi.fn()`
+  no-ops.
+- **Log levels**: Use `trace` for SSE events, `debug` for
+  request lifecycle, `info` for service initialization,
+  `warn` for recoverable errors, `error` for failures.
+- **Security rules**: NEVER log API keys, auth tokens,
+  `Authorization` headers, secrets, user file contents,
+  or personal data. OK to log model IDs, provider names,
+  status codes, error messages, and request duration.
 
 ### Markdown Formatting
 

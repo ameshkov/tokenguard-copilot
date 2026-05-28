@@ -1,11 +1,11 @@
-import type { ReasoningCacheRepository } from '../../repositories/reasoning-cache-repository.js';
+import type { ReasoningCacheRepository } from '../../repositories/index.js';
 import {
   computeFingerprint,
   computeMessageFingerprint,
   type FingerprintToolCall,
-} from '../../utils/fingerprint.js';
-import { extractReasoning, type ReasoningFields } from '../../utils/reasoning.js';
-import type { OpenAIMessage } from '../chat-handler/chat-handler.js';
+} from '../../utils/index.js';
+import { extractReasoning, type ReasoningFields } from '../../utils/index.js';
+import type { OpenAIMessage } from '../chat-handler/index.js';
 
 /** Placeholder reasoning value for cache misses. */
 const REASONING_PLACEHOLDER = '.';

@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
-import type { Model, Provider } from '../../db/schema.js';
+import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
-import { extractReasoning, extractReasoningFields } from '../../utils/reasoning.js';
-import type { ReasoningFields } from '../../utils/reasoning.js';
-import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
+import { extractReasoning, extractReasoningFields } from '../../utils/index.js';
+import type { ReasoningFields } from '../../utils/index.js';
+import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import { CacheControlService } from '../cache-control/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Converts a Uint8Array to a base64-encoded data URI.
@@ -179,6 +180,13 @@ export interface ChatContext {
    * content blocks within a sliding window.
    */
   cacheControl?: CacheControlConfig;
+
+  /**
+   * Optional logger for runtime diagnostics.
+   * When provided, logs request lifecycle events
+   * and errors.
+   */
+  logger?: Logger;
 }
 
 /**
@@ -908,6 +916,12 @@ export class ChatHandler {
 
     const url = this.ctx.provider.baseUrl.replace(/\/+$/, '') + '/chat/completions';
 
+    this.ctx.logger?.debug(
+      'Chat completion request',
+      `model=${this.ctx.model.id}`,
+      `streaming=${this.ctx.model.streaming === 1}`,
+    );
+
     const abortController = new AbortController();
     const cancelDisposable = token.onCancellationRequested(() => {
       abortController.abort();
@@ -1027,10 +1041,13 @@ export class ChatHandler {
             usage: usageCollector?.usage ?? null,
             workspaceFolderUri: this.ctx.workspaceFolderUri,
           });
-        } catch {
+        } catch (logError: unknown) {
           // Fire-and-forget: logging errors must not
           // affect the chat response.
-          // TODO: Log error
+          this.ctx.logger?.warn(
+            'Failed to write debug log',
+            logError instanceof Error ? logError.message : String(logError),
+          );
         }
       }
     }

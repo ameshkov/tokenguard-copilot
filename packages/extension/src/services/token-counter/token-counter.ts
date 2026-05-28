@@ -4,7 +4,8 @@ import {
   getRegexByEncoder,
   getSpecialTokensByEncoder,
 } from '@microsoft/tiktokenizer';
-import { getImageDimensions } from '../../utils/image-dimensions.js';
+import { getImageDimensions } from '../../utils/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /** Base tokens added per message (for message framing). */
 const BASE_TOKENS_PER_MESSAGE = 3;
@@ -75,15 +76,18 @@ export class TokenCounter {
   private tokenizerPromise: Promise<{ encode(text: string): number[] }> | null = null;
   private extensionPath: string;
   private tokenCache = new TokenCache();
+  private readonly logger: Logger;
 
   /**
    * Creates a TokenCounter.
    *
    * @param extensionPath - Absolute path to the extension
    *   directory (used to locate the tokenizer model file).
+   * @param logger - Logger for runtime diagnostics.
    */
-  constructor(extensionPath: string) {
+  constructor(extensionPath: string, logger: Logger) {
     this.extensionPath = extensionPath;
+    this.logger = logger;
   }
 
   /**
@@ -95,6 +99,7 @@ export class TokenCounter {
    */
   async initialize(): Promise<void> {
     if (!this.tokenizerPromise) {
+      this.logger.info('Initializing tokenizer');
       this.tokenizerPromise = this.loadTokenizer();
     }
     await this.tokenizerPromise;
@@ -124,6 +129,7 @@ export class TokenCounter {
       return count;
     } catch {
       // Fallback: estimate tokens from character count
+      this.logger.warn('Tokenizer encode failed, falling back to character estimation');
       const fallback = Math.max(1, Math.round(text.length / 2));
       this.tokenCache.set(text, fallback);
       return fallback;

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import type { DatabaseSync } from 'node:sqlite';
 import type * as vscode from 'vscode';
 import { createTestDb } from './test/db-setup.js';
+import { createMockLogger } from './test/mock-logger.js';
 import { ExtensionContext, type ExtensionContextDeps } from './context.js';
 import { ProviderManager } from './services/provider-manager/index.js';
 import { ModelRegistry } from './services/model-registry/index.js';
@@ -12,7 +13,7 @@ import { ChatDebugLogger } from './services/chat-debug-logger/index.js';
 import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js';
 import { ReasoningCacheCleanupService } from './services/reasoning-cache-cleanup/index.js';
 import { UsageTracker } from './services/usage-tracker/index.js';
-import type { Database } from './db/connection.js';
+import type { Database } from './db/index.js';
 
 vi.mock('vscode', () => {
   return {
@@ -46,6 +47,7 @@ describe('ExtensionContext', () => {
       resetCallback: vi.fn().mockResolvedValue(undefined),
       logsBasePath: tmpdir(),
       extensionPath: tmpdir(),
+      logger: createMockLogger(),
     };
   }
 
@@ -115,5 +117,12 @@ describe('ExtensionContext', () => {
     const ctx = new ExtensionContext(deps);
     expect(ctx.usageTracker).toBeDefined();
     expect(ctx.usageTracker).toBeInstanceOf(UsageTracker);
+  });
+
+  it('exposes logger', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    expect(ctx.logger).toBeDefined();
+    expect(ctx.logger).toBe(deps.logger);
   });
 });

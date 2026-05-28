@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Database } from './db/connection.js';
+import type { Database } from './db/index.js';
 
 const { mockClose, mockRaw, mockDb } = vi.hoisted(() => {
   const mockClose = vi.fn();
@@ -70,6 +70,21 @@ vi.mock('./db/migrate.js', () => ({
   runMigrations: vi.fn(),
 }));
 
+const mockLogger = vi.hoisted(() => ({
+  trace: vi.fn(),
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  dispose: vi.fn(),
+}));
+vi.mock('./logger/index.js', () => ({
+  createLogger: vi.fn(() => ({
+    logger: mockLogger,
+    channel: mockLogger,
+  })),
+}));
+
 const mockExtensionContext = vi.hoisted(() =>
   vi.fn(function () {
     return {
@@ -114,7 +129,7 @@ vi.mock('./context.js', () => ({
 
 import * as vscode from 'vscode';
 import { DatabaseSync } from 'node:sqlite';
-import { runMigrations } from './db/migrate.js';
+import { runMigrations } from './db/index.js';
 import { ExtensionContext } from './context.js';
 import { activate, deactivate } from './extension.js';
 
@@ -143,6 +158,13 @@ describe('activate', () => {
       context,
       expect.objectContaining({ providerManager: expect.anything() }),
       expect.objectContaining({ refresh: expect.any(Function) }),
+      expect.objectContaining({
+        trace: expect.any(Function),
+        debug: expect.any(Function),
+        info: expect.any(Function),
+        warn: expect.any(Function),
+        error: expect.any(Function),
+      }),
     );
   });
 
@@ -150,8 +172,8 @@ describe('activate', () => {
     await activate(context);
 
     // registerCommands is mocked, so:
-    // tree data provider + tree view dispose + chat debug cleanup + reasoning cache cleanup + status bar = 5
-    expect(context.subscriptions).toHaveLength(5);
+    // logger channel + tree data provider + tree view dispose + chat debug cleanup + reasoning cache cleanup + status bar = 6
+    expect(context.subscriptions).toHaveLength(6);
   });
 
   it('should create a status bar item', async () => {
@@ -189,6 +211,7 @@ describe('activate', () => {
       db: mockDb,
       secrets: context.secrets,
       logsBasePath: expect.stringContaining('logs'),
+      logger: mockLogger,
       resetCallback: expect.any(Function),
       onTreeRefresh: expect.any(Function),
     });
@@ -213,6 +236,19 @@ describe('activate', () => {
     );
     // No commands registered
     expect(mockRegisterCommands).not.toHaveBeenCalled();
+  });
+
+  it('should log activation lifecycle messages', async () => {
+    await activate(context);
+
+    expect(mockLogger.info).toHaveBeenCalledWith('Activating extension');
+    expect(mockLogger.info).toHaveBeenCalledWith('Extension activated');
+  });
+
+  it('should push logger channel to subscriptions', async () => {
+    await activate(context);
+
+    expect(context.subscriptions).toContain(mockLogger);
   });
 });
 
@@ -260,6 +296,24 @@ describe('deactivate', () => {
 
   it('should not throw if called without activate', () => {
     expect(() => deactivate()).not.toThrow();
+  });
+
+  it('should log deactivation message', async () => {
+    await activate(context);
+    deactivate();
+
+    expect(mockLogger.info).toHaveBeenCalledWith('Deactivating extension');
+  });
+
+  it('should log warning when close fails', async () => {
+    await activate(context);
+    mockClose.mockImplementationOnce(() => {
+      throw new Error('already closed');
+    });
+
+    deactivate();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith('Failed to close database', 'already closed');
   });
 });
 

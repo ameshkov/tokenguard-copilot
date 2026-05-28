@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type * as vscode from 'vscode';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { ProviderRepository } from '../../repositories/provider-repository.js';
-import { ModelRepository } from '../../repositories/model-repository.js';
-import { ModelRegistry } from '../model-registry/model-registry.js';
+import { ProviderRepository, ModelRepository } from '../../repositories/index.js';
+import { ModelRegistry } from '../model-registry/index.js';
 import { ProviderManager } from './provider-manager.js';
 import type { ModelConfig } from '@tokenguard/shared';
-import type { Database } from '../../db/connection.js';
+import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 vi.mock('vscode', () => {
   return {
@@ -92,12 +92,14 @@ describe('ProviderManager', () => {
         recordUsage: vi.fn(),
         recordError: vi.fn(),
       } as unknown as import('../usage-tracker/index.js').UsageTracker,
+      createMockLogger(),
     );
     manager = new ProviderManager(
       repo,
       secrets as unknown as vscode.SecretStorage,
       resetCallback,
       modelRegistry,
+      createMockLogger(),
     );
   });
 

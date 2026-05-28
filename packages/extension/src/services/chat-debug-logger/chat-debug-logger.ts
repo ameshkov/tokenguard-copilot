@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
 import type { OpenAIMessage, OpenAITool, ChatUsage } from '../chat-handler/index.js';
-import { extractTextContent, extractImageParts } from '../../utils/content.js';
-import { extractReasoning } from '../../utils/reasoning.js';
+import { extractTextContent, extractImageParts, extractReasoning } from '../../utils/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /** Input data for logging a chat request-response pair. */
 export interface LogRequestInput {
@@ -96,6 +96,7 @@ export class ChatDebugLogger {
    * @param settingsService - Service for reading debug settings.
    * @param sessionTracker - Service for resolving session IDs.
    * @param logsBasePath - Base directory for log files.
+   * @param logger - Logger for runtime diagnostics.
    * @param onLogWrite - Optional callback invoked after a
    *   successful log write to refresh the tree view.
    */
@@ -103,6 +104,7 @@ export class ChatDebugLogger {
     private readonly settingsService: ChatDebugSettingsService,
     private readonly sessionTracker: SessionTracker,
     private readonly logsBasePath: string,
+    private readonly logger: Logger,
     private readonly onLogWrite?: () => void,
   ) {}
 
@@ -401,8 +403,11 @@ export class ChatDebugLogger {
 
       // Fire refresh callback after successful write.
       this.onLogWrite?.();
-    } catch {
-      // Fire-and-forget: logging errors do not propagate
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Failed to write debug log',
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 }

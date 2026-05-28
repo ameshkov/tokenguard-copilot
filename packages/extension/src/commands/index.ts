@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { ExtensionContext as AppContext } from '../context.js';
+import type { Logger } from '../logger/index.js';
 import { SettingsPanel } from '../ui/panels/index.js';
 import type { ChatDebugTreeViewProvider } from '../ui/tree-views/index.js';
 
@@ -11,12 +12,17 @@ import type { ChatDebugTreeViewProvider } from '../ui/tree-views/index.js';
  * @param appCtx - The application context with services.
  * @param treeViewProvider - The chat debug tree view
  *   provider, used by the refresh command.
+ * @param logger - The logger instance for diagnostic
+ *   output.
  */
 export function registerCommands(
   context: vscode.ExtensionContext,
   appCtx: AppContext,
   treeViewProvider: ChatDebugTreeViewProvider,
+  logger: Logger,
 ): void {
+  logger.debug('Registering extension commands');
+
   context.subscriptions.push(
     vscode.commands.registerCommand('tokenguard-copilot.helloWorld', () => {
       vscode.window.showInformationMessage('Hello World from TokenGuard Copilot!');

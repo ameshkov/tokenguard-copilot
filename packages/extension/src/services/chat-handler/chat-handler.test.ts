@@ -7,8 +7,8 @@ import {
   type OpenAITool,
 } from './chat-handler.js';
 import type { ChatDebugLogger, LogRequestInput } from '../chat-debug-logger/index.js';
-import type { Model, Provider } from '../../db/schema.js';
-import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
+import type { Model, Provider } from '../../db/index.js';
+import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 
 /** No-op ReasoningCacheService mock for tests that don't exercise reasoning preservation. */
 function noopReasoningCacheService(): ReasoningCacheService {

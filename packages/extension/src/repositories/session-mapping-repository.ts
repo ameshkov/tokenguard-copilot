@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
-import type { Database } from '../db/connection.js';
-import { sessionMappings, type SessionMapping } from '../db/schema.js';
+import type { Database } from '../db/index.js';
+import { sessionMappings, type SessionMapping } from '../db/index.js';
 
 /** Insert shape for a content fingerprint mapping. */
 export interface FingerprintMappingInsert {

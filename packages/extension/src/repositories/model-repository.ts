@@ -1,6 +1,6 @@
 import { eq, and, ne } from 'drizzle-orm';
-import type { Database } from '../db/connection.js';
-import { models, type Model, type NewModel } from '../db/schema.js';
+import type { Database } from '../db/index.js';
+import { models, type Model, type NewModel } from '../db/index.js';
 
 /**
  * Data-access layer for the `models` table.

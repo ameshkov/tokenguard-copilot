@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../test/db-setup.js';
-import { providers } from '../db/schema.js';
+import { providers } from '../db/index.js';
 import { ModelRepository } from './model-repository.js';
-import type { Database } from '../db/connection.js';
+import type { Database } from '../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 
 describe('ModelRepository', () => {

@@ -1,7 +1,7 @@
 import { eq, and, lt } from 'drizzle-orm';
-import type { Database } from '../db/connection.js';
-import { reasoningCache, type ReasoningCacheRow } from '../db/schema.js';
-import type { ReasoningFields } from '../utils/reasoning.js';
+import type { Database } from '../db/index.js';
+import { reasoningCache, type ReasoningCacheRow } from '../db/index.js';
+import type { ReasoningFields } from '../utils/index.js';
 
 /** TTL for cache entries: 24 hours in milliseconds. */
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;

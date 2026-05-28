@@ -42,6 +42,7 @@ vi.mock('vscode', () => ({
 }));
 
 import { TokenCounter } from './token-counter.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 /**
  * Resolve the project root from the test runner's working
@@ -56,7 +57,7 @@ describe('TokenCounter', () => {
   let counter: TokenCounter;
 
   beforeAll(async () => {
-    counter = new TokenCounter(projectRoot);
+    counter = new TokenCounter(projectRoot, createMockLogger());
     await counter.initialize();
   });
 
@@ -72,7 +73,7 @@ describe('TokenCounter', () => {
   });
 
   it('returns 0 when tokenizer not initialized', async () => {
-    const uninitialized = new TokenCounter(projectRoot);
+    const uninitialized = new TokenCounter(projectRoot, createMockLogger());
     const result = await uninitialized.countTokens('Hello');
     // Should not throw, returns 0
     expect(result).toBe(0);

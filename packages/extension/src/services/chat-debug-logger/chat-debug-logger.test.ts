@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { ChatDebugLogger, type LogRequestInput } from './chat-debug-logger.js';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 const baseInput: LogRequestInput = {
   messages: [
@@ -452,7 +453,7 @@ describe('ChatDebugLogger', () => {
           isNew: true,
         }),
       } as unknown as SessionTracker;
-      logger = new ChatDebugLogger(settingsService, sessionTracker, tmpDir);
+      logger = new ChatDebugLogger(settingsService, sessionTracker, tmpDir, createMockLogger());
     });
 
     afterEach(() => {
@@ -530,6 +531,7 @@ describe('ChatDebugLogger', () => {
         settingsService,
         sessionTracker,
         '/nonexistent/path/that/should/fail',
+        createMockLogger(),
       );
       expect(() => badLogger.logRequest(baseInput)).not.toThrow();
     });
@@ -553,7 +555,13 @@ describe('ChatDebugLogger', () => {
 
     it('invokes onLogWrite callback after successful write', () => {
       const onLogWrite = vi.fn();
-      const loggerWithCb = new ChatDebugLogger(settingsService, sessionTracker, tmpDir, onLogWrite);
+      const loggerWithCb = new ChatDebugLogger(
+        settingsService,
+        sessionTracker,
+        tmpDir,
+        createMockLogger(),
+        onLogWrite,
+      );
 
       loggerWithCb.logRequest(baseInput);
 
@@ -566,7 +574,13 @@ describe('ChatDebugLogger', () => {
         enabled: false,
         ttlHours: 24,
       });
-      const loggerWithCb = new ChatDebugLogger(settingsService, sessionTracker, tmpDir, onLogWrite);
+      const loggerWithCb = new ChatDebugLogger(
+        settingsService,
+        sessionTracker,
+        tmpDir,
+        createMockLogger(),
+        onLogWrite,
+      );
 
       loggerWithCb.logRequest(baseInput);
 

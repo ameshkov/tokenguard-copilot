@@ -1,8 +1,9 @@
 import { readdirSync, rmSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Disposable } from 'vscode';
-import type { ChatDebugSettingsService } from '../chat-debug-settings/chat-debug-settings.js';
-import type { SessionMappingRepository } from '../../repositories/session-mapping-repository.js';
+import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
+import type { SessionMappingRepository } from '../../repositories/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Deletes expired log session directories and stale
@@ -26,6 +27,7 @@ export class ChatDebugCleanupService {
    *   (e.g. `globalStorageUri/logs`).
    * @param settingsService - Service for reading the TTL.
    * @param mappingRepo - Repository for session mappings.
+   * @param logger - Logger for runtime diagnostics.
    * @param onTreeRefresh - Optional callback invoked after
    *   cleanup or clear operations to refresh the tree view.
    */
@@ -33,6 +35,7 @@ export class ChatDebugCleanupService {
     private readonly logsBasePath: string,
     private readonly settingsService: ChatDebugSettingsService,
     private readonly mappingRepo: SessionMappingRepository,
+    private readonly logger: Logger,
     private readonly onTreeRefresh?: () => void,
   ) {}
 
@@ -136,8 +139,11 @@ export class ChatDebugCleanupService {
     if (entries.length === 0) {
       try {
         rmSync(workspacePath);
-      } catch {
-        // Best-effort.
+      } catch (error: unknown) {
+        this.logger.warn(
+          'Failed to remove empty workspace directory',
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
   }
@@ -185,16 +191,21 @@ export class ChatDebugCleanupService {
         if (isExpired) {
           try {
             rmSync(sessionPath, { recursive: true });
-          } catch {
-            // Failed to delete — skip, will retry on next
-            // cleanup cycle.
+          } catch (error: unknown) {
+            this.logger.warn(
+              'Failed to delete expired session directory',
+              error instanceof Error ? error.message : String(error),
+            );
           }
 
           // Clean up empty workspace directory.
           try {
             this.removeEmptyWorkspaceDir(workspacePath);
-          } catch {
-            // Best-effort cleanup.
+          } catch (error: unknown) {
+            this.logger.warn(
+              'Failed to clean up workspace directory',
+              error instanceof Error ? error.message : String(error),
+            );
           }
         }
       }
@@ -213,8 +224,11 @@ export class ChatDebugCleanupService {
     if (existsSync(this.logsBasePath)) {
       try {
         rmSync(this.logsBasePath, { recursive: true });
-      } catch {
-        // Best-effort deletion.
+      } catch (error: unknown) {
+        this.logger.warn(
+          'Failed to delete all log files',
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
 

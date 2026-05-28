@@ -3,12 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync, utimesSync } f
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { SessionMappingRepository } from '../../repositories/session-mapping-repository.js';
-import { ChatDebugSettingsService } from '../chat-debug-settings/chat-debug-settings.js';
-import { SettingsRepository } from '../../repositories/settings-repository.js';
+import { SessionMappingRepository, SettingsRepository } from '../../repositories/index.js';
+import { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import { ChatDebugCleanupService } from './chat-debug-cleanup.js';
-import type { Database } from '../../db/connection.js';
+import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 // Mock vscode for the Disposable class used by
 // startPeriodicCleanup. This unit test runs outside the
@@ -45,7 +45,12 @@ describe('ChatDebugCleanupService', () => {
     settingsService = new ChatDebugSettingsService(settingsRepo);
     mappingRepo = new SessionMappingRepository(db);
     logsBasePath = mkdtempSync(join(tmpdir(), 'chat-debug-cleanup-test-'));
-    service = new ChatDebugCleanupService(logsBasePath, settingsService, mappingRepo);
+    service = new ChatDebugCleanupService(
+      logsBasePath,
+      settingsService,
+      mappingRepo,
+      createMockLogger(),
+    );
   });
 
   afterEach(() => {
@@ -291,6 +296,7 @@ describe('ChatDebugCleanupService', () => {
         logsBasePath,
         settingsService,
         mappingRepo,
+        createMockLogger(),
         refreshSpy,
       );
 
@@ -311,6 +317,7 @@ describe('ChatDebugCleanupService', () => {
         logsBasePath,
         settingsService,
         mappingRepo,
+        createMockLogger(),
         refreshSpy,
       );
 
@@ -329,6 +336,7 @@ describe('ChatDebugCleanupService', () => {
         logsBasePath,
         settingsService,
         mappingRepo,
+        createMockLogger(),
         refreshSpy,
       );
 

@@ -1,4 +1,4 @@
-import type { SettingsRepository } from '../../repositories/settings-repository.js';
+import type { SettingsRepository } from '../../repositories/index.js';
 
 /** Chat debug configuration values. */
 export interface ChatDebugSettings {

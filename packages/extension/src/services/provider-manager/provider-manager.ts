@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import type { ProviderInfo } from '@tokenguard/shared';
-import type { ProviderRepository } from '../../repositories/provider-repository.js';
-import type { Provider } from '../../db/schema.js';
-import type { ModelRegistry } from '../model-registry/model-registry.js';
+import type { ProviderRepository } from '../../repositories/index.js';
+import type { Provider } from '../../db/index.js';
+import type { ModelRegistry } from '../model-registry/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Callback that clears all data from the database and
@@ -27,12 +28,14 @@ export class ProviderManager {
    * @param secrets - VS Code SecretStorage for API keys.
    * @param resetCallback - Callback to clear all data.
    * @param modelRegistry - Model registry for cascade removal.
+   * @param logger - Logger for runtime diagnostics.
    */
   constructor(
     private readonly providerRepo: ProviderRepository,
     private readonly secrets: vscode.SecretStorage,
     private readonly resetCallback: ResetCallback,
     private readonly modelRegistry: ModelRegistry,
+    private readonly logger: Logger,
   ) {}
 
   /**
@@ -91,6 +94,7 @@ export class ProviderManager {
 
     await this.secrets.store(`tokenguard-copilot.provider.${id}`, trimmedKey);
 
+    this.logger.info('Provider added', trimmedName);
     this.emitter.fire();
 
     return toProviderInfo(row);

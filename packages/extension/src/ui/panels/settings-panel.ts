@@ -22,7 +22,7 @@ import type {
   ResetUsageStatsResponse,
   UsageStatsSummary,
 } from '@tokenguard/shared';
-import type { UsageRecord } from '../../db/schema.js';
+import type { UsageRecord } from '../../db/index.js';
 
 /**
  * Manages the settings webview panel.

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import type { UsageRecordRepository } from '../../repositories/usage-record-repository.js';
-import type { ModelRepository } from '../../repositories/model-repository.js';
-import type { UsageRecord } from '../../db/schema.js';
+import type { UsageRecordRepository, ModelRepository } from '../../repositories/index.js';
+import type { UsageRecord } from '../../db/index.js';
 
 /**
  * Token counts extracted from a chat completion

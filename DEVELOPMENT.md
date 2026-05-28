@@ -105,3 +105,47 @@ Tests use real in-memory SQLite databases via the
 `createTestDb()` helper from `src/test/db-setup.ts`. Each
 call returns an independent, fully migrated database. No
 mocking of the database layer is needed in tests.
+
+## Logging
+
+The extension uses a centralized `LogOutputChannel` for
+runtime diagnostics. The output channel is named
+**TokenGuard Copilot** and appears in VS Code's Output
+panel.
+
+### Viewing Logs
+
+1. Open VS Code's Output panel (View → Output).
+2. Select **TokenGuard Copilot** from the channel dropdown.
+3. Use the **Log Level** selector in the Output panel
+   toolbar to control verbosity (Trace, Debug, Info,
+   Warning, Error).
+
+### Architecture
+
+A thin `Logger` interface
+(`packages/extension/src/logger/`) wraps VS Code's
+`LogOutputChannel`. Services depend on the interface (not
+`vscode` directly) so tests can inject a mock logger via
+`createMockLogger()` from `src/test/mock-logger.ts`.
+
+The logger is created once in `activate()`, pushed to
+`context.subscriptions`, and injected into services
+through the `ExtensionContext` DI container.
+
+### Log Levels
+
+| Level | Usage |
+| --- | --- |
+| `trace` | SSE stream events, low-level data flow |
+| `debug` | Request lifecycle, command execution |
+| `info` | Service initialization, activation |
+| `warn` | Recoverable errors, fallbacks |
+| `error` | Failures, unexpected errors |
+
+### Security Rules
+
+- **Never log**: API keys, auth tokens, `Authorization`
+  headers, secrets, user file contents, personal data.
+- **OK to log**: model IDs, provider names, status codes,
+  error messages, configuration keys, request duration.

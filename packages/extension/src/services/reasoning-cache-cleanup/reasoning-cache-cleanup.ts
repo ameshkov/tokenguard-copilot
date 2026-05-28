@@ -1,5 +1,6 @@
 import { Disposable } from 'vscode';
-import type { ReasoningCacheRepository } from '../../repositories/reasoning-cache-repository.js';
+import type { ReasoningCacheRepository } from '../../repositories/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Periodic cleanup service for the reasoning cache table.
@@ -15,7 +16,10 @@ export class ReasoningCacheCleanupService {
   /** Interval between cleanup passes in milliseconds. */
   static readonly CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
 
-  constructor(private readonly repo: ReasoningCacheRepository) {}
+  constructor(
+    private readonly repo: ReasoningCacheRepository,
+    private readonly logger: Logger,
+  ) {}
 
   /**
    * Executes a single cleanup pass, deleting all cache
@@ -23,6 +27,7 @@ export class ReasoningCacheCleanupService {
    */
   runCleanup(): void {
     this.repo.deleteExpired();
+    this.logger.debug('Reasoning cache cleanup completed');
   }
 
   /**

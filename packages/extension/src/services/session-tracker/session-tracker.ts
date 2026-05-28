@@ -1,5 +1,5 @@
-import type { SessionMappingRepository } from '../../repositories/session-mapping-repository.js';
-import { computeFingerprint, type FingerprintMessage } from '../../utils/fingerprint.js';
+import type { SessionMappingRepository } from '../../repositories/index.js';
+import { computeFingerprint, type FingerprintMessage } from '../../utils/index.js';
 
 /** Input for resolving a session ID. */
 export interface ResolveSessionInput {

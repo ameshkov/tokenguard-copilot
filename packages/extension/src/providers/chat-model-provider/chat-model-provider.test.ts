@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Model, Provider } from '../../db/schema.js';
+import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../../services/chat-debug-logger/index.js';
 import type { TokenCounter } from '../../services/token-counter/index.js';
-import type { ReasoningCacheService } from '../../services/reasoning-cache/reasoning-cache-service.js';
+import type { ReasoningCacheService } from '../../services/reasoning-cache/index.js';
 import type { UsageTracker } from '../../services/usage-tracker/index.js';
 import type { ChatModelProviderDeps, ModelMapEntry } from './chat-model-provider.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 const mockRegister = vi.hoisted(() =>
   vi.fn<
@@ -43,7 +44,7 @@ vi.mock('vscode', () => ({
   },
 }));
 
-vi.mock('../../services/chat-handler/chat-handler.js', () => {
+vi.mock('../../services/chat-handler/index.js', () => {
   return {
     ChatHandler: class {
       handle = mockHandle;
@@ -146,6 +147,7 @@ describe('ChatModelProvider', () => {
         recordUsage: vi.fn(),
         recordError: vi.fn(),
       } as unknown as UsageTracker,
+      logger: createMockLogger(),
     };
   });
 

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { ReasoningCacheRepository } from '../../repositories/reasoning-cache-repository.js';
+import { ReasoningCacheRepository } from '../../repositories/index.js';
 import { ReasoningCacheCleanupService } from './reasoning-cache-cleanup.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 vi.mock('vscode', () => ({
   Disposable: {
@@ -17,7 +18,7 @@ describe('ReasoningCacheCleanupService', () => {
   beforeEach(() => {
     clearTestDb(raw);
     repo = new ReasoningCacheRepository(db);
-    svc = new ReasoningCacheCleanupService(repo);
+    svc = new ReasoningCacheCleanupService(repo, createMockLogger());
   });
 
   it('runCleanup deletes expired entries', () => {

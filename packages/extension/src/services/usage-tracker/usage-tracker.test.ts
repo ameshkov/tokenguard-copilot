@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { UsageRecordRepository } from '../../repositories/usage-record-repository.js';
-import { ModelRepository } from '../../repositories/model-repository.js';
+import { UsageRecordRepository, ModelRepository } from '../../repositories/index.js';
 import { UsageTracker, computeCost } from './usage-tracker.js';
-import { providers } from '../../db/schema.js';
-import type { Database } from '../../db/connection.js';
+import { providers } from '../../db/index.js';
+import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
-import type { Model } from '../../db/schema.js';
+import type { Model } from '../../db/index.js';
 
 vi.mock('vscode', () => ({
   EventEmitter: class {

@@ -4,23 +4,31 @@ import { DatabaseSync } from 'node:sqlite';
 import * as vscode from 'vscode';
 import { registerCommands } from './commands/index.js';
 import { ExtensionContext } from './context.js';
-import { createDb } from './db/connection.js';
-import { runMigrations } from './db/migrate.js';
+import { createLogger, type Logger } from './logger/index.js';
 import {
+  createDb,
+  runMigrations,
   providers,
   models,
   usageRecords,
   settings,
   sessionMappings,
   reasoningCache,
-} from './db/schema.js';
-import { createStatusBarItem } from './ui/status-bar/status-bar.js';
+} from './db/index.js';
+import { createStatusBarItem } from './ui/status-bar/index.js';
 import { ChatDebugTreeViewProvider } from './ui/tree-views/index.js';
 
 let rawDb: DatabaseSync | null = null;
 let extCtx: ExtensionContext | null = null;
+let logger: Logger | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
+  const { logger: log, channel } = createLogger();
+  logger = log;
+  context.subscriptions.push(channel);
+
+  log.info('Activating extension');
+
   const dbPath = `${context.globalStorageUri.fsPath}/tokenguard-copilot.db`;
 
   let localCtx: ExtensionContext;
@@ -46,6 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
       secrets: context.secrets,
       logsBasePath,
       extensionPath: context.extensionPath,
+      logger: log,
       onTreeRefresh,
       resetCallback: async () => {
         // Read all provider IDs before deleting
@@ -73,6 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
     await localCtx.tokenCounter.initialize();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
+    log.error('Database initialization failed', message);
     vscode.window.showErrorMessage(
       `TokenGuard Copilot: database initialization failed — ${message}`,
     );
@@ -80,7 +90,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   localCtx.modelRegistry.registerAll();
-  registerCommands(context, localCtx, treeViewProvider);
+  registerCommands(context, localCtx, treeViewProvider, logger);
 
   // Set context key so the tree view is visible only when logging is enabled.
   const initialEnabled = localCtx.chatDebugSettings.getSettings().enabled;
@@ -99,19 +109,30 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(localCtx.reasoningCacheCleanup.startPeriodicCleanup());
 
   context.subscriptions.push(createStatusBarItem(localCtx.providerManager, localCtx.usageTracker));
+
+  log.info('Extension activated');
 }
 
 export function deactivate() {
+  logger?.info('Deactivating extension');
+
   try {
     extCtx?.modelRegistry.disposeAll();
-  } catch {
-    // Models may not have been registered
+  } catch (error: unknown) {
+    logger?.warn(
+      'Failed to dispose model registrations',
+      error instanceof Error ? error.message : String(error),
+    );
   }
   extCtx = null;
   try {
     rawDb?.close();
-  } catch {
-    // DB may not have been initialized (degraded state)
+  } catch (error: unknown) {
+    logger?.warn(
+      'Failed to close database',
+      error instanceof Error ? error.message : String(error),
+    );
   }
   rawDb = null;
+  logger = null;
 }

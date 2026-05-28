@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { SessionMappingRepository } from '../../repositories/session-mapping-repository.js';
+import { SessionMappingRepository } from '../../repositories/index.js';
 import { SessionTracker } from './session-tracker.js';
-import type { Database } from '../../db/connection.js';
+import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 
 describe('SessionTracker', () => {

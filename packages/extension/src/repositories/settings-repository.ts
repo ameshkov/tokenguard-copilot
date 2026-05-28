@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import type { Database } from '../db/connection.js';
-import { settings } from '../db/schema.js';
+import type { Database } from '../db/index.js';
+import { settings } from '../db/index.js';
 
 /**
  * Data-access layer for the `settings` table.

@@ -1,6 +1,6 @@
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
-import type { Database } from '../db/connection.js';
-import { usageRecords, type UsageRecord } from '../db/schema.js';
+import type { Database } from '../db/index.js';
+import { usageRecords, type UsageRecord } from '../db/index.js';
 
 /**
  * Input type for upserting a usage record — all fields

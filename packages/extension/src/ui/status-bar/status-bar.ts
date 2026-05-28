@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { ProviderInfo } from '@tokenguard/shared';
-import type { UsageRecord } from '../../db/schema.js';
+import type { UsageRecord } from '../../db/index.js';
 
 /**
  * Minimal interface for the provider manager — only the parts

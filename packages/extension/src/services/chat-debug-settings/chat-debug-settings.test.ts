@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { SettingsRepository } from '../../repositories/settings-repository.js';
+import { SettingsRepository } from '../../repositories/index.js';
 import { ChatDebugSettingsService } from './chat-debug-settings.js';
-import type { Database } from '../../db/connection.js';
+import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 
 describe('ChatDebugSettingsService', () => {

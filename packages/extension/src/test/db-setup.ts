@@ -1,7 +1,6 @@
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, type Database } from '../db/connection.js';
-import { runMigrations } from '../db/migrate.js';
+import { createDb, runMigrations, type Database } from '../db/index.js';
 
 const MIGRATIONS_DIR = resolve(__dirname, '..', 'db', 'migrations');
 

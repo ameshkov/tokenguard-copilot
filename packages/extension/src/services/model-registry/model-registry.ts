@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import type { ModelInfo, FetchedModel, ModelConfig, CacheControlConfig } from '@tokenguard/shared';
-import type { ModelRepository } from '../../repositories/model-repository.js';
-import type { ProviderRepository } from '../../repositories/provider-repository.js';
-import type { Model, Provider } from '../../db/schema.js';
+import type { ModelRepository, ProviderRepository } from '../../repositories/index.js';
+import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { TokenCounter } from '../token-counter/index.js';
-import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
+import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import type { UsageTracker } from '../usage-tracker/index.js';
 import { ChatModelProvider } from '../../providers/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Manages model lifecycle: fetch from providers, persist
@@ -41,6 +41,9 @@ export class ModelRegistry {
    * @param chatDebugLogger - Logger for debug log files.
    * @param tokenCounter - Token counting service for
    *   provideTokenCount.
+   * @param reasoningCacheService - Service for caching reasoning.
+   * @param usageTracker - Service for tracking usage metrics.
+   * @param logger - Logger for runtime diagnostics.
    */
   constructor(
     private readonly modelRepo: ModelRepository,
@@ -50,6 +53,7 @@ export class ModelRegistry {
     private readonly tokenCounter: TokenCounter,
     private readonly reasoningCacheService: ReasoningCacheService,
     private readonly usageTracker: UsageTracker,
+    private readonly logger: Logger,
   ) {}
 
   /**
@@ -270,6 +274,7 @@ export class ModelRegistry {
    * languageModelChatProvider API. Called on activation.
    */
   registerAll(): void {
+    this.logger.info('Registering all enabled models');
     this.refreshRegistration();
   }
 
@@ -323,7 +328,7 @@ export class ModelRegistry {
           }
         } catch {
           // Invalid JSON — skip schema
-          // TODO: Log error
+          this.logger.warn('Invalid reasoningEffortMap JSON for model', model.id);
         }
       }
 
@@ -352,6 +357,7 @@ export class ModelRegistry {
       tokenCounter: this.tokenCounter,
       reasoningCacheService: this.reasoningCacheService,
       usageTracker: this.usageTracker,
+      logger: this.logger,
     });
 
     // Force Copilot Chat to re-query model info through the

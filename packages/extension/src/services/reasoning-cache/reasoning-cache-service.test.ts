@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
-import { ReasoningCacheRepository } from '../../repositories/reasoning-cache-repository.js';
+import { ReasoningCacheRepository } from '../../repositories/index.js';
 import { ReasoningCacheService } from './reasoning-cache-service.js';
-import type { OpenAIMessage } from '../chat-handler/chat-handler.js';
-import type { ReasoningFields } from '../../utils/reasoning.js';
-import type { FingerprintToolCall } from '../../utils/fingerprint.js';
+import type { OpenAIMessage } from '../chat-handler/index.js';
+import type { ReasoningFields, FingerprintToolCall } from '../../utils/index.js';
 
 /**
  * Helper to simulate one request/response cycle:

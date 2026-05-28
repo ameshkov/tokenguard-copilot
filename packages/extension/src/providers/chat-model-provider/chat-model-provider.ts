@@ -1,16 +1,17 @@
 import * as vscode from 'vscode';
 import type { CacheControlConfig } from '@tokenguard/shared';
-import type { Model, Provider } from '../../db/schema.js';
+import type { Model, Provider } from '../../db/index.js';
 import {
   ChatHandler,
   type ChatContext,
   type OpenAITool,
   type UsageCollector,
-} from '../../services/chat-handler/chat-handler.js';
+} from '../../services/chat-handler/index.js';
 import type { ChatDebugLogger } from '../../services/chat-debug-logger/index.js';
 import type { TokenCounter } from '../../services/token-counter/index.js';
-import type { ReasoningCacheService } from '../../services/reasoning-cache/reasoning-cache-service.js';
+import type { ReasoningCacheService } from '../../services/reasoning-cache/index.js';
 import type { UsageTracker } from '../../services/usage-tracker/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Map entry associating a model with its provider for
@@ -48,6 +49,8 @@ export interface ChatModelProviderDeps {
   reasoningCacheService: ReasoningCacheService;
   /** Usage tracker for recording request metrics. */
   usageTracker: UsageTracker;
+  /** Logger for runtime diagnostics. */
+  logger: Logger;
 }
 
 /**
@@ -77,6 +80,7 @@ export class ChatModelProvider {
       provideLanguageModelChatResponse: async (modelInfo, messages, options, progress, token) => {
         const entry = deps.modelMap.get(modelInfo.id);
         if (!entry) {
+          deps.logger.error('Unknown model requested', modelInfo.id);
           throw new Error(`Unknown model: ${modelInfo.id}`);
         }
 
@@ -137,6 +141,7 @@ export class ChatModelProvider {
           chatDebugLogger: deps.chatDebugLogger,
           workspaceFolderUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
           cacheControl,
+          logger: deps.logger,
         };
 
         const handler = new ChatHandler(ctx, deps.reasoningCacheService);

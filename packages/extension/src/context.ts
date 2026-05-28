@@ -1,5 +1,6 @@
-import type { Database } from './db/connection.js';
+import type { Database } from './db/index.js';
 import type * as vscode from 'vscode';
+import type { Logger } from './logger/index.js';
 import { ProviderRepository } from './repositories/index.js';
 import { ModelRepository } from './repositories/index.js';
 import { SettingsRepository } from './repositories/index.js';
@@ -32,6 +33,8 @@ export interface ExtensionContextDeps {
   logsBasePath: string;
   /** Absolute path to the extension directory for loading assets. */
   extensionPath: string;
+  /** Logger instance for runtime diagnostics. */
+  logger: Logger;
   /** Optional callback to refresh the chat debug tree view. */
   onTreeRefresh?: () => void;
 }
@@ -77,12 +80,16 @@ export class ExtensionContext {
   /** Usage tracker service. */
   readonly usageTracker: UsageTracker;
 
+  /** Logger for runtime diagnostics. */
+  readonly logger: Logger;
+
   /**
    * Creates a new ExtensionContext.
    *
    * @param deps - Infrastructure dependencies.
    */
   constructor(deps: ExtensionContextDeps) {
+    this.logger = deps.logger;
     this.db = deps.db;
     const providerRepo = new ProviderRepository(deps.db);
     const modelRepo = new ModelRepository(deps.db);
@@ -97,15 +104,17 @@ export class ExtensionContext {
       this.chatDebugSettings,
       this.sessionTracker,
       deps.logsBasePath,
+      deps.logger,
       deps.onTreeRefresh,
     );
     this.chatDebugCleanup = new ChatDebugCleanupService(
       deps.logsBasePath,
       this.chatDebugSettings,
       sessionMappingRepo,
+      deps.logger,
       deps.onTreeRefresh,
     );
-    this.tokenCounter = new TokenCounter(deps.extensionPath);
+    this.tokenCounter = new TokenCounter(deps.extensionPath, deps.logger);
     const usageRecordRepo = new UsageRecordRepository(deps.db);
     this.usageTracker = new UsageTracker(usageRecordRepo, modelRepo);
     this.modelRegistry = new ModelRegistry(
@@ -116,13 +125,15 @@ export class ExtensionContext {
       this.tokenCounter,
       reasoningCacheService,
       this.usageTracker,
+      deps.logger,
     );
     this.providerManager = new ProviderManager(
       providerRepo,
       deps.secrets,
       deps.resetCallback,
       this.modelRegistry,
+      deps.logger,
     );
-    this.reasoningCacheCleanup = new ReasoningCacheCleanupService(reasoningCacheRepo);
+    this.reasoningCacheCleanup = new ReasoningCacheCleanupService(reasoningCacheRepo, deps.logger);
   }
 }

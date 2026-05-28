@@ -26,11 +26,14 @@ vi.mock('../ui/panels/settings-panel.js', () => ({
 import * as vscode from 'vscode';
 import { registerCommands } from './index.js';
 import type { ChatDebugTreeViewProvider } from '../ui/tree-views/index.js';
+import { createMockLogger } from '../test/mock-logger.js';
+import type { Logger } from '../logger/index.js';
 
 describe('registerCommands', () => {
   let context: vscode.ExtensionContext;
   let appCtx: AppContext;
   let treeViewProvider: ChatDebugTreeViewProvider;
+  let logger: Logger;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,6 +53,7 @@ describe('registerCommands', () => {
     treeViewProvider = {
       refresh: vi.fn(),
     } as unknown as ChatDebugTreeViewProvider;
+    logger = createMockLogger();
   });
 
   afterEach(() => {
@@ -72,7 +76,7 @@ describe('registerCommands', () => {
   }
 
   it('should register the helloWorld command', () => {
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
       'tokenguard-copilot.helloWorld',
@@ -81,7 +85,7 @@ describe('registerCommands', () => {
   });
 
   it('should register the openSettings command', () => {
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
       'tokenguard-copilot.openSettings',
@@ -90,13 +94,13 @@ describe('registerCommands', () => {
   });
 
   it('should push 6 disposables to subscriptions', () => {
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     expect(context.subscriptions).toHaveLength(6);
   });
 
   it('helloWorld command should show an information message', () => {
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.helloWorld');
     callback();
@@ -108,7 +112,7 @@ describe('registerCommands', () => {
 
   it('openSettings command should create or show settings panel', async () => {
     const { SettingsPanel } = await import('../ui/panels/settings-panel.js');
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.openSettings');
     callback();
@@ -118,7 +122,7 @@ describe('registerCommands', () => {
 
   it('enableDebuggingLogging shows modal and updates settings on confirm', async () => {
     vi.mocked(vscode.window.showInformationMessage).mockResolvedValue('Enable' as never);
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.enableDebuggingLogging');
     await callback();
@@ -138,7 +142,7 @@ describe('registerCommands', () => {
 
   it('enableDebuggingLogging does nothing when user cancels', async () => {
     vi.mocked(vscode.window.showInformationMessage).mockResolvedValue(undefined as never);
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.enableDebuggingLogging');
     await callback();
@@ -147,7 +151,7 @@ describe('registerCommands', () => {
   });
 
   it('disableDebuggingLogging updates settings', () => {
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.disableDebuggingLogging');
     callback();
@@ -161,7 +165,7 @@ describe('registerCommands', () => {
   });
 
   it('refreshDebuggingLogs calls treeViewProvider.refresh()', () => {
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.refreshDebuggingLogs');
     callback();
@@ -171,7 +175,7 @@ describe('registerCommands', () => {
 
   it('clearDebuggingLogs shows modal and clears on confirm', async () => {
     vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Clear Logs' as never);
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.clearDebuggingLogs');
     await callback();
@@ -186,7 +190,7 @@ describe('registerCommands', () => {
 
   it('clearDebuggingLogs does nothing when user cancels', async () => {
     vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined as never);
-    registerCommands(context, appCtx, treeViewProvider);
+    registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.clearDebuggingLogs');
     await callback();
