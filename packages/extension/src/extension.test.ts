@@ -245,6 +245,24 @@ describe('activate', () => {
     expect(mockLogger.info).toHaveBeenCalledWith('Extension activated');
   });
 
+  it('should return ExtensionApi with providerManager and modelRegistry', async () => {
+    const api = await activate(context);
+
+    expect(api).toBeDefined();
+    expect(api!.providerManager).toBeDefined();
+    expect(api!.modelRegistry).toBeDefined();
+  });
+
+  it('should return undefined when DB init fails', async () => {
+    vi.mocked(DatabaseSync).mockImplementationOnce(function () {
+      throw new Error('migration failed');
+    });
+
+    const api = await activate(context);
+
+    expect(api).toBeUndefined();
+  });
+
   it('should push logger channel to subscriptions', async () => {
     await activate(context);
 

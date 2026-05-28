@@ -18,11 +18,24 @@ import {
 import { createStatusBarItem } from './ui/status-bar/index.js';
 import { ChatDebugTreeViewProvider } from './ui/tree-views/index.js';
 
+/**
+ * Public API surface exposed to other extensions and E2E
+ * tests via `extension.exports`.
+ */
+export interface ExtensionApi {
+  /** Provider CRUD operations. */
+  readonly providerManager: ExtensionContext['providerManager'];
+  /** Model lifecycle and registration. */
+  readonly modelRegistry: ExtensionContext['modelRegistry'];
+}
+
 let rawDb: DatabaseSync | null = null;
 let extCtx: ExtensionContext | null = null;
 let logger: Logger | null = null;
 
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(
+  context: vscode.ExtensionContext,
+): Promise<ExtensionApi | undefined> {
   const { logger: log, channel } = createLogger();
   logger = log;
   context.subscriptions.push(channel);
@@ -111,6 +124,11 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(createStatusBarItem(localCtx.providerManager, localCtx.usageTracker));
 
   log.info('Extension activated');
+
+  return {
+    providerManager: localCtx.providerManager,
+    modelRegistry: localCtx.modelRegistry,
+  } satisfies ExtensionApi;
 }
 
 export function deactivate() {

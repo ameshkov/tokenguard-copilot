@@ -26,4 +26,12 @@ suite('Extension E2E Tests', () => {
       assert.strictEqual(typeof exports.deactivate, 'function');
     }
   });
+
+  test('extension should export providerManager and modelRegistry', async () => {
+    const extension = await getExtension();
+    const exports = extension.exports as Record<string, unknown> | undefined;
+    assert.ok(exports, 'Extension should have exports');
+    assert.ok(exports.providerManager, 'Exports should include providerManager');
+    assert.ok(exports.modelRegistry, 'Exports should include modelRegistry');
+  });
 });

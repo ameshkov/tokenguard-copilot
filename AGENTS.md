@@ -96,12 +96,14 @@ tokenguard-copilot/
 ├── test-e2e/                    # E2E tests (separate from packages)
 │   ├── tsconfig.json
 │   ├── helpers.ts               # Shared E2E test utilities
+│   ├── mock-openai-server.ts    # Mock OpenAI-compatible HTTP server
 │   ├── extension.test.ts        # Extension activation tests
 │   ├── commands.test.ts         # Command registration tests
 │   ├── settings-panel.test.ts   # Webview panel tests
 │   ├── debug-logging.test.ts    # Debug logging command tests
 │   ├── tree-view.test.ts        # Tree view registration tests
-│   └── database.test.ts         # Database lifecycle tests
+│   ├── database.test.ts         # Database lifecycle tests
+│   └── chat-completion.test.ts  # Provider + model + chat E2E tests
 ├── packages/
 │   ├── shared/                  # Shared types & protocol
 │   │   ├── package.json         # @tokenguard/shared
