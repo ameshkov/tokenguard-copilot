@@ -574,6 +574,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -608,6 +611,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -642,6 +648,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -676,6 +685,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -710,6 +722,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -744,6 +759,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -778,6 +796,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -812,6 +833,9 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -874,6 +898,9 @@
         "reasoning_effort": "max",
         "reasoning": { "effort": "max" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
     }
   },
   {
@@ -905,6 +932,57 @@
         "reasoning_effort": "xhigh",
         "reasoning": { "effort": "xhigh" }
       }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)MiniMax-M2\\.7$"
+    },
+    "contextSize": 204800,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.3,
+    "outputCostPer1M": 1.2,
+    "cachedInputCostPer1M": 0.06,
+    "supportedCapabilities": ["reasoning_effort"],
+    "preserveReasoning": true,
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_split": false
+      },
+      "high": {
+        "reasoning_split": true
+      }
+    },
+    "customFields": {
+      "reasoning_split": true
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)MiniMax-M2\\.7-highspeed$"
+    },
+    "contextSize": 204800,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.6,
+    "outputCostPer1M": 2.4,
+    "cachedInputCostPer1M": 0.06,
+    "supportedCapabilities": ["reasoning_effort"],
+    "preserveReasoning": true,
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_split": false
+      },
+      "high": {
+        "reasoning_split": true
+      }
+    },
+    "customFields": {
+      "reasoning_split": true
     }
   }
 ]

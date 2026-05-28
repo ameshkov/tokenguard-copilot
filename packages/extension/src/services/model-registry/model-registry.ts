@@ -146,6 +146,7 @@ export class ModelRegistry {
       outputCostPer1m: config.outputCostPer1m,
       cachedInputCostPer1m: config.cachedInputCostPer1m,
       cacheControl: config.cacheControl ? JSON.stringify(config.cacheControl) : null,
+      customFields: config.customFields ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -191,6 +192,7 @@ export class ModelRegistry {
       outputCostPer1m: config.outputCostPer1m,
       cachedInputCostPer1m: config.cachedInputCostPer1m,
       cacheControl: config.cacheControl ? JSON.stringify(config.cacheControl) : null,
+      customFields: config.customFields ?? null,
     });
 
     if (!updated) {
@@ -525,6 +527,7 @@ function toModelInfo(row: Model): ModelInfo {
     outputCostPer1m: row.outputCostPer1m,
     cachedInputCostPer1m: row.cachedInputCostPer1m,
     cacheControl: row.cacheControl ? (JSON.parse(row.cacheControl) as CacheControlConfig) : null,
+    customFields: row.customFields ?? null,
   };
 }
 

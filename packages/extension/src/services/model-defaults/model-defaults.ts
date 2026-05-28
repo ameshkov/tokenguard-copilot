@@ -50,6 +50,9 @@ export interface ModelDefaultsEntry {
   preserveReasoning?: boolean;
   /** Cache control injection configuration. */
   cacheControl?: CacheControlConfig;
+  /** Custom request body fields pre-filled from bundled
+   *  model defaults. */
+  customFields?: Record<string, unknown>;
 }
 
 /**
@@ -84,6 +87,9 @@ export interface ModelDefaults {
   preserveReasoning?: boolean;
   /** Cache control injection configuration. */
   cacheControl?: CacheControlConfig;
+  /** Custom request body fields pre-filled from bundled
+   *  model defaults. */
+  customFields?: Record<string, unknown>;
 }
 
 /**
@@ -148,6 +154,7 @@ function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
     defaultReasoningEffort: entry.defaultReasoningEffort,
     preserveReasoning: entry.preserveReasoning,
     cacheControl: entry.cacheControl,
+    customFields: entry.customFields,
   };
 }
 

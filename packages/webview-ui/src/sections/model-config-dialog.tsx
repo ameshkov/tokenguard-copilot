@@ -2,12 +2,34 @@ import { useState, useEffect } from 'react';
 import type {
   CacheControlConfig,
   CacheControlTtl,
+  CustomField,
+  CustomFieldType,
   FetchedModel,
   ModelConfig,
   ModelDefaultsResult,
   ModelInfo,
 } from '@tokenguard/shared';
 import { Button, ConfirmDialog, FormGroup, Input, Label } from '../components/index.js';
+import { CustomFieldsEditor, hasCustomFieldErrors } from './custom-fields-editor.js';
+
+/**
+ * Infers a {@link CustomFieldType} from a JSON value.
+ *
+ * @param value - The value to inspect.
+ * @returns The inferred type.
+ */
+function inferCustomFieldType(value: unknown): CustomFieldType {
+  switch (typeof value) {
+    case 'string':
+      return 'string';
+    case 'number':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    default:
+      return 'json';
+  }
+}
 
 /** Props for the {@link ModelConfigDialog} component. */
 export interface ModelConfigDialogProps {
@@ -66,6 +88,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
   const [cacheTtl, setCacheTtl] = useState<CacheControlTtl | ''>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [prefilledFields, setPrefilledFields] = useState<Record<string, string>>({});
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Pre-fill values based on mode
@@ -118,6 +141,13 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         setCacheTtl(
           editingModel.cacheControl.ttl !== undefined ? editingModel.cacheControl.ttl : '',
         );
+      }
+      if (editingModel.customFields) {
+        try {
+          setCustomFields(JSON.parse(editingModel.customFields) as CustomField[]);
+        } catch {
+          setCustomFields([]);
+        }
       }
       setPrefilledFields({});
       return;
@@ -207,6 +237,22 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         }
         filled.cacheControl = 'defaults';
       }
+      if (defaults.customFields) {
+        const fields: CustomField[] = Object.entries(defaults.customFields).map(
+          ([property, value]) => {
+            const type = inferCustomFieldType(value);
+            return {
+              property,
+              type,
+              value: type === 'json' ? JSON.stringify(value) : String(value),
+            };
+          },
+        );
+        setCustomFields(fields);
+        if (fields.length > 0) {
+          filled.customFields = 'defaults';
+        }
+      }
     }
 
     setPrefilledFields(filled);
@@ -263,6 +309,9 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         }
       }
     }
+    if (hasCustomFieldErrors(customFields)) {
+      newErrors.customFields = 'Fix custom field errors';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -277,6 +326,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       frequencyPenalty: 'Frequency Penalty',
       presencePenalty: 'Presence Penalty',
       newEffortParams: 'New Effort Body Params',
+      customFields: 'Custom Fields',
     };
     if (labels[field]) return labels[field];
     if (field.startsWith('effortMap_')) {
@@ -347,6 +397,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
       outputCostPer1m: outputCostPer1m !== '' ? Number(outputCostPer1m) : null,
       cachedInputCostPer1m: cachedInputCostPer1m !== '' ? Number(cachedInputCostPer1m) : null,
       cacheControl: buildCacheControl(),
+      customFields: customFields.length > 0 ? JSON.stringify(customFields) : null,
     };
 
     onSubmit(config);
@@ -755,6 +806,12 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               </vscode-form-helper>
             </FormGroup>
           </div>
+
+          <CustomFieldsEditor
+            customFields={customFields}
+            onChange={setCustomFields}
+            disabled={loading}
+          />
 
           <div className="model-config-dialog__section">
             <h3 className="model-config-dialog__section-title">Cost</h3>

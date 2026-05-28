@@ -52,6 +52,7 @@ export const models = sqliteTable(
     outputCostPer1m: real('output_cost_per_1m'),
     cachedInputCostPer1m: real('cached_input_cost_per_1m'),
     cacheControl: text('cache_control'),
+    customFields: text('custom_fields'),
     enabled: integer('enabled').notNull().default(1),
     removed: integer('removed').notNull().default(0),
     createdAt: text('created_at').notNull(),

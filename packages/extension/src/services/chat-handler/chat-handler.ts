@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
-import type { CacheControlConfig } from '@tokenguard/shared';
+import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
 import type { ModelDefaults } from '../model-defaults/model-defaults.js';
 import type { Model, Provider } from '../../db/schema.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
@@ -367,6 +367,60 @@ export class ChatHandler {
   }
 
   /**
+   * Parses the JSON-serialized custom fields string from
+   * a model record and converts each field's value
+   * according to its type discriminator.
+   *
+   * Returns an object mapping property names to their
+   * converted values. Fields with invalid values (e.g.
+   * malformed JSON) are silently skipped.
+   *
+   * @param customFields - JSON string of
+   *   `CustomField[]`, or `null`.
+   * @returns Key-value pairs to merge into the request
+   *   body.
+   */
+  private static parseCustomFields(customFields: string | null): Record<string, unknown> {
+    if (!customFields) {
+      return {};
+    }
+
+    let fields: CustomField[];
+    try {
+      fields = JSON.parse(customFields) as CustomField[];
+    } catch {
+      return {};
+    }
+
+    if (!Array.isArray(fields)) {
+      return {};
+    }
+
+    const result: Record<string, unknown> = {};
+    for (const field of fields) {
+      switch (field.type) {
+        case 'string':
+          result[field.property] = field.value;
+          break;
+        case 'number':
+          result[field.property] = Number(field.value);
+          break;
+        case 'boolean':
+          result[field.property] = field.value === 'true';
+          break;
+        case 'json':
+          try {
+            result[field.property] = JSON.parse(field.value) as unknown;
+          } catch {
+            // Skip fields with invalid JSON values.
+          }
+          break;
+      }
+    }
+    return result;
+  }
+
+  /**
    * Builds the request body for the `/chat/completions`
    * endpoint.
    *
@@ -420,6 +474,10 @@ export class ChatHandler {
       body.tool_choice = ctx.toolMode ?? 'auto';
       body.parallel_tool_calls = true;
     }
+
+    // Custom fields — highest override priority
+    const customFieldValues = ChatHandler.parseCustomFields(ctx.model.customFields);
+    Object.assign(body, customFieldValues);
 
     return body;
   }

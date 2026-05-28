@@ -63,6 +63,7 @@ describe('ModelRegistry', () => {
     outputCostPer1m: null,
     cachedInputCostPer1m: null,
     cacheControl: null,
+    customFields: null,
   };
 
   const mockReasoningCacheService = {
@@ -633,6 +634,38 @@ describe('ModelRegistry', () => {
     it('returns null cacheControl when not configured', () => {
       const model = registry.addModel(providerId, 'gpt-4o', validConfig);
       expect(model.cacheControl).toBeNull();
+    });
+  });
+
+  describe('customFields', () => {
+    it('persists customFields from addModel and returns it in ModelInfo', () => {
+      const customFields = JSON.stringify([
+        { property: 'reasoning_split', type: 'boolean', value: 'true' },
+      ]);
+      const model = registry.addModel(providerId, 'custom-model', {
+        ...validConfig,
+        customFields,
+      });
+      expect(model.customFields).toBe(customFields);
+
+      const models = registry.getModels();
+      expect(models).toHaveLength(1);
+      expect(models[0].customFields).toBe(customFields);
+    });
+
+    it('updates customFields via updateModel', () => {
+      registry.addModel(providerId, 'custom-model', validConfig);
+      const newFields = JSON.stringify([{ property: 'foo', type: 'string', value: 'bar' }]);
+      const updated = registry.updateModel(providerId, 'custom-model', {
+        ...validConfig,
+        customFields: newFields,
+      });
+      expect(updated.customFields).toBe(newFields);
+    });
+
+    it('returns null customFields when not configured', () => {
+      const model = registry.addModel(providerId, 'gpt-4o', validConfig);
+      expect(model.customFields).toBeNull();
     });
   });
 

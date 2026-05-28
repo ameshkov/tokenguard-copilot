@@ -470,4 +470,37 @@ describe('ReasoningCacheService', () => {
     expect(rollback[1].reasoning_content).toBe('R1');
     expect(rollback[3].reasoning_content).toBe('R2');
   });
+
+  it('tool call reorder still hits cache', () => {
+    // Turn 1: two tool calls returned in [A, B] order
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Weather?' }];
+    step(svc, t1, true, {
+      content: '',
+      toolCalls: [
+        { id: 'call_A', function: { name: 'fn_a', arguments: '{}' } },
+        { id: 'call_B', function: { name: 'fn_b', arguments: '{}' } },
+      ],
+      fields: { reasoning_content: 'R for tool calls' },
+    });
+
+    // Turn 2: VS Code returns tool calls in [B, A] order
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Weather?' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [
+          { id: 'call_B', type: 'function', function: { name: 'fn_b', arguments: '{}' } },
+          { id: 'call_A', type: 'function', function: { name: 'fn_a', arguments: '{}' } },
+        ],
+      },
+      { role: 'tool', content: 'Result', tool_call_id: 'call_A' },
+      { role: 'tool', content: 'Result', tool_call_id: 'call_B' },
+    ];
+    step(svc, t2, true);
+
+    // Reasoning from Turn 1 should be found despite
+    // reversed tool call order
+    expect(t2[1].reasoning_content).toBe('R for tool calls');
+  });
 });

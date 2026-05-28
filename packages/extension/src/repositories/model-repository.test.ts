@@ -397,4 +397,63 @@ describe('ModelRepository', () => {
       expect(active[0].cacheControl).toBeNull();
     });
   });
+
+  describe('customFields column', () => {
+    it('inserts model with customFields JSON and parses it back', () => {
+      const now = new Date().toISOString();
+      const customFields = [{ property: 'reasoning_split', type: 'boolean', value: 'true' }];
+      const row = repo.insert({
+        id: 'custom-model',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        customFields: JSON.stringify(customFields),
+        createdAt: now,
+        updatedAt: now,
+      });
+      expect(row.customFields).toBe(JSON.stringify(customFields));
+      const parsed = JSON.parse(row.customFields!);
+      expect(parsed).toEqual(customFields);
+    });
+
+    it('updates customFields and parses it back correctly', () => {
+      const now = new Date().toISOString();
+      repo.insert({
+        id: 'custom-model',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        createdAt: now,
+        updatedAt: now,
+      });
+      const newFields = [{ property: 'foo', type: 'string', value: 'bar' }];
+      const updated = repo.update('custom-model', providerId, {
+        customFields: JSON.stringify(newFields),
+      });
+      expect(updated).toBeDefined();
+      const parsed = JSON.parse(updated!.customFields!);
+      expect(parsed).toEqual(newFields);
+    });
+
+    it('handles model without customFields gracefully', () => {
+      const now = new Date().toISOString();
+      const row = repo.insert({
+        id: 'plain-model',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        createdAt: now,
+        updatedAt: now,
+      });
+      expect(row.customFields).toBeNull();
+
+      const found = repo.findByKey('plain-model', providerId);
+      expect(found).toBeDefined();
+      expect(found!.customFields).toBeNull();
+
+      const active = repo.findActive();
+      expect(active).toHaveLength(1);
+      expect(active[0].customFields).toBeNull();
+    });
+  });
 });

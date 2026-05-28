@@ -60,6 +60,7 @@ describe('ProviderManager', () => {
     outputCostPer1m: null,
     cachedInputCostPer1m: null,
     cacheControl: null,
+    customFields: null,
   };
 
   beforeEach(() => {

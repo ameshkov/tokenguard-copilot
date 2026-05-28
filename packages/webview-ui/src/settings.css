@@ -78,6 +78,12 @@ vscode-table {
   margin-bottom: 12px;
 }
 
+/* ── Custom fields editor ───────────────────────── */
+.custom-fields-editor__table vscode-textfield,
+.custom-fields-editor__table vscode-single-select {
+  width: 100%;
+}
+
 /* ── Provider actions ───────────────────────────── */
 .provider-actions {
   display: flex;

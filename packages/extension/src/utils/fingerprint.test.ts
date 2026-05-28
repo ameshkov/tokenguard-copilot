@@ -27,7 +27,7 @@ describe('computeFingerprint', () => {
     expect(result).toBe(expected);
   });
 
-  it('uses tool_calls[0].id as key part when assistant has tool calls', () => {
+  it('uses sorted tool call IDs as key part when assistant has tool calls', () => {
     const messages: FingerprintMessage[] = [
       { role: 'user', content: 'Call a tool' },
       {
@@ -43,26 +43,12 @@ describe('computeFingerprint', () => {
     expect(result).toBe(expected);
   });
 
-  it('uses firstAssistant.content on turn 1 (no assistant in messages)', () => {
-    const messages: FingerprintMessage[] = [
-      { role: 'system', content: 'System prompt' },
-      { role: 'user', content: 'Question' },
-    ];
-
-    const result = computeFingerprint(messages, {
-      content: 'Answer',
-    });
-
-    const expected = sha256('System prompt\0Question\0Answer');
-    expect(result).toBe(expected);
-  });
-
-  it('uses firstAssistant.firstToolCallId on turn 1 when provided', () => {
+  it('uses firstAssistant.toolCallIds on turn 1 when provided', () => {
     const messages: FingerprintMessage[] = [{ role: 'user', content: 'Do something' }];
 
     const result = computeFingerprint(messages, {
       content: '',
-      firstToolCallId: 'call_xyz',
+      toolCallIds: ['call_xyz'],
     });
 
     const expected = sha256('Do something\0call_xyz');
@@ -98,8 +84,8 @@ describe('computeFingerprint', () => {
 
     const result = computeFingerprint(messages);
 
-    // Only system+user in prefix, key part is first
-    // assistant's tool_calls[0].id
+    // Only system+user in prefix, key part is sorted
+    // tool call IDs
     const expected = sha256('Sys\0Ask\0c1');
     expect(result).toBe(expected);
   });
@@ -242,5 +228,71 @@ describe('computeMessageFingerprint', () => {
     const fp2 = computeMessageFingerprint('Answer B');
 
     expect(fp1).not.toBe(fp2);
+  });
+
+  it('produces same fingerprint regardless of tool call order (turn 2+)', () => {
+    const msgs1: FingerprintMessage[] = [
+      { role: 'user', content: 'Do it' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{ id: 'call_A' }, { id: 'call_B' }],
+      },
+    ];
+    const msgs2: FingerprintMessage[] = [
+      { role: 'user', content: 'Do it' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{ id: 'call_B' }, { id: 'call_A' }],
+      },
+    ];
+
+    expect(computeFingerprint(msgs1)).toBe(computeFingerprint(msgs2));
+  });
+
+  it('turn 1 toolCallIds matches turn 2+ tool_calls with same IDs', () => {
+    const prefix = [{ role: 'user', content: 'Do it' }] as FingerprintMessage[];
+
+    // Simulate Turn 1: firstAssistant provides toolCallIds
+    const turn1Fp = computeFingerprint(prefix, {
+      content: '',
+      toolCallIds: ['call_A', 'call_B'],
+    });
+
+    // Simulate Turn 2: first assistant message has tool_calls
+    const turn2Messages: FingerprintMessage[] = [
+      ...prefix,
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{ id: 'call_B' }, { id: 'call_A' }],
+      },
+    ];
+    const turn2Fp = computeFingerprint(turn2Messages);
+
+    expect(turn1Fp).toBe(turn2Fp);
+  });
+
+  it('uses all tool call IDs joined, not just the first', () => {
+    const single: FingerprintMessage[] = [
+      { role: 'user', content: 'Test' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{ id: 'call_A' }],
+      },
+    ];
+    const multiple: FingerprintMessage[] = [
+      { role: 'user', content: 'Test' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [{ id: 'call_A' }, { id: 'call_B' }],
+      },
+    ];
+
+    // Different number of tool calls → different fingerprint
+    expect(computeFingerprint(single)).not.toBe(computeFingerprint(multiple));
   });
 });

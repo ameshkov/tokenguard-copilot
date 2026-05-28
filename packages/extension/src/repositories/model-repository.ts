@@ -121,6 +121,7 @@ export class ModelRepository {
         | 'outputCostPer1m'
         | 'cachedInputCostPer1m'
         | 'cacheControl'
+        | 'customFields'
         | 'enabled'
       >
     >,

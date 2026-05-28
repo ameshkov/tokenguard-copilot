@@ -39,6 +39,7 @@ const sampleModel: ModelInfo = {
   outputCostPer1m: null,
   cachedInputCostPer1m: null,
   cacheControl: null,
+  customFields: null,
 };
 
 describe('ModelsSection', () => {

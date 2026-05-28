@@ -149,7 +149,7 @@ export class ReasoningCacheService {
 
     const sessionFp = computeFingerprint(messages, {
       content: response.content,
-      firstToolCallId: response.toolCalls?.[0]?.id,
+      toolCallIds: response.toolCalls?.map((tc) => tc.id),
     });
     if (!sessionFp) return;
 

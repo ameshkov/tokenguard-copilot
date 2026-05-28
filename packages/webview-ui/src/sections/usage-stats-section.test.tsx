@@ -88,6 +88,7 @@ const models = [
     outputCostPer1m: 20,
     cachedInputCostPer1m: 5,
     cacheControl: null,
+    customFields: null,
   },
 ];
 

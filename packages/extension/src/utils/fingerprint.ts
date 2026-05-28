@@ -41,9 +41,9 @@ export interface FingerprintToolCall {
  *
  * Collects all system and user messages in array order up
  * to (but not including) the first assistant message. The
- * first assistant provides the final key part:
- * `tool_calls[0].id` when present, otherwise the text
- * content.
+ * first assistant provides the final key part: all tool
+ * call IDs sorted alphabetically and joined with null
+ * separators when present, otherwise the text content.
  *
  * When the first assistant message is already in the
  * messages array (Turn 2+), the optional `firstAssistant`
@@ -54,10 +54,10 @@ export interface FingerprintToolCall {
  * missing data.
  *
  * @param messages - Chat request messages.
- * @param firstAssistant - The response content and optional
- *   first tool call ID from the assistant response (used on
- *   Turn 1 when the assistant message is not yet in the
- *   messages array).
+ * @param firstAssistant - The response content and
+ *   optional tool call IDs from the assistant response
+ *   (used on Turn 1 when the assistant message is not yet
+ *   in the messages array).
  * @returns SHA-256 hex fingerprint, or `null` if no key
  *   part can be determined.
  */
@@ -65,7 +65,7 @@ export function computeFingerprint(
   messages: FingerprintMessage[],
   firstAssistant?: {
     content: string;
-    firstToolCallId?: string;
+    toolCallIds?: string[];
   },
 ): string | null {
   // Collect all system+user messages before the first
@@ -87,14 +87,25 @@ export function computeFingerprint(
   if (firstAssistantMsg) {
     // Assistant is already in messages (Turn 2+).
     if (firstAssistantMsg.tool_calls?.length) {
-      keyPart = firstAssistantMsg.tool_calls[0].id;
-    } else {
+      const ids = firstAssistantMsg.tool_calls
+        .map((tc) => tc.id)
+        .filter((id) => id.length > 0)
+        .sort();
+      if (ids.length > 0) {
+        keyPart = ids.join('\0');
+      }
+    }
+    if (keyPart === undefined) {
       keyPart = extractTextContent(firstAssistantMsg.content);
     }
-  } else if (firstAssistant?.firstToolCallId) {
-    // Assistant not in messages yet (Turn 1, tool call).
-    keyPart = firstAssistant.firstToolCallId;
-  } else if (firstAssistant?.content !== undefined) {
+  } else if (firstAssistant?.toolCallIds?.length) {
+    // Assistant not in messages yet (Turn 1, tool calls).
+    const ids = firstAssistant.toolCallIds.filter((id) => id.length > 0).sort();
+    if (ids.length > 0) {
+      keyPart = ids.join('\0');
+    }
+  }
+  if (keyPart === undefined && firstAssistant?.content !== undefined) {
     // Assistant not in messages yet (Turn 1, text).
     keyPart = firstAssistant.content;
   }

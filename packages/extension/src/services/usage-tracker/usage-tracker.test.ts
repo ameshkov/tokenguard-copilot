@@ -110,6 +110,7 @@ describe('UsageTracker', () => {
       outputCostPer1m: 30,
       cachedInputCostPer1m: 5,
       cacheControl: null,
+      customFields: null,
       enabled: 1,
       removed: 0,
       createdAt: '2026-05-25T00:00:00Z',

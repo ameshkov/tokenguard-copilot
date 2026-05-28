@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ModelDefaults, ModelDefaultsEntry } from './model-defaults.js';
 import { getDefaults, initDefaults, resetDefaults } from './model-defaults.js';
@@ -281,5 +281,74 @@ describe('getDefaults', () => {
     expect(result).not.toBeNull();
     expect(result!.reasoningEffortMap).toBeDefined();
     expect(Object.keys(result!.reasoningEffortMap!).length).toBeGreaterThan(0);
+  });
+
+  it('returns customFields from defaults when present', () => {
+    const tmpPath = resolve(__dirname, 'test-custom-fields.json');
+    const entries = [
+      {
+        match: { type: 'exact', value: 'custom-model' },
+        contextSize: 128000,
+        maxTokens: 16384,
+        inputCostPer1M: 1,
+        outputCostPer1M: 2,
+        supportedCapabilities: [],
+        customFields: { reasoning_split: true },
+      },
+    ];
+    writeFileSync(tmpPath, JSON.stringify(entries));
+    try {
+      resetDefaults();
+      initDefaults(tmpPath);
+      const result = getDefaults('custom-model');
+      expect(result).not.toBeNull();
+      expect(result!.customFields).toEqual({
+        reasoning_split: true,
+      });
+    } finally {
+      unlinkSync(tmpPath);
+    }
+  });
+
+  it('preserves customFields with multiple value types', () => {
+    const entries: ModelDefaultsEntry[] = [
+      {
+        match: { type: 'exact' as const, value: 'multi-type-model' },
+        contextSize: 128000,
+        maxTokens: 4096,
+        inputCostPer1M: 1,
+        outputCostPer1M: 2,
+        supportedCapabilities: [],
+        customFields: {
+          stringField: 'hello',
+          numberField: 42,
+          booleanField: true,
+          jsonField: { type: 'ephemeral' },
+        },
+      },
+    ];
+
+    const tmpPath = resolve(__dirname, 'test-multi-type.json');
+    writeFileSync(tmpPath, JSON.stringify(entries));
+    try {
+      resetDefaults();
+      initDefaults(tmpPath);
+      const result = getDefaults('multi-type-model');
+      expect(result).not.toBeNull();
+      expect(result!.customFields).toEqual({
+        stringField: 'hello',
+        numberField: 42,
+        booleanField: true,
+        jsonField: { type: 'ephemeral' },
+      });
+    } finally {
+      unlinkSync(tmpPath);
+    }
+  });
+
+  it('omits customFields when not present in defaults', () => {
+    const result = getDefaults('gpt-5.4');
+    expect(result).not.toBeNull();
+    expect(result!.customFields).toBeUndefined();
   });
 });

@@ -47,6 +47,7 @@ export const sampleModels: ModelInfo[] = [
     outputCostPer1m: 10.0,
     cachedInputCostPer1m: 1.25,
     cacheControl: null,
+    customFields: null,
   },
   {
     id: 'claude-sonnet-4-20250514',
@@ -68,6 +69,7 @@ export const sampleModels: ModelInfo[] = [
     outputCostPer1m: 15.0,
     cachedInputCostPer1m: 0.3,
     cacheControl: null,
+    customFields: null,
   },
   {
     id: 'qwen3-235b-a22b',
@@ -91,6 +93,7 @@ export const sampleModels: ModelInfo[] = [
       enabled: true,
       maxMarkers: 4,
     },
+    customFields: null,
   },
 ];
 

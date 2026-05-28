@@ -306,10 +306,18 @@ regardless of how many turns have elapsed.
    with null separators).
 2. Determine the "key part":
    - If the first assistant has tool_calls
-     → tool_calls[0].id
+     → all tool call IDs, sorted alphabetically
+       and joined with null separators.
    - Otherwise → the first assistant's content
 3. SHA-256(prefixParts.join('\0') + '\0' + keyPart)
 ```
+
+Sorting tool call IDs by name makes the fingerprint
+stable even when the model returns tool calls in a
+different order across requests (e.g. on a retry or
+when VS Code reorders the tool call array between
+turns). The same conversation always hashes to the
+same value.
 
 The session fingerprint is stable across turns because
 it considers the prefix (all messages before the first

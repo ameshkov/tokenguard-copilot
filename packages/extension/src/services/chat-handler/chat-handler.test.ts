@@ -89,6 +89,7 @@ function mockModel(overrides: Partial<Model> = {}): Model {
     outputCostPer1m: null,
     cachedInputCostPer1m: null,
     cacheControl: null,
+    customFields: null,
     enabled: 1,
     removed: 0,
     createdAt: '2025-01-01T00:00:00Z',
@@ -636,6 +637,201 @@ describe('ChatHandler', () => {
       expect(body.tools).toBeUndefined();
       expect(body.tool_choice).toBeUndefined();
       expect(body.parallel_tool_calls).toBeUndefined();
+    });
+
+    it('merges string custom field into body', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'user', type: 'string', value: 'test-user' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.user).toBe('test-user');
+    });
+
+    it('merges number custom field into body', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'max_tokens', type: 'number', value: '4096' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.max_tokens).toBe(4096);
+    });
+
+    it('merges boolean custom field into body', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([
+            {
+              property: 'reasoning_split',
+              type: 'boolean',
+              value: 'true',
+            },
+          ]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.reasoning_split).toBe(true);
+    });
+
+    it('merges boolean false custom field into body', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([
+            {
+              property: 'reasoning_split',
+              type: 'boolean',
+              value: 'false',
+            },
+          ]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.reasoning_split).toBe(false);
+    });
+
+    it('merges JSON custom field into body', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([
+            {
+              property: 'cache_control',
+              type: 'json',
+              value: '{"type":"ephemeral"}',
+            },
+          ]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.cache_control).toEqual({ type: 'ephemeral' });
+    });
+
+    it('custom field overrides built-in temperature', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          temperature: 0.7,
+          customFields: JSON.stringify([{ property: 'temperature', type: 'number', value: '0.0' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.temperature).toBe(0.0);
+    });
+
+    it('custom field overrides reasoning effort map value', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          defaultReasoningEffort: 'high',
+          customFields: JSON.stringify([
+            {
+              property: 'thinking',
+              type: 'json',
+              value: '{"type":"disabled"}',
+            },
+          ]),
+        }),
+        reasoningEffort: 'high',
+        defaults: {
+          contextSize: 128000,
+          maxTokens: 16384,
+          inputCostPer1M: 1,
+          outputCostPer1M: 2,
+          supportedCapabilities: ['reasoning_effort'],
+          reasoningEffortMap: {
+            high: { thinking: { type: 'enabled', budget_tokens: 8000 } },
+          },
+        },
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.thinking).toEqual({ type: 'disabled' });
+    });
+
+    it('custom field overrides stream_options', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          streaming: 1,
+          customFields: JSON.stringify([
+            {
+              property: 'stream_options',
+              type: 'json',
+              value: '{"include_usage":false}',
+            },
+          ]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.stream_options).toEqual({ include_usage: false });
+    });
+
+    it('merges multiple custom fields', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([
+            { property: 'user', type: 'string', value: 'test' },
+            { property: 'seed', type: 'number', value: '42' },
+            {
+              property: 'logprobs',
+              type: 'boolean',
+              value: 'true',
+            },
+          ]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.user).toBe('test');
+      expect(body.seed).toBe(42);
+      expect(body.logprobs).toBe(true);
+    });
+
+    it('ignores null customFields', () => {
+      const body = ChatHandler.buildRequestBody(messages, baseContext);
+      expect(body.model).toBe('gpt-4');
+    });
+
+    it('ignores empty customFields array', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({ customFields: '[]' }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(Object.keys(body)).not.toContain('undefined');
+    });
+
+    it('skips custom fields with invalid JSON value gracefully', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([
+            {
+              property: 'bad_field',
+              type: 'json',
+              value: '{invalid',
+            },
+            { property: 'good_field', type: 'string', value: 'ok' },
+          ]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.bad_field).toBeUndefined();
+      expect(body.good_field).toBe('ok');
+    });
+
+    it('skips all fields when customFields string is invalid JSON', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({ customFields: '{not an array' }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.model).toBe('gpt-4');
     });
   });
 

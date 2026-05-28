@@ -11,6 +11,22 @@ export interface CacheControlConfig {
   ttl?: CacheControlTtl;
 }
 
+/** Allowed types for a custom request body field. */
+export type CustomFieldType = 'string' | 'number' | 'boolean' | 'json';
+
+/**
+ * A user-defined key-value pair injected into the chat
+ * completion request body.
+ */
+export interface CustomField {
+  /** Top-level request body property name. */
+  property: string;
+  /** Value type — determines validation and serialization. */
+  type: CustomFieldType;
+  /** Raw value as entered by the user. */
+  value: string;
+}
+
 /** Provider metadata visible to the webview. */
 export interface ProviderInfo {
   id: string;
@@ -38,6 +54,7 @@ export interface ModelInfo {
   outputCostPer1m: number | null;
   cachedInputCostPer1m: number | null;
   cacheControl: CacheControlConfig | null;
+  customFields: string | null;
 }
 
 /** Model info fetched from a provider's /models endpoint. */
@@ -69,6 +86,10 @@ export interface ModelDefaultsResult {
   preserveReasoning?: boolean;
   /** Cache control injection configuration. */
   cacheControl?: CacheControlConfig;
+  /** Custom request body fields pre-filled from bundled
+   *  model defaults. Keys are property names, values are
+   *  typed defaults. */
+  customFields?: Record<string, unknown>;
 }
 
 /** Chat debug settings visible to the webview. */
@@ -97,6 +118,7 @@ export interface ModelConfig {
   outputCostPer1m: number | null;
   cachedInputCostPer1m: number | null;
   cacheControl: CacheControlConfig | null;
+  customFields: string | null;
 }
 
 /** Fetch usage statistics. */

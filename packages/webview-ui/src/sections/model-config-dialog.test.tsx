@@ -173,6 +173,7 @@ describe('ModelConfigDialog', () => {
       outputCostPer1m: null,
       cachedInputCostPer1m: null,
       cacheControl: null,
+      customFields: null,
     };
 
     render(<ModelConfigDialog {...baseProps} editingModel={editingModel} />);
@@ -201,6 +202,7 @@ describe('ModelConfigDialog', () => {
       outputCostPer1m: null,
       cachedInputCostPer1m: null,
       cacheControl: null,
+      customFields: null,
     };
 
     render(<ModelConfigDialog {...baseProps} editingModel={editingModel} />);
@@ -280,6 +282,7 @@ describe('ModelConfigDialog', () => {
       outputCostPer1m: null,
       cachedInputCostPer1m: null,
       cacheControl: null,
+      customFields: null,
     };
 
     render(<ModelConfigDialog {...baseProps} editingModel={editingModel} />);
@@ -504,6 +507,7 @@ describe('ModelConfigDialog', () => {
         maxMarkers: 3,
         ttl: '5m',
       },
+      customFields: null,
     };
 
     render(<ModelConfigDialog {...baseProps} editingModel={editingModel} />);
@@ -516,5 +520,213 @@ describe('ModelConfigDialog', () => {
     const ttlSelect = document.querySelector('#cache-ttl');
     expect(ttlSelect).not.toBeNull();
     expect(ttlSelect!.getAttribute('value')).toBe('5m');
+  });
+
+  it('renders Custom Fields section heading', () => {
+    render(<ModelConfigDialog {...baseProps} />);
+    expect(screen.getByText('Custom Fields')).toBeDefined();
+  });
+
+  it('renders custom fields placeholder in Advanced Settings', () => {
+    render(<ModelConfigDialog {...baseProps} />);
+    expect(screen.getByText(/No custom fields configured/)).toBeDefined();
+  });
+
+  it('renders Add button for custom fields', () => {
+    render(<ModelConfigDialog {...baseProps} />);
+    // There may be other Add buttons (reasoning effort),
+    // so check that at least one Add button exists
+    const addButtons = screen.getAllByRole('button', {
+      name: /Add/,
+    });
+    expect(addButtons.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('submits customFields as null when no fields', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    render(<ModelConfigDialog {...baseProps} onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText('Max Context Window Tokens'), '128000');
+    await user.type(screen.getByLabelText('Max Output Tokens'), '16384');
+
+    await user.click(screen.getByRole('button', { name: 'Add Model' }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    const config = onSubmit.mock.calls[0][0];
+    expect(config.customFields).toBeNull();
+  });
+
+  it('submits customFields as JSON when fields exist', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    render(<ModelConfigDialog {...baseProps} onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText('Max Context Window Tokens'), '128000');
+    await user.type(screen.getByLabelText('Max Output Tokens'), '16384');
+
+    // Add a custom field via the custom fields Add button
+    // Filter out "Add Model" submit button and reasoning effort Add
+    const addButtons = screen
+      .getAllByRole('button', { name: /^Add$/ })
+      .filter((btn) => btn.textContent?.trim() === 'Add');
+    const addCustomFieldBtn = addButtons[addButtons.length - 1];
+    await user.click(addCustomFieldBtn);
+
+    // Fill in property name and value using aria-labels
+    await user.type(
+      screen.getByRole('textbox', { name: 'Field 1 property name' }),
+      'reasoning_split',
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Field 1 value' }), 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Add Model' }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    const config = onSubmit.mock.calls[0][0];
+    expect(config.customFields).toBe(
+      JSON.stringify([{ property: 'reasoning_split', type: 'string', value: 'true' }]),
+    );
+  });
+
+  it('pre-fills customFields in edit mode', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    const editingModel: ModelInfo = {
+      id: 'test-model',
+      providerId: 'p1',
+      displayName: 'Test Model',
+      maxContextWindowTokens: 128000,
+      maxOutputTokens: 16384,
+      streaming: true,
+      vision: false,
+      temperature: null,
+      topP: null,
+      frequencyPenalty: null,
+      presencePenalty: null,
+      defaultReasoningEffort: null,
+      reasoningEffortMap: null,
+      preserveReasoning: false,
+      inputCostPer1m: null,
+      outputCostPer1m: null,
+      cachedInputCostPer1m: null,
+      cacheControl: null,
+      customFields: JSON.stringify([
+        { property: 'reasoning_split', type: 'boolean', value: 'true' },
+      ]),
+    };
+
+    render(<ModelConfigDialog {...baseProps} onSubmit={onSubmit} editingModel={editingModel} />);
+
+    // The custom field should be rendered in the editor
+    const propertyInput = screen.getByRole('textbox', {
+      name: 'Field 1 property name',
+    }) as HTMLInputElement;
+    expect(propertyInput).not.toBeNull();
+    expect(propertyInput.value).toBe('reasoning_split');
+
+    // Submit and verify round-trip
+    await user.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    const config = onSubmit.mock.calls[0][0];
+    expect(config.customFields).toBe(
+      JSON.stringify([{ property: 'reasoning_split', type: 'boolean', value: 'true' }]),
+    );
+  });
+
+  it('handles invalid customFields JSON in edit mode', () => {
+    const editingModel: ModelInfo = {
+      id: 'test-model',
+      providerId: 'p1',
+      displayName: 'Test Model',
+      maxContextWindowTokens: 128000,
+      maxOutputTokens: 16384,
+      streaming: true,
+      vision: false,
+      temperature: null,
+      topP: null,
+      frequencyPenalty: null,
+      presencePenalty: null,
+      defaultReasoningEffort: null,
+      reasoningEffortMap: null,
+      preserveReasoning: false,
+      inputCostPer1m: null,
+      outputCostPer1m: null,
+      cachedInputCostPer1m: null,
+      cacheControl: null,
+      customFields: '{invalid json',
+    };
+
+    render(<ModelConfigDialog {...baseProps} editingModel={editingModel} />);
+
+    // Should render without errors, no custom fields shown
+    expect(screen.queryByRole('textbox', { name: 'Field 1 property name' })).toBeNull();
+  });
+
+  it('pre-fills customFields from defaults', async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    const defaults: ModelDefaultsResult = {
+      contextSize: 128000,
+      maxTokens: 16384,
+      inputCostPer1M: 2.5,
+      outputCostPer1M: 10,
+      supportedCapabilities: [],
+      customFields: {
+        reasoning_split: true,
+        cache_control: { type: 'ephemeral' },
+        custom_header: 'x-custom-value',
+        max_retries: 3,
+      },
+    };
+
+    render(<ModelConfigDialog {...baseProps} onSubmit={onSubmit} defaults={defaults} />);
+
+    // Custom fields should be pre-filled
+    expect(screen.getByRole('textbox', { name: 'Field 1 property name' })).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Field 2 property name' })).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Field 3 property name' })).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Field 4 property name' })).not.toBeNull();
+
+    // Submit and verify the fields are serialized
+    await user.click(screen.getByRole('button', { name: 'Add Model' }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    const config = onSubmit.mock.calls[0][0];
+    const fields = JSON.parse(config.customFields);
+    expect(fields).toHaveLength(4);
+
+    const splitField = fields.find((f: { property: string }) => f.property === 'reasoning_split');
+    expect(splitField).toEqual({
+      property: 'reasoning_split',
+      type: 'boolean',
+      value: 'true',
+    });
+
+    const cacheField = fields.find((f: { property: string }) => f.property === 'cache_control');
+    expect(cacheField).toEqual({
+      property: 'cache_control',
+      type: 'json',
+      value: '{"type":"ephemeral"}',
+    });
+
+    const headerField = fields.find((f: { property: string }) => f.property === 'custom_header');
+    expect(headerField).toEqual({
+      property: 'custom_header',
+      type: 'string',
+      value: 'x-custom-value',
+    });
+
+    const retriesField = fields.find((f: { property: string }) => f.property === 'max_retries');
+    expect(retriesField).toEqual({
+      property: 'max_retries',
+      type: 'number',
+      value: '3',
+    });
   });
 });
