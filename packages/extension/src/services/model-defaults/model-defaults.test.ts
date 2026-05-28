@@ -303,6 +303,7 @@ describe('getDefaults', () => {
       const result = getDefaults('custom-model');
       expect(result).not.toBeNull();
       expect(result!.customFields).toEqual({
+        parallel_tool_calls: true,
         reasoning_split: true,
       });
     } finally {
@@ -336,6 +337,7 @@ describe('getDefaults', () => {
       const result = getDefaults('multi-type-model');
       expect(result).not.toBeNull();
       expect(result!.customFields).toEqual({
+        parallel_tool_calls: true,
         stringField: 'hello',
         numberField: 42,
         booleanField: true,
@@ -344,11 +346,5 @@ describe('getDefaults', () => {
     } finally {
       unlinkSync(tmpPath);
     }
-  });
-
-  it('omits customFields when not present in defaults', () => {
-    const result = getDefaults('gpt-5.4');
-    expect(result).not.toBeNull();
-    expect(result!.customFields).toBeUndefined();
   });
 });

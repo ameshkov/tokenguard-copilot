@@ -398,17 +398,35 @@ export class ChatHandler {
 
     const result: Record<string, unknown> = {};
     for (const field of fields) {
+      if (!field.property) {
+        continue;
+      }
+
       switch (field.type) {
         case 'string':
           result[field.property] = field.value;
           break;
-        case 'number':
-          result[field.property] = Number(field.value);
+        case 'number': {
+          if (field.value === '') {
+            break;
+          }
+          const n = Number(field.value);
+          if (!Number.isFinite(n)) {
+            break;
+          }
+          result[field.property] = n;
           break;
+        }
         case 'boolean':
+          if (field.value === '') {
+            break;
+          }
           result[field.property] = field.value === 'true';
           break;
         case 'json':
+          if (field.value === '') {
+            break;
+          }
           try {
             result[field.property] = JSON.parse(field.value) as unknown;
           } catch {

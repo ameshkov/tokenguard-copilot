@@ -396,7 +396,13 @@ export class ModelRegistry {
                 function: {
                   name: tool.name,
                   description: tool.description,
-                  parameters: tool.inputSchema as Record<string, unknown> | undefined,
+                  // Fall back to an empty schema when inputSchema
+                  // is not provided — some providers (e.g. Minimax)
+                  // reject requests that omit parameters entirely.
+                  parameters: (tool.inputSchema ?? {
+                    type: 'object',
+                    properties: {},
+                  }) as Record<string, unknown>,
                 },
               }))
             : undefined;

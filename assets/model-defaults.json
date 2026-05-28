@@ -957,6 +957,7 @@
         "reasoning_split": true
       }
     },
+    "defaultReasoningEffort": "high",
     "customFields": {
       "reasoning_split": true
     }
@@ -981,6 +982,7 @@
         "reasoning_split": true
       }
     },
+    "defaultReasoningEffort": "high",
     "customFields": {
       "reasoning_split": true
     }

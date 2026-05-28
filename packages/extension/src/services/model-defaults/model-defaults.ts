@@ -138,10 +138,19 @@ export function resetDefaults(): void {
  * Strips the `match` field from an entry, returning only the
  * defaults data.
  *
+ * Automatically includes `parallel_tool_calls: true` as a
+ * default custom field for every model. If the entry already
+ * has a `parallel_tool_calls` custom field, the entry's value
+ * takes precedence.
+ *
  * @param entry - The full model defaults entry.
  * @returns A new object containing only the defaults fields.
  */
 function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
+  const builtInCustomFields: Record<string, unknown> = {
+    parallel_tool_calls: true,
+  };
+
   return {
     contextSize: entry.contextSize,
     maxTokens: entry.maxTokens,
@@ -154,7 +163,9 @@ function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
     defaultReasoningEffort: entry.defaultReasoningEffort,
     preserveReasoning: entry.preserveReasoning,
     cacheControl: entry.cacheControl,
-    customFields: entry.customFields,
+    customFields: entry.customFields
+      ? { ...builtInCustomFields, ...entry.customFields }
+      : builtInCustomFields,
   };
 }
 

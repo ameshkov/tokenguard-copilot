@@ -833,6 +833,72 @@ describe('ChatHandler', () => {
       const body = ChatHandler.buildRequestBody(messages, ctx);
       expect(body.model).toBe('gpt-4');
     });
+
+    it('skips number field with NaN value', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'bad_num', type: 'number', value: 'abc' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.bad_num).toBeUndefined();
+    });
+
+    it('skips number field with Infinity value', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'inf', type: 'number', value: 'Infinity' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.inf).toBeUndefined();
+    });
+
+    it('skips number field with empty string value', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'empty_num', type: 'number', value: '' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.empty_num).toBeUndefined();
+    });
+
+    it('skips boolean field with empty string value', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'empty_bool', type: 'boolean', value: '' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.empty_bool).toBeUndefined();
+    });
+
+    it('skips json field with empty string value', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: 'empty_json', type: 'json', value: '' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body.empty_json).toBeUndefined();
+    });
+
+    it('skips field with empty property name', () => {
+      const ctx = {
+        ...baseContext,
+        model: mockModel({
+          customFields: JSON.stringify([{ property: '', type: 'string', value: 'orphan' }]),
+        }),
+      };
+      const body = ChatHandler.buildRequestBody(messages, ctx);
+      expect(body['']).toBeUndefined();
+    });
   });
 
   describe('handleNonStreaming', () => {
