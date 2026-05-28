@@ -7,6 +7,8 @@ export interface ResolveSessionInput {
   messages: FingerprintMessage[];
   /** Text content of the model's response. */
   responseContent: string;
+  /** IDs of tool calls in the model's response (when content is empty). */
+  responseToolCallIds?: string[];
   /** Hash of the workspace folder URI. */
   workspaceId: string;
   /** Display name of the model. */
@@ -40,7 +42,10 @@ export class SessionTracker {
    * @returns The session ID and whether it is new.
    */
   resolveSession(input: ResolveSessionInput): ResolveSessionResult {
-    const fingerprint = computeFingerprint(input.messages, { content: input.responseContent });
+    const fingerprint = computeFingerprint(input.messages, {
+      content: input.responseContent,
+      toolCallIds: input.responseToolCallIds,
+    });
 
     if (fingerprint) {
       const mapping = this.mappingRepo.findByContentFingerprint(fingerprint);

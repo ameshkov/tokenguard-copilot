@@ -369,9 +369,13 @@ export class ChatDebugLogger {
 
       const workspaceId = ChatDebugLogger.computeWorkspaceId(input.workspaceFolderUri);
 
+      const toolCallIds =
+        input.responseToolCalls.length > 0 ? input.responseToolCalls.map((tc) => tc.id) : undefined;
+
       const { sessionId } = this.sessionTracker.resolveSession({
         messages: input.messages,
         responseContent: input.responseContent,
+        responseToolCallIds: toolCallIds,
         workspaceId,
         modelName: input.modelName,
       });
