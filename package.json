@@ -93,7 +93,8 @@
     }
   },
   "scripts": {
-    "compile": "pnpm run compile:extension && pnpm run compile:webview && pnpm run compile:migrations && pnpm run compile:e2e",
+    "compile": "pnpm run compile:shared && pnpm run compile:extension && pnpm run compile:webview && pnpm run compile:migrations && pnpm run compile:e2e",
+    "compile:shared": "pnpm --filter @tokenguard/shared run build",
     "compile:extension": "pnpm --filter @tokenguard/extension run build",
     "compile:webview": "pnpm --filter @tokenguard/webview-ui run build",
     "compile:migrations": "rm -rf out/db/migrations && mkdir -p out/db && cp -r packages/extension/src/db/migrations out/db/migrations",
