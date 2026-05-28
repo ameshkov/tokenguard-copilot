@@ -95,7 +95,13 @@ tokenguard-copilot/
 │       └── settings.html        # Webview HTML shell template
 ├── test-e2e/                    # E2E tests (separate from packages)
 │   ├── tsconfig.json
-│   └── extension.test.ts        # Extension activation, commands
+│   ├── helpers.ts               # Shared E2E test utilities
+│   ├── extension.test.ts        # Extension activation tests
+│   ├── commands.test.ts         # Command registration tests
+│   ├── settings-panel.test.ts   # Webview panel tests
+│   ├── debug-logging.test.ts    # Debug logging command tests
+│   ├── tree-view.test.ts        # Tree view registration tests
+│   └── database.test.ts         # Database lifecycle tests
 ├── packages/
 │   ├── shared/                  # Shared types & protocol
 │   │   ├── package.json         # @tokenguard/shared

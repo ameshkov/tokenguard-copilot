@@ -12,12 +12,5 @@ suite('Extension E2E Tests', () => {
     await extension.activate();
     assert.strictEqual(extension.isActive, true, 'Extension should be active');
   });
-  test('helloWorld command should be registered', async () => {
-    const commands = await vscode.commands.getCommands(true);
-    assert.ok(
-      commands.includes('tokenguard-copilot.helloWorld'),
-      'helloWorld command should be registered',
-    );
-  });
 });
 //# sourceMappingURL=extension.test.js.map

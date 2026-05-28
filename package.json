@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "ameshkov",
   "license": "MIT",
+  "packageManager": "pnpm@10.28.1",
   "icon": "assets/icon/logo_256.png",
   "engines": {
     "vscode": "^1.116.0"
@@ -38,11 +39,6 @@
       ]
     },
     "commands": [
-      {
-        "command": "tokenguard-copilot.helloWorld",
-        "title": "Hello World",
-        "category": "TokenGuard Copilot"
-      },
       {
         "command": "tokenguard-copilot.openSettings",
         "title": "Open Settings",

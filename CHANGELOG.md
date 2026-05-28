@@ -9,3 +9,7 @@ All notable changes to this project will be documented in this file.
 - Initial project setup with TypeScript, ESLint, and Prettier.
 - Hello World command for basic extension verification.
 - Launch configurations for VS Code Stable and Insiders.
+
+### Changed
+
+- Removed the Hello World scaffolding command.

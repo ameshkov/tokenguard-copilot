@@ -75,15 +75,6 @@ describe('registerCommands', () => {
     return call[1] as (...args: unknown[]) => unknown;
   }
 
-  it('should register the helloWorld command', () => {
-    registerCommands(context, appCtx, treeViewProvider, logger);
-
-    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
-      'tokenguard-copilot.helloWorld',
-      expect.any(Function),
-    );
-  });
-
   it('should register the openSettings command', () => {
     registerCommands(context, appCtx, treeViewProvider, logger);
 
@@ -93,21 +84,10 @@ describe('registerCommands', () => {
     );
   });
 
-  it('should push 6 disposables to subscriptions', () => {
+  it('should push 5 disposables to subscriptions', () => {
     registerCommands(context, appCtx, treeViewProvider, logger);
 
-    expect(context.subscriptions).toHaveLength(6);
-  });
-
-  it('helloWorld command should show an information message', () => {
-    registerCommands(context, appCtx, treeViewProvider, logger);
-
-    const callback = findCallback('tokenguard-copilot.helloWorld');
-    callback();
-
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-      'Hello World from TokenGuard Copilot!',
-    );
+    expect(context.subscriptions).toHaveLength(5);
   });
 
   it('openSettings command should create or show settings panel', async () => {
@@ -148,6 +128,21 @@ describe('registerCommands', () => {
     await callback();
 
     expect(appCtx.chatDebugSettings.updateSettings).not.toHaveBeenCalled();
+  });
+
+  it('enableDebuggingLogging skips modal when skipConfirmation is true', async () => {
+    registerCommands(context, appCtx, treeViewProvider, logger);
+
+    const callback = findCallback('tokenguard-copilot.enableDebuggingLogging');
+    await callback({ skipConfirmation: true });
+
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    expect(appCtx.chatDebugSettings.updateSettings).toHaveBeenCalledWith({ enabled: true });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      'setContext',
+      'tokenguard-copilot.chatDebugEnabled',
+      true,
+    );
   });
 
   it('disableDebuggingLogging updates settings', () => {
@@ -196,5 +191,15 @@ describe('registerCommands', () => {
     await callback();
 
     expect(appCtx.chatDebugCleanup.clearAll).not.toHaveBeenCalled();
+  });
+
+  it('clearDebuggingLogs skips modal when skipConfirmation is true', async () => {
+    registerCommands(context, appCtx, treeViewProvider, logger);
+
+    const callback = findCallback('tokenguard-copilot.clearDebuggingLogs');
+    await callback({ skipConfirmation: true });
+
+    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    expect(appCtx.chatDebugCleanup.clearAll).toHaveBeenCalledOnce();
   });
 });

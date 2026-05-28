@@ -24,25 +24,25 @@ export function registerCommands(
   logger.debug('Registering extension commands');
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.helloWorld', () => {
-      vscode.window.showInformationMessage('Hello World from TokenGuard Copilot!');
-    }),
-  );
-
-  context.subscriptions.push(
     vscode.commands.registerCommand('tokenguard-copilot.openSettings', () => {
       SettingsPanel.createOrShow(context.extensionUri, appCtx);
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.enableDebuggingLogging', async () => {
-      const answer = await vscode.window.showInformationMessage(
-        'Enable debug logging? This will record request and response data for debugging.',
-        { modal: true },
-        'Enable',
-      );
-      if (answer === 'Enable') {
+    vscode.commands.registerCommand(
+      'tokenguard-copilot.enableDebuggingLogging',
+      async (options?: { skipConfirmation?: boolean }) => {
+        if (!options?.skipConfirmation) {
+          const answer = await vscode.window.showInformationMessage(
+            'Enable debug logging? This will record request and response data for debugging.',
+            { modal: true },
+            'Enable',
+          );
+          if (answer !== 'Enable') {
+            return;
+          }
+        }
         appCtx.chatDebugSettings.updateSettings({
           enabled: true,
         });
@@ -51,8 +51,8 @@ export function registerCommands(
           'tokenguard-copilot.chatDebugEnabled',
           true,
         );
-      }
-    }),
+      },
+    ),
   );
 
   context.subscriptions.push(
@@ -75,15 +75,21 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.clearDebuggingLogs', async () => {
-      const answer = await vscode.window.showWarningMessage(
-        'This will permanently delete all debug logs. This action cannot be undone.',
-        { modal: true },
-        'Clear Logs',
-      );
-      if (answer === 'Clear Logs') {
+    vscode.commands.registerCommand(
+      'tokenguard-copilot.clearDebuggingLogs',
+      async (options?: { skipConfirmation?: boolean }) => {
+        if (!options?.skipConfirmation) {
+          const answer = await vscode.window.showWarningMessage(
+            'This will permanently delete all debug logs. This action cannot be undone.',
+            { modal: true },
+            'Clear Logs',
+          );
+          if (answer !== 'Clear Logs') {
+            return;
+          }
+        }
         appCtx.chatDebugCleanup.clearAll();
-      }
-    }),
+      },
+    ),
   );
 }
