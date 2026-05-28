@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
-import type { ModelDefaults } from '../model-defaults/model-defaults.js';
 import type { Model, Provider } from '../../db/schema.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import { extractReasoning, extractReasoningFields } from '../../utils/reasoning.js';
@@ -138,8 +137,6 @@ export interface ChatContext {
   provider: Provider;
   /** The provider's API key. */
   apiKey: string;
-  /** Model defaults (for reasoningEffortMap). */
-  defaults: ModelDefaults | null;
   /**
    * User-selected reasoning effort level from the model
    * picker, or the model's default. `null` when the model
@@ -481,9 +478,18 @@ export class ChatHandler {
 
     // Reasoning effort
     const effortLevel = ctx.reasoningEffort ?? ctx.model.defaultReasoningEffort;
-    const effortMap = ctx.defaults?.reasoningEffortMap ?? null;
-    if (effortLevel && effortMap && effortLevel in effortMap) {
-      Object.assign(body, effortMap[effortLevel]);
+    if (effortLevel && ctx.model.reasoningEffortMap) {
+      try {
+        const effortMap = JSON.parse(ctx.model.reasoningEffortMap) as Record<
+          string,
+          Record<string, unknown>
+        >;
+        if (effortLevel in effortMap) {
+          Object.assign(body, effortMap[effortLevel]);
+        }
+      } catch {
+        // Invalid JSON — skip reasoning effort
+      }
     }
 
     // Tool definitions

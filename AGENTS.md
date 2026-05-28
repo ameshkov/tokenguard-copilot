@@ -113,9 +113,13 @@ tokenguard-copilot/
 │   │       ├── extension.ts     # activate() / deactivate()
 │   │       ├── context.ts       # ExtensionContext (DI container)
 │   │       ├── commands/        # Command handlers
-│   │       │   └── index.ts     # Barrel (stub)
+│   │       │   └── index.ts     # Barrel — all commands
 │   │       ├── providers/       # VS Code API providers
-│   │       │   └── index.ts     # Barrel (stub)
+│   │       │   ├── index.ts     # Barrel — re-exports subdirectories
+│   │       │   └── chat-model-provider/
+│   │       │       ├── index.ts               # Barrel
+│   │       │       ├── chat-model-provider.ts  # LM chat provider registration
+│   │       │       └── chat-model-provider.test.ts
 │   │       ├── repositories/    # Data access layer
 │   │       │   ├── index.ts     # Barrel exports
 │   │       │   └── provider-repository.ts
@@ -239,7 +243,7 @@ You MUST follow the following rules for EVERY task that you perform:
 - **Dependency Direction** — dependencies point inward / downward; never
   from lower layers to higher ones.
 - **Explicit Boundaries** — module interfaces are intentional; external
-  code imports from barrel `index.ts` files only.
+  code imports MUST be from barrel `index.js` files only.
 - **Explicit Exports** — only export symbols that are part of the
   public API.
 - **Minimize Coupling, Maximize Cohesion** — modules are self-contained
@@ -282,6 +286,11 @@ You MUST follow the following rules for EVERY task that you perform:
       or business logic in repositories.
     - No upward dependencies — lower layers never import from
       upper layers.
+    - Services never import from Providers or Commands.
+    - Providers and Commands never import from each other.
+    - Providers follow the same pattern as Commands: they sit
+      at the top layer, receive service instances from
+      `ExtensionContext`, and register VS Code APIs.
     - `activate()` creates the database connection, runs
       migrations, builds the `ExtensionContext`, and passes it
       to commands and handlers.

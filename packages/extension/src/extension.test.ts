@@ -142,6 +142,7 @@ describe('activate', () => {
     expect(mockRegisterCommands).toHaveBeenCalledWith(
       context,
       expect.objectContaining({ providerManager: expect.anything() }),
+      expect.objectContaining({ refresh: expect.any(Function) }),
     );
   });
 
@@ -149,8 +150,8 @@ describe('activate', () => {
     await activate(context);
 
     // registerCommands is mocked, so:
-    // tree data provider + tree view dispose + chat debug cleanup + reasoning cache cleanup + enable + disable + refresh + clear + status bar = 9
-    expect(context.subscriptions).toHaveLength(9);
+    // tree data provider + tree view dispose + chat debug cleanup + reasoning cache cleanup + status bar = 5
+    expect(context.subscriptions).toHaveLength(5);
   });
 
   it('should create a status bar item', async () => {

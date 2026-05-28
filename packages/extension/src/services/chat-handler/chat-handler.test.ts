@@ -431,7 +431,6 @@ describe('ChatHandler', () => {
       model: mockModel(),
       provider: mockProvider(),
       apiKey: 'sk-test',
-      defaults: null,
     };
 
     const messages: OpenAIMessage[] = [{ role: 'user', content: 'Hello' }];
@@ -493,23 +492,15 @@ describe('ChatHandler', () => {
     it('includes reasoningEffortMap entry into body when effort level matches', () => {
       const ctx = {
         ...baseContext,
-        model: {
-          ...baseContext.model,
+        model: mockModel({
           defaultReasoningEffort: 'medium',
-        },
-        reasoningEffort: 'medium',
-        defaults: {
-          contextSize: 128000,
-          maxTokens: 16384,
-          inputCostPer1M: 1,
-          outputCostPer1M: 2,
-          supportedCapabilities: ['reasoning_effort'],
-          reasoningEffortMap: {
+          reasoningEffortMap: JSON.stringify({
             low: { reasoning_effort: 'low' },
             medium: { reasoning_effort: 'medium' },
             high: { reasoning_effort: 'high' },
-          },
-        },
+          }),
+        }),
+        reasoningEffort: 'medium',
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
       expect(body.reasoning_effort).toBe('medium');
@@ -518,18 +509,9 @@ describe('ChatHandler', () => {
     it('merges reasoningEffortMap entry into body with custom fields', () => {
       const ctx = {
         ...baseContext,
-        model: {
-          ...baseContext.model,
+        model: mockModel({
           defaultReasoningEffort: 'high',
-        },
-        reasoningEffort: 'high',
-        defaults: {
-          contextSize: 128000,
-          maxTokens: 16384,
-          inputCostPer1M: 1,
-          outputCostPer1M: 2,
-          supportedCapabilities: ['reasoning_effort'],
-          reasoningEffortMap: {
+          reasoningEffortMap: JSON.stringify({
             none: { reasoning_effort: null },
             high: {
               reasoning_effort: 'high',
@@ -538,8 +520,9 @@ describe('ChatHandler', () => {
                 preserve_thinking: true,
               },
             },
-          },
-        },
+          }),
+        }),
+        reasoningEffort: 'high',
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
       expect(body.reasoning_effort).toBe('high');
@@ -552,22 +535,14 @@ describe('ChatHandler', () => {
     it('omits reasoning_effort when effort level is not in reasoningEffortMap', () => {
       const ctx = {
         ...baseContext,
-        model: {
-          ...baseContext.model,
+        model: mockModel({
           defaultReasoningEffort: 'ultra',
-        },
-        reasoningEffort: 'ultra',
-        defaults: {
-          contextSize: 128000,
-          maxTokens: 16384,
-          inputCostPer1M: 1,
-          outputCostPer1M: 2,
-          supportedCapabilities: ['reasoning_effort'],
-          reasoningEffortMap: {
+          reasoningEffortMap: JSON.stringify({
             low: { reasoning_effort: 'low' },
             high: { reasoning_effort: 'high' },
-          },
-        },
+          }),
+        }),
+        reasoningEffort: 'ultra',
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
       expect(body.reasoning_effort).toBeUndefined();
@@ -729,6 +704,9 @@ describe('ChatHandler', () => {
         ...baseContext,
         model: mockModel({
           defaultReasoningEffort: 'high',
+          reasoningEffortMap: JSON.stringify({
+            high: { thinking: { type: 'enabled', budget_tokens: 8000 } },
+          }),
           customFields: JSON.stringify([
             {
               property: 'thinking',
@@ -738,16 +716,6 @@ describe('ChatHandler', () => {
           ]),
         }),
         reasoningEffort: 'high',
-        defaults: {
-          contextSize: 128000,
-          maxTokens: 16384,
-          inputCostPer1M: 1,
-          outputCostPer1M: 2,
-          supportedCapabilities: ['reasoning_effort'],
-          reasoningEffortMap: {
-            high: { thinking: { type: 'enabled', budget_tokens: 8000 } },
-          },
-        },
       };
       const body = ChatHandler.buildRequestBody(messages, ctx);
       expect(body.thinking).toEqual({ type: 'disabled' });
@@ -2164,7 +2132,6 @@ describe('ChatHandler', () => {
       model: mockModel({ streaming: 0 }),
       provider: mockProvider(),
       apiKey: 'sk-test',
-      defaults: null,
     };
 
     it('sends non-streaming request and reports content', async () => {
@@ -2454,7 +2421,6 @@ describe('ChatHandler', () => {
       model: mockModel({ streaming: 0, preserveReasoning: 1 }),
       provider: mockProvider(),
       apiKey: 'sk-test',
-      defaults: null,
     };
 
     it('streaming: calls backfillReasoning before fetch and cacheReasoning after success', async () => {
@@ -2644,7 +2610,6 @@ describe('ChatHandler', () => {
       model: mockModel({ streaming: 0 }),
       provider: mockProvider(),
       apiKey: 'sk-test',
-      defaults: null,
     };
 
     it('injects cache_control markers when cacheControl.enabled is true', async () => {

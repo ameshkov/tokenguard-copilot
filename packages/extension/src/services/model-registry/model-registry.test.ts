@@ -105,7 +105,6 @@ describe('ModelRegistry', () => {
       modelRepo,
       providerRepo,
       secrets as unknown as import('vscode').SecretStorage,
-      () => null,
       mockLogger,
       mockTokenCounter as unknown as import('../token-counter/index.js').TokenCounter,
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,

@@ -3,22 +3,16 @@ import type { ModelInfo, FetchedModel, ModelConfig, CacheControlConfig } from '@
 import type { ModelRepository } from '../../repositories/model-repository.js';
 import type { ProviderRepository } from '../../repositories/provider-repository.js';
 import type { Model, Provider } from '../../db/schema.js';
-import {
-  ChatHandler,
-  type ChatContext,
-  type OpenAITool,
-  type UsageCollector,
-} from '../chat-handler/chat-handler.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
-import type { ModelDefaults } from '../model-defaults/model-defaults.js';
 import type { TokenCounter } from '../token-counter/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/reasoning-cache-service.js';
 import type { UsageTracker } from '../usage-tracker/index.js';
+import { ChatModelProvider } from '../../providers/index.js';
 
 /**
  * Manages model lifecycle: fetch from providers, persist
- * configuration, register/unregister with VS Code's
- * languageModelChatProvider API.
+ * configuration, and orchestrate registration with VS Code
+ * via {@link ChatModelProvider}.
  */
 export class ModelRegistry {
   private readonly emitter = new vscode.EventEmitter<void>();
@@ -44,8 +38,6 @@ export class ModelRegistry {
    * @param providerRepo - Data-access layer for the providers
    *   table (used to look up provider info for fetch).
    * @param secrets - VS Code SecretStorage for API keys.
-   * @param getDefaults - Lookup function for bundled model
-   *   defaults (used for reasoning effort translation).
    * @param chatDebugLogger - Logger for debug log files.
    * @param tokenCounter - Token counting service for
    *   provideTokenCount.
@@ -54,7 +46,6 @@ export class ModelRegistry {
     private readonly modelRepo: ModelRepository,
     private readonly providerRepo: ProviderRepository,
     private readonly secrets: vscode.SecretStorage,
-    private readonly getDefaults: (modelId: string) => ModelDefaults | null,
     private readonly chatDebugLogger: ChatDebugLogger,
     private readonly tokenCounter: TokenCounter,
     private readonly reasoningCacheService: ReasoningCacheService,
@@ -352,108 +343,15 @@ export class ModelRegistry {
       } as vscode.LanguageModelChatInformation);
     }
 
-    this.registration = vscode.lm.registerLanguageModelChatProvider('tokenguard-copilot', {
-      onDidChangeLanguageModelChatInformation: this.chatInfoEmitter.event,
-      provideLanguageModelChatInformation: () => chatInfos,
-      provideLanguageModelChatResponse: async (modelInfo, messages, options, progress, token) => {
-        const entry = modelMap.get(modelInfo.id);
-        if (!entry) {
-          throw new Error(`Unknown model: ${modelInfo.id}`);
-        }
-
-        const apiKey = await this.secrets.get(
-          `tokenguard-copilot.provider.${entry.model.providerId}`,
-        );
-
-        // Read reasoning effort from model picker
-        // selection or fall back to model's default.
-
-        type ModelConfigurationOptions = vscode.ProvideLanguageModelChatResponseOptions & {
-          readonly modelConfiguration?: Record<string, unknown>;
-          readonly configuration?: Record<string, unknown>;
-        };
-
-        const extOptions = options as ModelConfigurationOptions;
-
-        const configuredEffort =
-          extOptions.modelConfiguration?.reasoningEffort ??
-          extOptions.configuration?.reasoningEffort;
-
-        const reasoningEffort =
-          typeof configuredEffort === 'string'
-            ? configuredEffort
-            : (entry.model.defaultReasoningEffort ?? null);
-
-        // Map VS Code toolMode to OpenAI tool_choice value.
-        const toolMode: 'auto' | 'required' =
-          options.toolMode === vscode.LanguageModelChatToolMode.Required ? 'required' : 'auto';
-
-        // Convert VS Code tools to OpenAI format
-        const tools: OpenAITool[] | undefined =
-          options.tools && options.tools.length > 0
-            ? options.tools.map((tool) => ({
-                type: 'function' as const,
-                function: {
-                  name: tool.name,
-                  description: tool.description,
-                  // Fall back to an empty schema when inputSchema
-                  // is not provided — some providers (e.g. Minimax)
-                  // reject requests that omit parameters entirely.
-                  parameters: (tool.inputSchema ?? {
-                    type: 'object',
-                    properties: {},
-                  }) as Record<string, unknown>,
-                },
-              }))
-            : undefined;
-
-        const defaults = this.getDefaults(entry.model.id);
-
-        // Cache control: model DB value takes precedence over defaults
-        const cacheControl: CacheControlConfig | undefined = entry.model.cacheControl
-          ? (JSON.parse(entry.model.cacheControl) as CacheControlConfig)
-          : defaults?.cacheControl;
-
-        const ctx: ChatContext = {
-          model: entry.model,
-          provider: entry.provider,
-          apiKey: apiKey ?? '',
-          defaults,
-          reasoningEffort,
-          tools,
-          toolMode,
-          chatDebugLogger: this.chatDebugLogger,
-          workspaceFolderUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
-          cacheControl,
-        };
-
-        const handler = new ChatHandler(ctx, this.reasoningCacheService);
-        const usageCollector: UsageCollector = { usage: null };
-
-        try {
-          await handler.handle(messages, progress, token, usageCollector);
-        } catch (e) {
-          // Record error
-          this.usageTracker.recordError(entry.model.providerId, entry.model.id);
-          throw e;
-        }
-
-        // Record successful usage
-        const usage = usageCollector.usage;
-        this.usageTracker.recordUsage(entry.model.providerId, entry.model.id, {
-          promptTokens: usage?.promptTokens ?? 0,
-          completionTokens: usage?.completionTokens ?? 0,
-          cachedTokens: usage?.cachedTokens ?? 0,
-          reasoningTokens: usage?.reasoningTokens ?? 0,
-          success: true,
-        });
-      },
-      provideTokenCount: async (_model, text) => {
-        if (typeof text === 'string') {
-          return this.tokenCounter.countTokens(text);
-        }
-        return this.tokenCounter.countMessageTokens(text);
-      },
+    this.registration = ChatModelProvider.register({
+      modelMap,
+      chatInfos,
+      chatInfoEmitter: this.chatInfoEmitter,
+      secrets: this.secrets,
+      chatDebugLogger: this.chatDebugLogger,
+      tokenCounter: this.tokenCounter,
+      reasoningCacheService: this.reasoningCacheService,
+      usageTracker: this.usageTracker,
     });
 
     // Force Copilot Chat to re-query model info through the

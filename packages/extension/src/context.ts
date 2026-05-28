@@ -10,7 +10,6 @@ import { ChatDebugLogger } from './services/chat-debug-logger/index.js';
 import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js';
 import { ProviderManager, type ResetCallback } from './services/provider-manager/index.js';
 import { ModelRegistry } from './services/model-registry/index.js';
-import { getDefaults } from './services/model-defaults/index.js';
 import { TokenCounter } from './services/token-counter/index.js';
 import { ReasoningCacheRepository } from './repositories/index.js';
 import { ReasoningCacheService } from './services/reasoning-cache/index.js';
@@ -113,7 +112,6 @@ export class ExtensionContext {
       modelRepo,
       providerRepo,
       deps.secrets,
-      getDefaults,
       this.chatDebugLogger,
       this.tokenCounter,
       reasoningCacheService,

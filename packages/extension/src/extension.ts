@@ -80,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   localCtx.modelRegistry.registerAll();
-  registerCommands(context, localCtx);
+  registerCommands(context, localCtx, treeViewProvider);
 
   // Set context key so the tree view is visible only when logging is enabled.
   const initialEnabled = localCtx.chatDebugSettings.getSettings().enabled;
@@ -97,54 +97,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(localCtx.chatDebugCleanup.startPeriodicCleanup());
   context.subscriptions.push(localCtx.reasoningCacheCleanup.startPeriodicCleanup());
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.enableDebuggingLogging', async () => {
-      const answer = await vscode.window.showInformationMessage(
-        'Enable debug logging? This will record request and response data for debugging.',
-        { modal: true },
-        'Enable',
-      );
-      if (answer === 'Enable') {
-        localCtx.chatDebugSettings.updateSettings({ enabled: true });
-        void vscode.commands.executeCommand(
-          'setContext',
-          'tokenguard-copilot.chatDebugEnabled',
-          true,
-        );
-      }
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.disableDebuggingLogging', () => {
-      localCtx.chatDebugSettings.updateSettings({ enabled: false });
-      void vscode.commands.executeCommand(
-        'setContext',
-        'tokenguard-copilot.chatDebugEnabled',
-        false,
-      );
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.refreshDebuggingLogs', () => {
-      treeViewProvider.refresh();
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.clearDebuggingLogs', async () => {
-      const answer = await vscode.window.showWarningMessage(
-        'This will permanently delete all debug logs. This action cannot be undone.',
-        { modal: true },
-        'Clear Logs',
-      );
-      if (answer === 'Clear Logs') {
-        localCtx.chatDebugCleanup.clearAll();
-      }
-    }),
-  );
 
   context.subscriptions.push(createStatusBarItem(localCtx.providerManager, localCtx.usageTracker));
 }

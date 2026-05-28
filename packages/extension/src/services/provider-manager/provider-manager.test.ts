@@ -81,7 +81,6 @@ describe('ProviderManager', () => {
       modelRepo,
       repo,
       secrets as unknown as vscode.SecretStorage,
-      () => null,
       { logRequest: vi.fn() } as unknown as import('../chat-debug-logger/index.js').ChatDebugLogger,
       {
         countTokens: vi.fn(),
