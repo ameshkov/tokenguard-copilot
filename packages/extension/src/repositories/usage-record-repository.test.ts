@@ -45,7 +45,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0.001,
+        promptTokensCost: 0.001,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const rows = repo.findByProvider('p1');
@@ -66,7 +68,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0.001,
+        promptTokensCost: 0.001,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -78,7 +82,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 5,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0.002,
+        promptTokensCost: 0.002,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const rows = repo.findByProvider('p1');
@@ -88,7 +94,9 @@ describe('UsageRecordRepository', () => {
       expect(rows[0].cachedTokens).toBe(30);
       expect(rows[0].reasoningTokens).toBe(5);
       expect(rows[0].requestCount).toBe(2);
-      expect(rows[0].estimatedCost).toBeCloseTo(0.003, 5);
+      expect(
+        rows[0].promptTokensCost + rows[0].completionTokensCost + rows[0].cachedTokensCost,
+      ).toBeCloseTo(0.003, 5);
     });
 
     it('upserts on error — increments error count', () => {
@@ -102,7 +110,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 0,
         errorCount: 1,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -114,7 +124,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 0,
         errorCount: 1,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const rows = repo.findByProvider('p1');
@@ -135,7 +147,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p2',
@@ -147,7 +161,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const p1 = repo.findByProvider('p1');
@@ -168,7 +184,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -180,7 +198,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const m1 = repo.findByModel('p1', 'm1');
@@ -201,7 +221,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -213,7 +235,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -225,7 +249,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const range = repo.findByDateRange({ dateFrom: '2026-05-25', dateTo: '2026-05-26' });
@@ -243,7 +269,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -255,7 +283,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const all = repo.findByDateRange();
@@ -275,7 +305,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p2',
@@ -287,7 +319,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const deleted = repo.deleteByProvider('p1');
@@ -310,7 +344,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p1',
@@ -322,7 +358,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       const deleted = repo.deleteByModel('p1', 'm1');
@@ -345,7 +383,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       repo.upsert({
         providerId: 'p2',
@@ -357,7 +397,9 @@ describe('UsageRecordRepository', () => {
         reasoningTokens: 0,
         requestCount: 1,
         errorCount: 0,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
 
       repo.deleteAll();

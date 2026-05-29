@@ -400,7 +400,9 @@ export interface UsageRecordInfo {
   reasoningTokens: number;
   requestCount: number;
   errorCount: number;
-  estimatedCost: number;
+  promptTokensCost: number;
+  completionTokensCost: number;
+  cachedTokensCost: number;
 }
 
 /** Named entity entry for filter dropdowns. */
@@ -421,7 +423,9 @@ export interface PerModelBreakdown {
   completionTokens: number;
   cachedTokens: number;
   reasoningTokens: number;
-  estimatedCost: number;
+  promptTokensCost: number;
+  completionTokensCost: number;
+  cachedTokensCost: number;
 }
 
 /** Aggregated usage statistics summary. */

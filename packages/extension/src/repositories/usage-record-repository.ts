@@ -16,7 +16,9 @@ export interface UsageRecordUpsert {
   reasoningTokens: number;
   requestCount: number;
   errorCount: number;
-  estimatedCost: number;
+  promptTokensCost: number;
+  completionTokensCost: number;
+  cachedTokensCost: number;
 }
 
 /**
@@ -53,7 +55,9 @@ export class UsageRecordRepository {
           reasoningTokens: sql`${usageRecords.reasoningTokens} + ${record.reasoningTokens}`,
           requestCount: sql`${usageRecords.requestCount} + ${record.requestCount}`,
           errorCount: sql`${usageRecords.errorCount} + ${record.errorCount}`,
-          estimatedCost: sql`${usageRecords.estimatedCost} + ${record.estimatedCost}`,
+          promptTokensCost: sql`${usageRecords.promptTokensCost} + ${record.promptTokensCost}`,
+          completionTokensCost: sql`${usageRecords.completionTokensCost} + ${record.completionTokensCost}`,
+          cachedTokensCost: sql`${usageRecords.cachedTokensCost} + ${record.cachedTokensCost}`,
         },
       })
       .run();

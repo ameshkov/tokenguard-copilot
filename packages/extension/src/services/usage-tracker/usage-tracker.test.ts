@@ -30,10 +30,12 @@ describe('computeCost', () => {
       8, // cachedInputCostPer1m: $8 / 1M
       30, // outputCostPer1m: $30 / 1M
     );
-    // (1000 - 200) * 10 / 1M + 200 * 8 / 1M + 500 * 30 / 1M
-    // = 800 * 10 / 1M + 200 * 8 / 1M + 500 * 30 / 1M
-    // = 0.008 + 0.0016 + 0.015 = 0.0246
-    expect(cost).toBeCloseTo(0.0246, 6);
+    // (1000 - 200) * 10 / 1M = 0.008
+    expect(cost.promptCost).toBeCloseTo(0.008, 6);
+    // 200 * 8 / 1M = 0.0016
+    expect(cost.cachedCost).toBeCloseTo(0.0016, 6);
+    // 500 * 30 / 1M = 0.015
+    expect(cost.completionCost).toBeCloseTo(0.015, 6);
   });
 
   it('falls back to input cost when cached input cost is null', () => {
@@ -43,20 +45,24 @@ describe('computeCost', () => {
       null, // no cached input cost
       30, // outputCostPer1m
     );
-    // (1000 - 200) * 10 / 1M + 200 * 10 / 1M + 500 * 30 / 1M
-    // = 800 * 10 / 1M + 200 * 10 / 1M + 500 * 30 / 1M
-    // = 0.008 + 0.002 + 0.015 = 0.025
-    expect(cost).toBeCloseTo(0.025, 6);
+    // (1000 - 200) * 10 / 1M = 0.008
+    expect(cost.promptCost).toBeCloseTo(0.008, 6);
+    // 200 * 10 / 1M = 0.002
+    expect(cost.cachedCost).toBeCloseTo(0.002, 6);
+    // 500 * 30 / 1M = 0.015
+    expect(cost.completionCost).toBeCloseTo(0.015, 6);
   });
 
-  it('returns 0 when no cost values are set', () => {
+  it('returns zero components when no cost values are set', () => {
     const cost = computeCost(
       { promptTokens: 1000, completionTokens: 500, cachedTokens: 0, reasoningTokens: 0 },
       null,
       null,
       null,
     );
-    expect(cost).toBe(0);
+    expect(cost.promptCost).toBe(0);
+    expect(cost.cachedCost).toBe(0);
+    expect(cost.completionCost).toBe(0);
   });
 
   it('handles zero tokens', () => {
@@ -66,7 +72,9 @@ describe('computeCost', () => {
       8,
       30,
     );
-    expect(cost).toBe(0);
+    expect(cost.promptCost).toBe(0);
+    expect(cost.cachedCost).toBe(0);
+    expect(cost.completionCost).toBe(0);
   });
 
   it('handles cached tokens equal to prompt tokens', () => {
@@ -76,9 +84,12 @@ describe('computeCost', () => {
       5,
       30,
     );
-    // (500 - 500) * 10 / 1M + 500 * 5 / 1M + 100 * 30 / 1M
-    // = 0 + 0.0025 + 0.003 = 0.0055
-    expect(cost).toBeCloseTo(0.0055, 6);
+    // (500 - 500) * 10 / 1M = 0
+    expect(cost.promptCost).toBe(0);
+    // 500 * 5 / 1M = 0.0025
+    expect(cost.cachedCost).toBeCloseTo(0.0025, 6);
+    // 100 * 30 / 1M = 0.003
+    expect(cost.completionCost).toBeCloseTo(0.003, 6);
   });
 });
 
@@ -171,7 +182,29 @@ describe('UsageTracker', () => {
       expect(stats[0].reasoningTokens).toBe(50);
       expect(stats[0].requestCount).toBe(1);
       expect(stats[0].errorCount).toBe(0);
-      expect(stats[0].estimatedCost).toBeGreaterThan(0);
+      expect(stats[0].promptTokensCost).toBeGreaterThan(0);
+      expect(stats[0].completionTokensCost).toBeGreaterThan(0);
+      expect(stats[0].cachedTokensCost).toBeGreaterThan(0);
+    });
+
+    it('records cost components separately', () => {
+      seedModel({ inputCostPer1m: 10, outputCostPer1m: 30, cachedInputCostPer1m: 5 });
+
+      tracker.recordUsage('p1', 'm1', {
+        promptTokens: 1000,
+        completionTokens: 500,
+        cachedTokens: 200,
+        reasoningTokens: 50,
+        success: true,
+      });
+
+      const stats = tracker.getStats({});
+      // promptCost: (1000-200) * 10 / 1M = 0.008
+      expect(stats[0].promptTokensCost).toBeCloseTo(0.008, 6);
+      // completionCost: 500 * 30 / 1M = 0.015
+      expect(stats[0].completionTokensCost).toBeCloseTo(0.015, 6);
+      // cachedCost: 200 * 5 / 1M = 0.001
+      expect(stats[0].cachedTokensCost).toBeCloseTo(0.001, 6);
     });
 
     it('increments error count on failure', () => {

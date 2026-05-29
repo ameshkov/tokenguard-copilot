@@ -159,7 +159,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 0,
     requestCount: 15,
     errorCount: 0,
-    estimatedCost: 0.0425,
+    promptTokensCost: 0.02125,
+    completionTokensCost: 0.032,
+    cachedTokensCost: 0.005,
   },
   {
     providerId: 'prov-openai',
@@ -171,7 +173,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 0,
     requestCount: 22,
     errorCount: 1,
-    estimatedCost: 0.063,
+    promptTokensCost: 0.03,
+    completionTokensCost: 0.051,
+    cachedTokensCost: 0.0075,
   },
   {
     providerId: 'prov-openai',
@@ -183,7 +187,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 0,
     requestCount: 10,
     errorCount: 0,
-    estimatedCost: 0.028,
+    promptTokensCost: 0.0195,
+    completionTokensCost: 0.024,
+    cachedTokensCost: 0.0025,
   },
   {
     providerId: 'prov-anthropic',
@@ -195,7 +201,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 1_500,
     requestCount: 8,
     errorCount: 0,
-    estimatedCost: 0.153,
+    promptTokensCost: 0.036,
+    completionTokensCost: 0.09,
+    cachedTokensCost: 0.0024,
   },
   {
     providerId: 'prov-anthropic',
@@ -207,7 +215,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 1_200,
     requestCount: 6,
     errorCount: 0,
-    estimatedCost: 0.099,
+    promptTokensCost: 0.036,
+    completionTokensCost: 0.0675,
+    cachedTokensCost: 0.0009,
   },
   {
     providerId: 'prov-anthropic',
@@ -219,7 +229,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 2_000,
     requestCount: 12,
     errorCount: 0,
-    estimatedCost: 0.186,
+    promptTokensCost: 0.036,
+    completionTokensCost: 0.117,
+    cachedTokensCost: 0.003,
   },
   {
     providerId: 'prov-openai',
@@ -231,7 +243,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 0,
     requestCount: 18,
     errorCount: 0,
-    estimatedCost: 0.048,
+    promptTokensCost: 0.0225,
+    completionTokensCost: 0.038,
+    cachedTokensCost: 0.00625,
   },
   {
     providerId: 'prov-anthropic',
@@ -243,7 +257,9 @@ export const sampleUsageRecords: UsageRecordInfo[] = [
     reasoningTokens: 3_000,
     requestCount: 10,
     errorCount: 1,
-    estimatedCost: 0.24,
+    promptTokensCost: 0.054,
+    completionTokensCost: 0.135,
+    cachedTokensCost: 0.0021,
   },
 ];
 
@@ -255,7 +271,7 @@ export const sampleUsageSummary: UsageStatsSummary = {
   totalReasoningTokens: 7_700,
   totalRequestCount: 101,
   totalErrorCount: 2,
-  totalEstimatedCost: 0.8595,
+  totalEstimatedCost: 0.75385,
   providerNames: {
     'prov-openai': { name: 'OpenAI', removed: false },
     'prov-anthropic': { name: 'Anthropic', removed: false },
@@ -280,7 +296,9 @@ export const sampleUsageSummary: UsageStatsSummary = {
       completionTokens: 14_500,
       cachedTokens: 17_000,
       reasoningTokens: 0,
-      estimatedCost: 0.1815,
+      promptTokensCost: 0.09325,
+      completionTokensCost: 0.145,
+      cachedTokensCost: 0.02125,
     },
     {
       providerId: 'prov-anthropic',
@@ -293,7 +311,9 @@ export const sampleUsageSummary: UsageStatsSummary = {
       completionTokens: 27_300,
       cachedTokens: 28_000,
       reasoningTokens: 7_700,
-      estimatedCost: 0.678,
+      promptTokensCost: 0.162,
+      completionTokensCost: 0.4095,
+      cachedTokensCost: 0.0084,
     },
   ],
 };

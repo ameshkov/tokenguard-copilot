@@ -156,9 +156,23 @@ function buildChartOptions(
           afterBody(items: TooltipItem<'bar'>[]) {
             if (!response || items.length === 0) return '';
             const date = items[0].label;
-            const record = response.records.find((r) => r.date === date);
-            if (!record) return '';
-            return `Est. cost: $${record.estimatedCost.toFixed(4)}`;
+            const dateRecords = response.records.filter((r) => r.date === date);
+            if (dateRecords.length === 0) return '';
+            let promptCost = 0;
+            let cachedCost = 0;
+            let completionCost = 0;
+            for (const r of dateRecords) {
+              promptCost += r.promptTokensCost;
+              cachedCost += r.cachedTokensCost;
+              completionCost += r.completionTokensCost;
+            }
+            const total = promptCost + cachedCost + completionCost;
+            return [
+              `Prompt: $${promptCost.toFixed(4)}`,
+              `Cached: $${cachedCost.toFixed(4)}`,
+              `Completion: $${completionCost.toFixed(4)}`,
+              `Total: $${total.toFixed(4)}`,
+            ].join('\n');
           },
         },
       },
@@ -291,6 +305,19 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
     return Math.ceil(max * 1.15);
   }, [chartData]);
 
+  // Memoize chart options to avoid stale closure over response.
+  const chartOptions = useMemo(() => buildChartOptions(response, maxY), [response, maxY]);
+
+  // Force chart remount when records change so tooltip callbacks
+  // always reference the latest response.
+  const chartKey = useMemo(
+    () =>
+      response?.records
+        .map((r) => `${r.providerId}:${r.modelId}:${r.date}:${r.requestCount}`)
+        .join('|') ?? 'empty',
+    [response],
+  );
+
   return (
     <div className="usage-stats-section">
       <div className="section-header usage-stats-header">
@@ -369,6 +396,7 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
       ) : (
         <div style={{ height: 220 }}>
           <Bar
+            key={chartKey}
             data={{
               labels: chartData.map((d) => d.date),
               datasets: [
@@ -398,7 +426,7 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
                 },
               ],
             }}
-            options={buildChartOptions(response, maxY)}
+            options={chartOptions}
           />
         </div>
       )}
@@ -473,7 +501,11 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
                       <td>
                         {pm.outputCostPer1m !== null ? `${fmtCost(pm.outputCostPer1m)}/1M` : '—'}
                       </td>
-                      <td>{fmtCost(pm.estimatedCost)}</td>
+                      <td>
+                        {fmtCost(
+                          pm.promptTokensCost + pm.completionTokensCost + pm.cachedTokensCost,
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

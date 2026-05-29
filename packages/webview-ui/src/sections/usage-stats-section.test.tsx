@@ -47,7 +47,9 @@ const mockResponse: GetUsageStatsResponse = {
       reasoningTokens: 100,
       requestCount: 5,
       errorCount: 0,
-      estimatedCost: 0.015,
+      promptTokensCost: 0.015,
+      completionTokensCost: 0,
+      cachedTokensCost: 0,
     },
   ],
   summary: {

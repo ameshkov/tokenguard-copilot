@@ -15,6 +15,22 @@ export interface TokenUsage {
 }
 
 /**
+ * Separated cost components for a single request.
+ *
+ * Reasoning tokens are a subset of completion tokens and
+ * share the same output rate — they are included in
+ * `completionCost`, not tracked separately.
+ */
+export interface CostComponents {
+  /** Cost of non-cached prompt tokens. */
+  promptCost: number;
+  /** Cost of all completion tokens (includes reasoning). */
+  completionCost: number;
+  /** Cost of cached prompt tokens. */
+  cachedCost: number;
+}
+
+/**
  * Input to {@link UsageTracker.recordUsage}.
  */
 export interface RecordUsageInput {
@@ -77,24 +93,24 @@ export interface ResetStatsScope {
  *   tokens, or null (falls back to inputCostPer1m).
  * @param outputCostPer1m - Output cost per 1M tokens, or
  *   null.
- * @returns Estimated cost in dollars.
+ * @returns Cost components in dollars.
  */
 export function computeCost(
   tokens: TokenUsage,
   inputCostPer1m: number | null,
   cachedInputCostPer1m: number | null,
   outputCostPer1m: number | null,
-): number {
+): CostComponents {
   const inputRate = inputCostPer1m ?? 0;
   const outputRate = outputCostPer1m ?? 0;
   const cachedRate = cachedInputCostPer1m ?? inputRate;
 
   const nonCachedPrompt = tokens.promptTokens - tokens.cachedTokens;
   const promptCost = (nonCachedPrompt * inputRate) / 1_000_000;
-  const cachedCost = (tokens.cachedTokens * cachedRate) / 1_000_000;
   const completionCost = (tokens.completionTokens * outputRate) / 1_000_000;
+  const cachedCost = (tokens.cachedTokens * cachedRate) / 1_000_000;
 
-  return promptCost + cachedCost + completionCost;
+  return { promptCost, completionCost, cachedCost };
 }
 
 /**
@@ -152,7 +168,9 @@ export class UsageTracker {
         reasoningTokens: 0,
         requestCount: 0,
         errorCount: 1,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       });
       this.emitter.fire();
       return;
@@ -171,7 +189,7 @@ export class UsageTracker {
           model.cachedInputCostPer1m,
           model.outputCostPer1m,
         )
-      : 0;
+      : { promptCost: 0, completionCost: 0, cachedCost: 0 };
 
     this.logger.debug(
       'Usage recorded',
@@ -181,7 +199,7 @@ export class UsageTracker {
       `completion=${input.completionTokens}`,
       `cached=${input.cachedTokens}`,
       `reasoning=${input.reasoningTokens}`,
-      `cost=$${cost.toFixed(6)}`,
+      `cost=$${(cost.promptCost + cost.completionCost + cost.cachedCost).toFixed(6)}`,
     );
 
     this.repo.upsert({
@@ -194,7 +212,9 @@ export class UsageTracker {
       reasoningTokens: input.reasoningTokens,
       requestCount: 1,
       errorCount: 0,
-      estimatedCost: cost,
+      promptTokensCost: cost.promptCost,
+      completionTokensCost: cost.completionCost,
+      cachedTokensCost: cost.cachedCost,
     });
     this.emitter.fire();
   }

@@ -96,7 +96,9 @@ export const usageRecords = sqliteTable(
     reasoningTokens: integer('reasoning_tokens').notNull().default(0),
     requestCount: integer('request_count').notNull().default(0),
     errorCount: integer('error_count').notNull().default(0),
-    estimatedCost: real('estimated_cost').notNull().default(0),
+    promptTokensCost: real('prompt_tokens_cost').notNull().default(0),
+    completionTokensCost: real('completion_tokens_cost').notNull().default(0),
+    cachedTokensCost: real('cached_tokens_cost').notNull().default(0),
   },
   (table) => [unique().on(table.providerId, table.modelId, table.date)],
 );

@@ -244,6 +244,10 @@ You MUST follow the following rules for EVERY task that you perform:
 - After completing the task you MUST verify that the code you've
   written follows the Code Guidelines in this file.
 
+- When the coding task is finished update CHANGELOG.md file and explain changes
+  in the Unreleased section. Add entries to the appropriate subsection (Added,
+  Changed, or Fixed) if it already exists; do not create duplicate subsections.
+
 ## Code Guidelines
 
 ### Architecture

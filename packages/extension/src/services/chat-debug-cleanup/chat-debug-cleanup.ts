@@ -53,7 +53,7 @@ export class ChatDebugCleanupService {
     const cutoffMs = Date.now() - ttlHours * 60 * 60 * 1000;
     const cutoffIso = new Date(cutoffMs).toISOString();
 
-    this.logger.trace('Running chat debug cleanup', `ttl=${ttlHours}h`, `cutoff=${cutoffIso}`);
+    this.logger.debug('Running chat debug cleanup', `ttl=${ttlHours}h`, `cutoff=${cutoffIso}`);
 
     // 1. Delete expired DB session mappings.
     this.mappingRepo.deleteExpired(cutoffIso);
@@ -132,17 +132,20 @@ export class ChatDebugCleanupService {
    * Remove an empty workspace directory.
    *
    * @param workspacePath - Path to the workspace directory.
+   * @returns `true` if the directory was removed.
    */
-  private removeEmptyWorkspaceDir(workspacePath: string): void {
+  private removeEmptyWorkspaceDir(workspacePath: string): boolean {
     let entries: string[];
     try {
       entries = readdirSync(workspacePath);
     } catch {
-      return;
+      return false;
     }
     if (entries.length === 0) {
       try {
         rmSync(workspacePath);
+        this.logger.debug('Removed empty workspace directory', `path=${workspacePath}`);
+        return true;
       } catch (error: unknown) {
         this.logger.warn(
           'Failed to remove empty workspace directory',
@@ -150,6 +153,7 @@ export class ChatDebugCleanupService {
         );
       }
     }
+    return false;
   }
 
   /**
@@ -174,6 +178,9 @@ export class ChatDebugCleanupService {
       return; // logsBasePath unreadable, nothing to do.
     }
 
+    let deletedSessions = 0;
+    let removedWorkspaceDirs = 0;
+
     for (const workspaceDir of workspaceDirs) {
       const workspacePath = join(this.logsBasePath, workspaceDir);
 
@@ -195,6 +202,8 @@ export class ChatDebugCleanupService {
         if (isExpired) {
           try {
             rmSync(sessionPath, { recursive: true });
+            deletedSessions++;
+            this.logger.debug('Deleted expired chat debug session', `path=${sessionPath}`);
           } catch (error: unknown) {
             this.logger.warn(
               'Failed to delete expired session directory',
@@ -203,16 +212,19 @@ export class ChatDebugCleanupService {
           }
 
           // Clean up empty workspace directory.
-          try {
-            this.removeEmptyWorkspaceDir(workspacePath);
-          } catch (error: unknown) {
-            this.logger.warn(
-              'Failed to clean up workspace directory',
-              error instanceof Error ? error.message : String(error),
-            );
+          if (this.removeEmptyWorkspaceDir(workspacePath)) {
+            removedWorkspaceDirs++;
           }
         }
       }
+    }
+
+    if (deletedSessions > 0 || removedWorkspaceDirs > 0) {
+      this.logger.debug(
+        'Chat debug directory cleanup summary',
+        `deletedSessions=${deletedSessions}`,
+        `removedWorkspaceDirs=${removedWorkspaceDirs}`,
+      );
     }
   }
 
@@ -238,6 +250,8 @@ export class ChatDebugCleanupService {
 
     // Delete all session mappings.
     this.mappingRepo.deleteAll();
+
+    this.logger.debug('Chat debug logs and mappings cleared');
 
     // Refresh tree view.
     this.onTreeRefresh?.();

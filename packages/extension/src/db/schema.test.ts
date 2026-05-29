@@ -55,7 +55,9 @@ describe('usageRecords table', () => {
     expect(columns).toHaveProperty('reasoningTokens');
     expect(columns).toHaveProperty('requestCount');
     expect(columns).toHaveProperty('errorCount');
-    expect(columns).toHaveProperty('estimatedCost');
+    expect(columns).toHaveProperty('promptTokensCost');
+    expect(columns).toHaveProperty('completionTokensCost');
+    expect(columns).toHaveProperty('cachedTokensCost');
   });
 });
 

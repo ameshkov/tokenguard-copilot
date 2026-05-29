@@ -8,7 +8,15 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
-<!-- Add unreleased changes below -->
+### Changed
+
+- Improved logging in cleanup services: `ChatDebugCleanupService` and
+  `ReasoningCacheCleanupService` now log starting and completion messages at
+  `debug` level, and `ChatDebugCleanupService` logs individual session
+  deletions and a summary with counts.
+- Usage stats chart tooltip now shows a per-component cost breakdown (prompt,
+  cached, completion) instead of a single total, and correctly aggregates
+  costs across all models for the hovered date.
 
 ## [v1.0.0] - 2026-05-29
 

@@ -351,7 +351,9 @@ export class SettingsPanel {
               reasoningTokens: r.reasoningTokens,
               requestCount: r.requestCount,
               errorCount: r.errorCount,
-              estimatedCost: r.estimatedCost,
+              promptTokensCost: r.promptTokensCost,
+              completionTokensCost: r.completionTokensCost,
+              cachedTokensCost: r.cachedTokensCost,
             }));
 
             await this.panel.webview.postMessage({
@@ -544,7 +546,9 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
   let totalReasoningTokens = 0;
   let totalRequestCount = 0;
   let totalErrorCount = 0;
-  let totalEstimatedCost = 0;
+  let totalPromptTokensCost = 0;
+  let totalCompletionTokensCost = 0;
+  let totalCachedTokensCost = 0;
 
   const allProviders = appCtx.providerManager.getAllProvidersWithStatus();
   const providerNameMap = new Map(allProviders.map((p) => [p.id, p.name]));
@@ -562,7 +566,9 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
       completionTokens: number;
       cachedTokens: number;
       reasoningTokens: number;
-      estimatedCost: number;
+      promptTokensCost: number;
+      completionTokensCost: number;
+      cachedTokensCost: number;
     }
   >();
 
@@ -573,7 +579,9 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
     totalReasoningTokens += r.reasoningTokens;
     totalRequestCount += r.requestCount;
     totalErrorCount += r.errorCount;
-    totalEstimatedCost += r.estimatedCost;
+    totalPromptTokensCost += r.promptTokensCost;
+    totalCompletionTokensCost += r.completionTokensCost;
+    totalCachedTokensCost += r.cachedTokensCost;
 
     const key = `${r.providerId}:${r.modelId}`;
     const existing = perModel.get(key);
@@ -582,7 +590,9 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
       existing.completionTokens += r.completionTokens;
       existing.cachedTokens += r.cachedTokens;
       existing.reasoningTokens += r.reasoningTokens;
-      existing.estimatedCost += r.estimatedCost;
+      existing.promptTokensCost += r.promptTokensCost;
+      existing.completionTokensCost += r.completionTokensCost;
+      existing.cachedTokensCost += r.cachedTokensCost;
     } else {
       const allModels = appCtx.modelRegistry.getAllModels(r.providerId);
       const model = allModels.find((m) => m.id === r.modelId);
@@ -598,7 +608,9 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
         completionTokens: r.completionTokens,
         cachedTokens: r.cachedTokens,
         reasoningTokens: r.reasoningTokens,
-        estimatedCost: r.estimatedCost,
+        promptTokensCost: r.promptTokensCost,
+        completionTokensCost: r.completionTokensCost,
+        cachedTokensCost: r.cachedTokensCost,
       });
     }
   }
@@ -638,7 +650,7 @@ function computeSummary(records: UsageRecord[], appCtx: AppContext): UsageStatsS
     totalReasoningTokens,
     totalRequestCount,
     totalErrorCount,
-    totalEstimatedCost,
+    totalEstimatedCost: totalPromptTokensCost + totalCompletionTokensCost + totalCachedTokensCost,
     providerNames,
     modelNames,
     perModelBreakdown: [...perModel.values()],

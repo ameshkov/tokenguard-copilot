@@ -62,7 +62,7 @@ function buildTooltip(providers: ProviderInfo[], stats: UsageRecord[]): string {
       totalCached += r.cachedTokens;
       totalOut += r.completionTokens;
       totalRequests += r.requestCount;
-      totalCost += r.estimatedCost;
+      totalCost += r.promptTokensCost + r.completionTokensCost + r.cachedTokensCost;
     }
 
     let tokenLine = `Tokens: ${fmtCompact(totalIn)} in`;

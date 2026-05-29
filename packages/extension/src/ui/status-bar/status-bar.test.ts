@@ -51,7 +51,9 @@ function makeUsageSource(
     promptTokens: number;
     completionTokens: number;
     requestCount: number;
-    estimatedCost: number;
+    promptTokensCost: number;
+    completionTokensCost: number;
+    cachedTokensCost: number;
     cachedTokens?: number;
   }>,
 ): UsageStatsSource {
@@ -180,7 +182,9 @@ describe('createStatusBarItem', () => {
         promptTokens: 1000,
         completionTokens: 500,
         requestCount: 5,
-        estimatedCost: 0.015,
+        promptTokensCost: 0.015,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       },
     ]);
     createStatusBarItem(makeProviderManager([]), usage);
@@ -197,7 +201,9 @@ describe('createStatusBarItem', () => {
         completionTokens: 500,
         cachedTokens: 800,
         requestCount: 5,
-        estimatedCost: 0.01,
+        promptTokensCost: 0.01,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       },
     ]);
     createStatusBarItem(makeProviderManager([]), usage);
@@ -237,7 +243,9 @@ describe('createStatusBarItem', () => {
         reasoningTokens: 0,
         requestCount: 2,
         errorCount: 0,
-        estimatedCost: 0.005,
+        promptTokensCost: 0.005,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       },
     ]);
     listener?.();
@@ -251,7 +259,9 @@ describe('createStatusBarItem', () => {
         promptTokens: 10,
         completionTokens: 5,
         requestCount: 1,
-        estimatedCost: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
       },
     ]);
     createStatusBarItem(makeProviderManager([]), usage);
