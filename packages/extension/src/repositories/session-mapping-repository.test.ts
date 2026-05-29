@@ -182,8 +182,9 @@ describe('SessionMappingRepository', () => {
         createdAt: '2026-05-22T12:00:00Z',
       });
 
-      repo.deleteExpired('2026-05-21T00:00:00Z');
+      const deleted = repo.deleteExpired('2026-05-21T00:00:00Z');
 
+      expect(deleted).toBe(1);
       expect(repo.findByContentFingerprint('fp-old')).toBeUndefined();
       expect(repo.findByContentFingerprint('fp-new')).toBeDefined();
     });
@@ -197,8 +198,9 @@ describe('SessionMappingRepository', () => {
         createdAt: '2026-05-22T12:00:00Z',
       });
 
-      repo.deleteExpired('2026-05-21T00:00:00Z');
+      const deleted = repo.deleteExpired('2026-05-21T00:00:00Z');
 
+      expect(deleted).toBe(0);
       expect(repo.findByContentFingerprint('fp-fresh')).toBeDefined();
     });
 
@@ -216,8 +218,9 @@ describe('SessionMappingRepository', () => {
 
       // Cutoff would delete based on createdAt, but should
       // use updatedAt which is now recent
-      repo.deleteExpired('2026-05-21T00:00:00Z');
+      const deleted = repo.deleteExpired('2026-05-21T00:00:00Z');
 
+      expect(deleted).toBe(0);
       expect(repo.findByContentFingerprint('fp-bumped')).toBeDefined();
     });
   });

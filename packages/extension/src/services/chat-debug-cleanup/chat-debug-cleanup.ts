@@ -56,7 +56,8 @@ export class ChatDebugCleanupService {
     this.logger.debug('Running chat debug cleanup', `ttl=${ttlHours}h`, `cutoff=${cutoffIso}`);
 
     // 1. Delete expired DB session mappings.
-    this.mappingRepo.deleteExpired(cutoffIso);
+    const deletedMappings = this.mappingRepo.deleteExpired(cutoffIso);
+    this.logger.debug('Deleted expired session mappings', `count=${deletedMappings}`);
 
     // 2. Delete expired session directories.
     this.deleteExpiredDirectories(cutoffMs);
@@ -103,8 +104,12 @@ export class ChatDebugCleanupService {
     let files: string[];
     try {
       files = readdirSync(sessionPath);
-    } catch {
-      return false; // Can't read dir, treat as not expired.
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Failed to read session directory',
+        error instanceof Error ? error.message : String(error),
+      );
+      return false;
     }
 
     if (files.length === 0) {
@@ -119,8 +124,11 @@ export class ChatDebugCleanupService {
         if (stat.mtimeMs > newestMtime) {
           newestMtime = stat.mtimeMs;
         }
-      } catch {
-        // File may have been removed — ignore.
+      } catch (error: unknown) {
+        this.logger.trace(
+          'Failed to stat file in session directory',
+          error instanceof Error ? error.message : String(error),
+        );
       }
     }
 
@@ -138,7 +146,11 @@ export class ChatDebugCleanupService {
     let entries: string[];
     try {
       entries = readdirSync(workspacePath);
-    } catch {
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Failed to read workspace directory for empty removal',
+        error instanceof Error ? error.message : String(error),
+      );
       return false;
     }
     if (entries.length === 0) {
@@ -174,8 +186,12 @@ export class ChatDebugCleanupService {
       })
         .filter((d) => d.isDirectory())
         .map((d) => d.name);
-    } catch {
-      return; // logsBasePath unreadable, nothing to do.
+    } catch (error: unknown) {
+      this.logger.warn(
+        'Failed to read logsBasePath',
+        error instanceof Error ? error.message : String(error),
+      );
+      return;
     }
 
     let deletedSessions = 0;
@@ -191,8 +207,12 @@ export class ChatDebugCleanupService {
         })
           .filter((d) => d.isDirectory())
           .map((d) => d.name);
-      } catch {
-        continue; // Can't read workspace dir, skip it.
+      } catch (error: unknown) {
+        this.logger.warn(
+          'Failed to read workspace directory',
+          error instanceof Error ? error.message : String(error),
+        );
+        continue;
       }
 
       for (const sessionDirName of sessionDirs) {

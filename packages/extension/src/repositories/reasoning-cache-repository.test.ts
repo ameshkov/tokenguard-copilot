@@ -56,8 +56,9 @@ describe('ReasoningCacheRepository', () => {
     repo.cache('fp1', 'msg_fp1', {
       reasoning_content: 'recent',
     });
-    repo.deleteExpired();
+    const deleted = repo.deleteExpired();
 
+    expect(deleted).toBe(0);
     const fields = repo.get('fp1', 'msg_fp1');
     expect(fields).not.toBeNull();
     expect(fields!.reasoning_content).toBe('recent');
@@ -105,8 +106,9 @@ describe('ReasoningCacheRepository', () => {
       reasoning_content: 'new content',
     });
 
-    repo.deleteExpired();
+    const deleted = repo.deleteExpired();
 
+    expect(deleted).toBe(1);
     const oldFields = repo.get('old_fp', 'old_msg');
     expect(oldFields).toBeNull();
 

@@ -26,9 +26,8 @@ export class ReasoningCacheCleanupService {
    * entries that have expired.
    */
   runCleanup(): void {
-    this.logger.debug('Running reasoning cache cleanup');
-    this.repo.deleteExpired();
-    this.logger.debug('Reasoning cache cleanup completed');
+    const deleted = this.repo.deleteExpired();
+    this.logger.debug('Reasoning cache cleanup completed', `deleted=${deleted}`);
   }
 
   /**

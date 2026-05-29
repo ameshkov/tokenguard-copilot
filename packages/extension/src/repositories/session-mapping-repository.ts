@@ -102,11 +102,13 @@ export class SessionMappingRepository {
    *
    * @param cutoffIso - ISO 8601 timestamp (e.g., from
    *   `new Date(Date.now() - ttlMs).toISOString()`).
+   * @returns The number of deleted rows.
    */
-  deleteExpired(cutoffIso: string): void {
-    this.db
+  deleteExpired(cutoffIso: string): number {
+    const result = this.db
       .delete(sessionMappings)
       .where(sql`${sessionMappings.updatedAt} < ${cutoffIso}`)
       .run();
+    return Number(result.changes);
   }
 }

@@ -95,10 +95,13 @@ export class ReasoningCacheRepository {
 
   /**
    * Deletes all cache entries older than 24 hours.
+   *
+   * @returns The number of deleted rows.
    */
-  deleteExpired(): void {
+  deleteExpired(): number {
     const cutoff = new Date(Date.now() - CACHE_TTL_MS).toISOString();
-    this.db.delete(reasoningCache).where(lt(reasoningCache.createdAt, cutoff)).run();
+    const result = this.db.delete(reasoningCache).where(lt(reasoningCache.createdAt, cutoff)).run();
+    return Number(result.changes);
   }
 
   /**
