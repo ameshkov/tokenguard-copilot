@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+<!-- Add unreleased changes below -->
+
+## [v1.0.0] - 2026-05-29
+
 ### Added
 
 - First release of the extension that registers third-party OpenAI-compatible
@@ -35,4 +39,5 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/commits/HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.0.0...HEAD
+[v1.0.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.0.0
