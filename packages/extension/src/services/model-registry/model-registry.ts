@@ -531,15 +531,21 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
   let outputCostPer1M: number | null = null;
   let cachedInputCostPer1M: number | null = null;
   if (pricing) {
-    if (typeof pricing.prompt === 'number') {
-      inputCostPer1M = pricing.prompt;
-    }
-    if (typeof pricing.completion === 'number') {
-      outputCostPer1M = pricing.completion;
-    }
-    if (typeof pricing.input_cache_read === 'number') {
-      cachedInputCostPer1M = pricing.input_cache_read;
-    }
+    const parsePricingValue = (v: unknown): number | null => {
+      if (typeof v === 'number') return v;
+      if (typeof v === 'string') {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      }
+      return null;
+    };
+    const prompt = parsePricingValue(pricing.prompt);
+    const inputCacheWrite = parsePricingValue(pricing.input_cache_write);
+    // inputCostPer1M = prompt + input_cache_write (OpenRouter charges
+    // cache writes as part of input; we assume all input is cached)
+    inputCostPer1M = prompt !== null ? prompt + (inputCacheWrite ?? 0) : null;
+    outputCostPer1M = parsePricingValue(pricing.completion);
+    cachedInputCostPer1M = parsePricingValue(pricing.input_cache_read);
   }
 
   return {

@@ -253,6 +253,62 @@ describe('ModelRegistry', () => {
       expect(models[0].cachedInputCostPer1M).toBe(0.075);
     });
 
+    it('parses string pricing values from provider response', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [
+                {
+                  id: 'string-priced-model',
+                  pricing: {
+                    prompt: '0.3',
+                    completion: '1.2',
+                    input_cache_read: '0.06',
+                  },
+                },
+              ],
+            }),
+        }),
+      );
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].inputCostPer1M).toBe(0.3);
+      expect(models[0].outputCostPer1M).toBe(1.2);
+      expect(models[0].cachedInputCostPer1M).toBe(0.06);
+    });
+
+    it('includes input_cache_write in input cost for OpenRouter-style pricing', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [
+                {
+                  id: 'openrouter-model',
+                  pricing: {
+                    prompt: '1.5',
+                    completion: '7.5',
+                    input_cache_read: '0.15',
+                    input_cache_write: '2.0',
+                  },
+                },
+              ],
+            }),
+        }),
+      );
+
+      const models = await registry.fetchModels(providerId);
+      // input = prompt + input_cache_write = 1.5 + 2.0 = 3.5
+      expect(models[0].inputCostPer1M).toBe(3.5);
+      expect(models[0].outputCostPer1M).toBe(7.5);
+      expect(models[0].cachedInputCostPer1M).toBe(0.15);
+    });
+
     it('returns null for missing fields', async () => {
       vi.stubGlobal(
         'fetch',
