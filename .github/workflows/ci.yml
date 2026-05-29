@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   ci:
@@ -16,12 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
       - name: Build with Dockerfile.ci
-        run: >
-          docker build
-          -f Dockerfile.ci
-          --output type=local,dest=./ci-output
-          .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.ci
+          outputs: type=local,dest=./ci-output
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
@@ -33,12 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
       - name: Build with Dockerfile.e2e
-        run: >
-          docker build
-          -f Dockerfile.e2e
-          --output type=local,dest=./e2e-output
-          .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.e2e
+          outputs: type=local,dest=./e2e-output
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   release:
     name: GitHub Release
