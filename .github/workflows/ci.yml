@@ -76,7 +76,7 @@ jobs:
         with:
           name: vsix
           path: dist/
-      - run: pnpm vsce publish --no-dependencies --packagePath dist/*.vsix
+      - run: pnpm vsce publish --no-dependencies --allow-all-proposed-apis --packagePath dist/*.vsix
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 

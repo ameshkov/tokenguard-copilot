@@ -33,7 +33,9 @@
     "onStartupFinished"
   ],
   "enabledApiProposals": [
-    "chatProvider"
+    "chatProvider",
+    "languageModelSystem",
+    "languageModelThinkingPart"
   ],
   "main": "./out/extension.js",
   "contributes": {
