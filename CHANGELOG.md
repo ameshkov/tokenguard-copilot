@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.1.0] - 2026-05-29
+
 ### Changed
 
 - Improved logging in cleanup services: `ChatDebugCleanupService` and
@@ -47,5 +49,6 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.1.0...HEAD
+[v1.1.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.0.0
