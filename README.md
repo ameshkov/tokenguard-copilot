@@ -42,19 +42,35 @@ the hood — you just add a provider and start chatting.
 - [Features](#features)
 - [Commands](#commands)
 - [FAQ / Troubleshooting](#faq--troubleshooting)
+- [Acknowledgments](#acknowledgments)
 - [Documentation](#documentation)
 
 * * *
 
 ## Installation
 
+### Install from VS Code Marketplace
+
+Search for **TokenGuard Copilot** in the Extensions view
+(`Cmd+Shift+X`) or open [this link][vscodemarketplace] in your browser.
+
+[vscodemarketplace]: https://marketplace.visualstudio.com/items?itemName=adguard.tokenguard-copilot
+
+### Install from Open VSX Registry
+
+If you use a VS Code fork (VSCodium, Cursor, Windsurf, etc.) that does not
+have access to the VS Code Marketplace, [install from Open VSX][openvsx].
+
+[openvsx]: https://open-vsx.org/extension/adguard/tokenguard-copilot
+
 ### Install from VSIX
 
-1. Download the latest `.vsix` file from the
-   [GitHub releases page](https://github.com/ameshkov/oai-copilot/releases).
+1. Download the latest `.vsix` file from the [GitHub releases page][releases].
 2. In VS Code, open the Command Palette (`Cmd+Shift+P`) and run **Extensions:
    Install from VSIX…**.
 3. Select the downloaded file.
+
+[releases]: https://github.com/ameshkov/tokenguard-copilot/releases
 
 ## Quick Start
 
@@ -223,6 +239,16 @@ for non-English text or specialized vocabularies.
 Run **TokenGuard Copilot: Enable Debugging Logging** from the Command Palette.
 The TokenGuard Logs tree view appears in the Explorer sidebar after logging is
 enabled and at least one chat request has been made.
+
+## Acknowledgments
+
+Special thanks to these open-source projects that made this extension
+possible:
+
+- [deepseek-v4-for-copilot](https://github.com/Vizards/deepseek-v4-for-copilot)
+- [oai-compatible-copilot](https://github.com/JohnnyZ93/oai-compatible-copilot)
+
+This project would have been much harder to build without both of them.
 
 ## License
 

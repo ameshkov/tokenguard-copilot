@@ -3,11 +3,22 @@
   "displayName": "TokenGuard Copilot",
   "description": "Use third-party OpenAI-compatible models with VS Code Copilot Chat",
   "version": "0.1.0",
-  "publisher": "ameshkov",
+  "publisher": "adguard",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ameshkov/oai-copilot"
+    "url": "https://github.com/ameshkov/tokenguard-copilot"
+  },
+  "bugs": {
+    "url": "https://github.com/ameshkov/tokenguard-copilot/issues"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": true
+    }
   },
   "packageManager": "pnpm@10.28.1",
   "icon": "assets/icon/logo_256.png",

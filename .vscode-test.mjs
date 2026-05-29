@@ -5,5 +5,5 @@ export default defineConfig({
   mocha: {
     timeout: 20000,
   },
-  launchArgs: ['--enable-proposed-api=ameshkov.tokenguard-copilot'],
+  launchArgs: ['--enable-proposed-api=adguard.tokenguard-copilot'],
 });

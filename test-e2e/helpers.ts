@@ -4,7 +4,7 @@ import * as assert from 'node:assert';
 import * as vscode from 'vscode';
 
 /** The extension identifier used for lookups. */
-const EXTENSION_ID = 'ameshkov.tokenguard-copilot';
+const EXTENSION_ID = 'adguard.tokenguard-copilot';
 
 /**
  * Gets the extension instance, asserts it exists, and

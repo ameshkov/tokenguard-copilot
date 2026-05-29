@@ -40,4 +40,4 @@ and this project adheres to
   tree view in the Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/oai-copilot/commits/HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/commits/HEAD

@@ -6,7 +6,7 @@ import { getExtension } from './helpers.js';
 
 suite('Extension E2E Tests', () => {
   test('extension should be present', () => {
-    const extension = vscode.extensions.getExtension('ameshkov.tokenguard-copilot');
+    const extension = vscode.extensions.getExtension('adguard.tokenguard-copilot');
     assert.ok(extension, 'Extension should be available');
   });
 
