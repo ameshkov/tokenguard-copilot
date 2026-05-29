@@ -21,3 +21,7 @@ packages/*/dist/
 
 # VS Code test runner
 .vscode-test/
+
+# Docker build output
+ci-output/
+e2e-output/

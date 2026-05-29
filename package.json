@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "ameshkov",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ameshkov/oai-copilot"
+  },
   "packageManager": "pnpm@10.28.1",
   "icon": "assets/icon/logo_256.png",
   "engines": {
@@ -109,7 +113,7 @@
     "format:fix": "prettier --write --no-error-on-unmatched-pattern . && markdownlint-cli2 --fix '**/*.md'",
     "prepare": "husky",
     "vscode:prepublish": "pnpm run compile",
-    "package": "vsce package --no-dependencies -o dist/",
+    "package": "mkdir -p dist && vsce package --no-dependencies -o dist/",
     "test": "pnpm -r run test",
     "test:extension": "pnpm --filter @tokenguard/extension run test",
     "test:webview": "pnpm --filter @tokenguard/webview-ui run test",
@@ -131,6 +135,7 @@
     "husky": "^9.1.7",
     "knip": "6.13.1",
     "markdownlint-cli2": "^0.22.1",
+    "ovsx": "1.0.0",
     "prettier": "^3.1.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.0"

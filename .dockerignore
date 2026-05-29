@@ -1,0 +1,24 @@
+# Build artifacts
+out/
+dist/
+*.vsix
+
+# CI artifacts
+ci-output/
+e2e-output/
+
+# Editor and Git tooling
+.vscode/
+.husky/
+.github/
+.git/
+
+# Docker files
+Dockerfile*
+
+# Downloaded VS Code
+.vscode-test/
+
+# Node modules (installed fresh in the image)
+node_modules/
+packages/*/node_modules/

@@ -2,13 +2,63 @@ name: CI
 
 on:
   push:
+    tags: ['v*']
     branches: [master, main]
   pull_request:
     branches: [master, main]
 
 jobs:
-  lint-and-format:
-    name: Lint & Format
+  ci:
+    name: Lint, Unit Tests & Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build with Dockerfile.ci
+        run: >
+          docker build
+          -f Dockerfile.ci
+          --output type=local,dest=./ci-output
+          .
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: ci-output/*.vsix
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build with Dockerfile.e2e
+        run: >
+          docker build
+          -f Dockerfile.e2e
+          --output type=local,dest=./e2e-output
+          .
+
+  release:
+    name: GitHub Release
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: See [CHANGELOG.md](./CHANGELOG.md) for the list
+            of changes.
+          draft: false
+          prerelease: false
+          files: dist/*.vsix
+
+  publish-marketplace:
+    name: Publish to Marketplace
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -16,46 +66,29 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run compile
-      - run: pnpm run lint
-      - run: pnpm run format:check
+      - uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: dist/
+      - run: pnpm vsce publish --no-dependencies --packagePath dist/*.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
-  unit-tests:
-    name: Unit Tests
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  publish-openvsx:
+    name: Publish to Open VSX
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run test
-
-  e2e-tests:
-    name: E2E Tests
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/download-artifact@v4
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run compile
-      - name: Run E2E tests (Linux)
-        if: runner.os == 'Linux'
-        run: xvfb-run -a pnpm run test:e2e
-      - name: Run E2E tests (non-Linux)
-        if: runner.os != 'Linux'
-        run: pnpm run test:e2e
+          name: vsix
+          path: dist/
+      - run: pnpm ovsx publish dist/*.vsix -p ${{ secrets.OPEN_VSX_TOKEN }}

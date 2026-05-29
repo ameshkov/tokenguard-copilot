@@ -2,9 +2,28 @@
 
 ## Prerequisites
 
-- Node.js >= 22
-- npm
+- Node.js 22
+- pnpm
 - VS Code >= 1.116.0
+
+## Node.js Version
+
+The project uses **Node.js 22** (LTS). This version is
+pinned in several places. When upgrading, update **all**
+of them:
+
+| File | What to change |
+| --- | --- |
+| `Dockerfile.ci` | `FROM node:22-bookworm-slim` base image tag |
+| `Dockerfile.e2e` | Playwright image tag (ships Node.js; pick a tag matching the desired version) |
+| `.github/workflows/ci.yml` | `node-version: 22` in publish jobs |
+| `DEVELOPMENT.md` | Prerequisites section (this file) |
+| `AGENTS.md` | Technical Context table |
+
+The Dockerfiles are the source of truth for CI — they
+fully control the Node.js version used for linting,
+testing, and packaging. The `ci.yml` workflow only needs
+Node.js for the publish steps that run outside Docker.
 
 ## Setup
 
@@ -98,6 +117,62 @@ migrations.
 2. Run `pnpm run db:generate` to create a new migration.
 3. Run `pnpm run test` to verify the migration works.
 4. Commit both the schema and migration files.
+
+## Docker Builds
+
+The project provides two Dockerfiles that encapsulate the
+full CI pipeline. Using Docker for CI ensures **reproducible
+builds** — every run uses the same OS, Node.js version, and
+system libraries regardless of the host machine. This
+eliminates "works on my machine" issues and means the CI
+workflow in GitHub Actions is a single `docker build`
+command with no setup steps.
+
+Both Dockerfiles use multi-stage builds where the final
+stage is `FROM scratch`, producing a near-empty image. The
+tests and checks run during `docker build`; if any stage
+fails, the build fails. Use `--output type=local` to
+extract results to a local directory instead of storing a
+Docker image.
+
+### Dockerfile.ci — Lint, Unit Tests & Package
+
+Runs linting, formatting checks, unit tests, and packages
+the `.vsix` — all in parallel stages that share a common
+dependency-install and compile layer.
+
+```bash
+docker build -f Dockerfile.ci \
+    --output type=local,dest=./ci-output .
+```
+
+Output in `./ci-output/`:
+
+- `lint-results.txt` — lint and format check output
+- `unit-test-results.txt` — unit test output
+- `*.vsix` — packaged extension
+
+### Dockerfile.e2e — E2E Tests
+
+Runs E2E tests inside a Playwright base image that includes
+Xvfb and all Electron system dependencies.
+
+```bash
+docker build -f Dockerfile.e2e \
+    --output type=local,dest=./e2e-output .
+```
+
+Output in `./e2e-output/`:
+
+- `e2e-results.txt` — E2E test output
+
+### BuildKit Cache
+
+Both Dockerfiles use BuildKit cache mounts for pnpm
+(`--mount=type=cache`). The E2E Dockerfile also caches the
+downloaded VS Code binary in `.vscode-test`. These caches
+persist across builds on the same machine, speeding up
+repeated runs.
 
 ### Test Database
 

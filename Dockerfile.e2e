@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1
+
+# Stage 1: Install dependencies
+# Playwright image includes Node.js 22, Xvfb, and all Chromium/Electron
+# system dependencies (libgtk, libnss, libgbm, libasound, etc.)
+FROM mcr.microsoft.com/playwright:v1.52.0-noble AS deps
+
+# Enable pnpm via corepack
+RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+
+WORKDIR /app
+
+# Copy lockfile and manifests first for layer caching
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/extension/package.json packages/extension/
+COPY packages/webview-ui/package.json packages/webview-ui/
+COPY packages/webview-playground/package.json packages/webview-playground/
+
+RUN --mount=type=cache,target=/pnpm,id=tokenguard-copilot-pnpm \
+    pnpm install \
+    --frozen-lockfile \
+    --prefer-offline \
+    --ignore-scripts
+
+# Stage 2: Build and run E2E tests
+FROM deps AS test
+
+# Copy the rest of the source
+COPY . .
+
+# Build everything
+RUN pnpm run compile
+
+# Run E2E tests with a BuildKit cache mount for the VS Code download.
+# The cache persists across builds so VS Code is only downloaded once.
+# Write exit code to a file so tee doesn't mask test failures.
+RUN --mount=type=cache,target=/app/.vscode-test \
+    xvfb-run -a pnpm run test:e2e 2>&1 | tee /tmp/e2e-results.txt; \
+    echo $? > /tmp/e2e-exit-code
+RUN exit $(cat /tmp/e2e-exit-code)
+
+# Stage 3: Output — only the test results
+FROM scratch
+COPY --from=test /tmp/e2e-exit-code /e2e-exit-code
+COPY --from=test /tmp/e2e-results.txt /e2e-results.txt

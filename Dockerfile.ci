@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+
+# Stage 1: Install dependencies
+FROM node:22-bookworm-slim AS deps
+
+RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+
+WORKDIR /app
+
+# Copy lockfile and manifests first for layer caching
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/extension/package.json packages/extension/
+COPY packages/webview-ui/package.json packages/webview-ui/
+COPY packages/webview-playground/package.json packages/webview-playground/
+
+RUN --mount=type=cache,target=/pnpm,id=tokenguard-copilot-pnpm \
+    pnpm install \
+    --frozen-lockfile \
+    --prefer-offline \
+    --ignore-scripts
+
+# Stage 2: Copy source and compile
+FROM deps AS build
+
+COPY . .
+
+RUN pnpm run compile
+
+# Stage 3: Lint and format checks
+FROM build AS lint
+
+RUN pnpm run lint 2>&1 | tee /tmp/lint-results.txt
+RUN pnpm run format:check 2>&1 | tee -a /tmp/lint-results.txt
+
+# Stage 4: Unit tests
+FROM build AS unit-test
+
+RUN pnpm run test 2>&1 | tee /tmp/unit-test-results.txt; \
+    echo $? > /tmp/unit-test-exit-code
+RUN exit $(cat /tmp/unit-test-exit-code)
+
+# Stage 5: Package VSIX
+FROM build AS package
+
+RUN pnpm run package
+
+# Stage 6: Collect outputs
+FROM scratch
+
+COPY --from=lint /tmp/lint-results.txt /lint-results.txt
+COPY --from=unit-test /tmp/unit-test-results.txt /unit-test-results.txt
+COPY --from=package /app/dist/*.vsix /
