@@ -126,16 +126,20 @@ function formatCost(cost: number): string {
  * a summary of configured providers (count and names) and usage
  * stats, updating when providers or stats change.
  *
+ * Event subscriptions are collected into the returned `Disposable`
+ * so they are properly cleaned up on deactivation.
+ *
  * @param providerSource - Source of provider data, typically
  *   `ProviderManager`.
  * @param usageSource - Source of usage stats, typically
  *   `UsageTracker`. Optional for backward compatibility.
- * @returns The created and visible status bar item.
+ * @returns A `Disposable` that disposes the status bar item and
+ *   all event subscriptions.
  */
 export function createStatusBarItem(
   providerSource: StatusBarProviderSource,
   usageSource?: UsageStatsSource,
-): vscode.StatusBarItem {
+): vscode.Disposable {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   item.text = '$(chat-sparkle) TokenGuard';
   item.command = 'tokenguard-copilot.openSettings';
@@ -146,14 +150,21 @@ export function createStatusBarItem(
   };
   updateTooltip();
 
-  providerSource.onProvidersChanged(() => {
+  const providerDisposable = providerSource.onProvidersChanged(() => {
     updateTooltip();
   });
 
-  usageSource?.onStatsChanged(() => {
+  const statsDisposable = usageSource?.onStatsChanged(() => {
     updateTooltip();
   });
 
   item.show();
-  return item;
+
+  return {
+    dispose: () => {
+      item.dispose();
+      providerDisposable.dispose();
+      statsDisposable?.dispose();
+    },
+  };
 }

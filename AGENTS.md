@@ -444,6 +444,40 @@ values or re-implement component styles in CSS.**
   component tags that need roles or form behaviour in
   tests.
 
+### Resource Disposal
+
+All extension resources — `EventEmitter`s, event subscriptions,
+timers, file handles, and VS Code API registrations — MUST be
+explicitly disposed on deactivation. Never rely solely on
+garbage collection.
+
+- **`EventEmitter` ownership**: Every `EventEmitter` created by
+  a service MUST be disposed. Services that own emitters MUST
+  implement `vscode.Disposable` and dispose all emitters in
+  their `dispose()` method.
+- **`ExtensionContext.dispose()` cascades**: The DI container
+  (`ExtensionContext`) MUST have a `dispose()` method that
+  calls `dispose()` on every service that implements
+  `Disposable`. This is the single teardown entry point from
+  `deactivate()`.
+- **Collect event subscription disposables**: Every call to
+  `.event()` (e.g., `onProvidersChanged()`, `onStatsChanged()`)
+  returns a `Disposable`. Store and dispose these when the
+  owning object is disposed. Do NOT use anonymous lambdas
+  without capturing the returned `Disposable`.
+- **Composite pattern for UI items**: When creating objects
+  that subscribe to events (e.g., status bar items), return a
+  single `Disposable` that disposes both the VS Code API
+  object and all event subscriptions.
+- **Deactivation-safe logger**: The `LogOutputChannel` is
+  needed during `deactivate()` for final log messages. It MUST
+  NOT be disposed before the end of `deactivate()`. VS Code
+  disposes `context.subscriptions` automatically after
+  `deactivate()` returns.
+- **Module-level nulling**: Singleton module variables
+  (`rawDb`, `extCtx`, `logger`) MUST be set to `null` at the
+  end of `deactivate()` to prevent use after deactivation.
+
 ### Logging
 
 The extension uses a centralized `Logger` interface backed

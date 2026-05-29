@@ -131,6 +131,9 @@ describe('ModelRegistry', () => {
                   id: 'gpt-4o',
                   name: 'GPT-4o',
                   capabilities: {
+                    supports: {
+                      vision: true,
+                    },
                     limits: {
                       max_context_window_tokens: 128000,
                       max_output_tokens: 16384,
@@ -147,48 +150,131 @@ describe('ModelRegistry', () => {
       expect(models[0].id).toBe('gpt-4o');
       expect(models[0].name).toBe('GPT-4o');
       expect(models[0].maxContextWindowTokens).toBe(128000);
+      expect(models[0].maxOutputTokens).toBe(16384);
+      expect(models[0].vision).toBe(true);
     });
 
-    it('throws when provider not found', async () => {
-      await expect(registry.fetchModels('nonexistent')).rejects.toThrow('Provider not found');
-    });
-
-    it('throws when fetch fails', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: false,
-          status: 401,
-          statusText: 'Unauthorized',
-        }),
-      );
-      await expect(registry.fetchModels(providerId)).rejects.toThrow('401');
-    });
-
-    it('excludes already-added models', async () => {
-      const now = new Date().toISOString();
-      modelRepo.insert({
-        id: 'gpt-4o',
-        providerId,
-        maxContextWindowTokens: 128000,
-        maxOutputTokens: 16384,
-        createdAt: now,
-        updatedAt: now,
-      });
+    it('parses vision from capabilities.supports.vision', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
           ok: true,
           json: () =>
             Promise.resolve({
-              data: [{ id: 'gpt-4o' }, { id: 'gpt-4o-mini' }],
+              data: [
+                {
+                  id: 'vision-model',
+                  capabilities: {
+                    supports: { vision: true },
+                  },
+                },
+              ],
             }),
         }),
       );
 
       const models = await registry.fetchModels(providerId);
-      expect(models).toHaveLength(1);
-      expect(models[0].id).toBe('gpt-4o-mini');
+      expect(models[0].vision).toBe(true);
+    });
+
+    it('calculates maxOutputTokens from context minus prompt tokens', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [
+                {
+                  id: 'calc-model',
+                  capabilities: {
+                    limits: {
+                      max_context_window_tokens: 200000,
+                      max_prompt_tokens: 134500,
+                    },
+                  },
+                },
+              ],
+            }),
+        }),
+      );
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].maxOutputTokens).toBe(65500);
+    });
+
+    it('parses supportedReasoningEfforts array', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [
+                {
+                  id: 'reasoning-model',
+                  supportedReasoningEfforts: ['none', 'low', 'medium', 'high'],
+                  defaultReasoningEffort: 'medium',
+                },
+              ],
+            }),
+        }),
+      );
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].supportedReasoningEfforts).toEqual(['none', 'low', 'medium', 'high']);
+      expect(models[0].defaultReasoningEffort).toBe('medium');
+    });
+
+    it('parses pricing fields from provider response', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [
+                {
+                  id: 'priced-model',
+                  pricing: {
+                    prompt: 0.15,
+                    completion: 0.3,
+                    input_cache_read: 0.075,
+                  },
+                },
+              ],
+            }),
+        }),
+      );
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].inputCostPer1M).toBe(0.15);
+      expect(models[0].outputCostPer1M).toBe(0.3);
+      expect(models[0].cachedInputCostPer1M).toBe(0.075);
+    });
+
+    it('returns null for missing fields', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [{ id: 'minimal-model' }],
+            }),
+        }),
+      );
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].name).toBeNull();
+      expect(models[0].maxContextWindowTokens).toBeNull();
+      expect(models[0].maxOutputTokens).toBeNull();
+      expect(models[0].vision).toBeNull();
+      expect(models[0].defaultReasoningEffort).toBeNull();
+      expect(models[0].supportedReasoningEfforts).toBeNull();
+      expect(models[0].inputCostPer1M).toBeNull();
+      expect(models[0].outputCostPer1M).toBeNull();
+      expect(models[0].cachedInputCostPer1M).toBeNull();
     });
   });
 

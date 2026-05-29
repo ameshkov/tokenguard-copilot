@@ -96,10 +96,10 @@ export class ExtensionContext {
     const settingsRepo = new SettingsRepository(deps.db);
     const sessionMappingRepo = new SessionMappingRepository(deps.db);
     const reasoningCacheRepo = new ReasoningCacheRepository(deps.db);
-    const reasoningCacheService = new ReasoningCacheService(reasoningCacheRepo);
+    const reasoningCacheService = new ReasoningCacheService(reasoningCacheRepo, deps.logger);
 
-    this.chatDebugSettings = new ChatDebugSettingsService(settingsRepo);
-    this.sessionTracker = new SessionTracker(sessionMappingRepo);
+    this.chatDebugSettings = new ChatDebugSettingsService(settingsRepo, deps.logger);
+    this.sessionTracker = new SessionTracker(sessionMappingRepo, deps.logger);
     this.chatDebugLogger = new ChatDebugLogger(
       this.chatDebugSettings,
       this.sessionTracker,
@@ -116,7 +116,7 @@ export class ExtensionContext {
     );
     this.tokenCounter = new TokenCounter(deps.extensionPath, deps.logger);
     const usageRecordRepo = new UsageRecordRepository(deps.db);
-    this.usageTracker = new UsageTracker(usageRecordRepo, modelRepo);
+    this.usageTracker = new UsageTracker(usageRecordRepo, modelRepo, deps.logger);
     this.modelRegistry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -135,5 +135,17 @@ export class ExtensionContext {
       deps.logger,
     );
     this.reasoningCacheCleanup = new ReasoningCacheCleanupService(reasoningCacheRepo, deps.logger);
+  }
+
+  /**
+   * Disposes all services that own resources.
+   *
+   * Called from `deactivate()` to cleanly tear down event
+   * emitters and other disposables in extension services.
+   */
+  dispose(): void {
+    this.modelRegistry.disposeAll();
+    this.providerManager.dispose();
+    this.usageTracker.dispose();
   }
 }

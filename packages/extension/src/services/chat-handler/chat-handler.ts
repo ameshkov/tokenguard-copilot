@@ -567,6 +567,7 @@ export class ChatHandler {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     reasoningOut?: ReasoningCollector,
     usageOut?: UsageCollector,
+    logger?: Logger,
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -636,6 +637,13 @@ export class ChatHandler {
     const content = message?.content;
     const toolCalls = message?.tool_calls;
 
+    logger?.debug(
+      'Non-streaming response received',
+      `content_len=${content?.length ?? 0}`,
+      `reasoning_len=${reasoningContent?.length ?? 0}`,
+      `tool_calls=${toolCalls?.length ?? 0}`,
+    );
+
     if (!content && !reasoningContent && (!toolCalls || toolCalls.length === 0)) {
       throw new Error('No response content');
     }
@@ -688,6 +696,7 @@ export class ChatHandler {
     token: vscode.CancellationToken,
     reasoningOut?: ReasoningCollector,
     usageOut?: UsageCollector,
+    logger?: Logger,
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -805,6 +814,21 @@ export class ChatHandler {
 
           const choice = parsed.choices?.[0];
           if (!choice) continue;
+
+          // Trace every SSE chunk for diagnostics
+          logger?.trace(
+            'SSE chunk received',
+            `has_content=${!!choice?.delta?.content}`,
+            `has_reasoning=${!!(
+              choice?.delta?.reasoning_content ??
+              choice?.delta?.reasoning ??
+              choice?.delta?.reasoning_details
+            )}`,
+            `has_tool_calls=${!!choice?.delta?.tool_calls?.length}`,
+            `finish_reason=${choice?.finish_reason ?? 'null'}`,
+            `has_usage=${!!parsed.usage}`,
+            `content_len=${(choice?.delta?.content ?? '').length}`,
+          );
 
           const content = choice.delta?.content;
           if (content) {
@@ -973,6 +997,7 @@ export class ChatHandler {
           token,
           reasoningCollector,
           usageCollector,
+          this.ctx.logger,
         );
       } else {
         await ChatHandler.handleNonStreaming(
@@ -980,8 +1005,19 @@ export class ChatHandler {
           capturingProgress,
           reasoningCollector,
           usageCollector,
+          this.ctx.logger,
         );
       }
+
+      const duration = Date.now() - startTime.getTime();
+      this.ctx.logger?.debug(
+        'Chat completion response',
+        `model=${this.ctx.model.id}`,
+        `duration=${duration}ms`,
+        `response_content_len=${responseContent.length}`,
+        `tool_calls=${responseToolCalls.length}`,
+        `has_reasoning=${!!reasoningCollector.fields}`,
+      );
 
       // Cache reasoning after successful response
       this.reasoningCacheService.cacheReasoning(
@@ -1002,8 +1038,14 @@ export class ChatHandler {
     } catch (e) {
       if (token.isCancellationRequested || (e instanceof Error && e.name === 'AbortError')) {
         cancelled = true;
+        this.ctx.logger?.debug('Chat completion cancelled by user');
       } else {
         error = e instanceof Error ? e.message : String(e);
+        this.ctx.logger?.error(
+          'Chat completion failed',
+          `model=${this.ctx.model.id}`,
+          `error=${error}`,
+        );
       }
       throw e;
     } finally {

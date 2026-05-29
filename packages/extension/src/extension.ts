@@ -135,14 +135,15 @@ export function deactivate() {
   logger?.info('Deactivating extension');
 
   try {
-    extCtx?.modelRegistry.disposeAll();
+    extCtx?.dispose();
   } catch (error: unknown) {
     logger?.warn(
-      'Failed to dispose model registrations',
+      'Failed to dispose extension context',
       error instanceof Error ? error.message : String(error),
     );
   }
   extCtx = null;
+
   try {
     rawDb?.close();
   } catch (error: unknown) {

@@ -6,6 +6,7 @@ import {
 } from '../../utils/index.js';
 import { extractReasoning, type ReasoningFields } from '../../utils/index.js';
 import type { OpenAIMessage } from '../chat-handler/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /** Placeholder reasoning value for cache misses. */
 const REASONING_PLACEHOLDER = '.';
@@ -32,7 +33,10 @@ const REASONING_PLACEHOLDER = '.';
  * index, it still matches.
  */
 export class ReasoningCacheService {
-  constructor(private readonly repo: ReasoningCacheRepository) {}
+  constructor(
+    private readonly repo: ReasoningCacheRepository,
+    private readonly logger: Logger,
+  ) {}
 
   /**
    * Backfills reasoning fields into assistant messages
@@ -60,13 +64,25 @@ export class ReasoningCacheService {
    *   preservation is enabled for this model.
    */
   backfillReasoning(messages: OpenAIMessage[], preserveReasoning: boolean): void {
-    if (!preserveReasoning) return;
+    if (!preserveReasoning) {
+      this.logger.trace('Reasoning backfill skipped: preservation disabled');
+      return;
+    }
 
     const hasAssistant = messages.some((m) => m.role === 'assistant');
-    if (!hasAssistant) return;
+    if (!hasAssistant) {
+      this.logger.trace('Reasoning backfill skipped: no assistant messages');
+      return;
+    }
 
     const sessionFp = computeFingerprint(messages);
-    if (!sessionFp) return;
+    if (!sessionFp) {
+      this.logger.trace('Reasoning backfill skipped: could not compute session fingerprint');
+      return;
+    }
+
+    let backfillCount = 0;
+    let cacheHitCount = 0;
 
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue;
@@ -77,6 +93,8 @@ export class ReasoningCacheService {
       );
 
       const cached = msgFp ? this.repo.get(sessionFp, msgFp) : null;
+
+      if (cached) cacheHitCount++;
 
       const hasAgent =
         typeof msg.reasoning_content === 'string' ||
@@ -95,6 +113,10 @@ export class ReasoningCacheService {
             msg.reasoning_content = cached.reasoning_content;
             msg.reasoning = cached.reasoning;
             msg.reasoning_details = cached.reasoning_details;
+            this.logger.trace(
+              'Reasoning backfill: replaced placeholder with cached value',
+              `msg_fp=${msgFp}`,
+            );
           }
         } else if (longest) {
           // Copy longest to all three fields
@@ -102,6 +124,7 @@ export class ReasoningCacheService {
           msg.reasoning = longest;
           msg.reasoning_details = cached?.reasoning_details ??
             msg.reasoning_details ?? [{ type: 'text', text: longest }];
+          backfillCount++;
         }
       } else if (cached) {
         const longest = extractReasoning(cached);
@@ -109,12 +132,28 @@ export class ReasoningCacheService {
         msg.reasoning = cached.reasoning ?? longest ?? undefined;
         msg.reasoning_details =
           cached.reasoning_details ?? (longest ? [{ type: 'text', text: longest }] : undefined);
+        this.logger.trace(
+          'Reasoning backfill: injected cached reasoning',
+          `msg_fp=${msgFp}`,
+          `len=${longest?.length ?? 0}`,
+        );
+        backfillCount++;
       } else {
         // No agent reasoning and no cache hit — inject
         // placeholder so providers that require reasoning
         // fields always see a value.
         msg.reasoning_content = REASONING_PLACEHOLDER;
+        this.logger.trace('Reasoning backfill: injected placeholder', `msg_fp=${msgFp ?? 'none'}`);
       }
+    }
+
+    if (backfillCount > 0 || cacheHitCount > 0) {
+      this.logger.debug(
+        'Reasoning backfill complete',
+        `backfilled=${backfillCount}`,
+        `cache_hits=${cacheHitCount}`,
+        `total_assistant=${messages.filter((m) => m.role === 'assistant').length}`,
+      );
     }
   }
 
@@ -145,17 +184,37 @@ export class ReasoningCacheService {
     },
     preserveReasoning: boolean,
   ): void {
-    if (!preserveReasoning || !fields) return;
+    if (!preserveReasoning) {
+      this.logger.trace('Reasoning cache skipped: preservation disabled');
+      return;
+    }
+    if (!fields) {
+      this.logger.trace('Reasoning cache skipped: no reasoning fields in response');
+      return;
+    }
 
     const sessionFp = computeFingerprint(messages, {
       content: response.content,
       toolCallIds: response.toolCalls?.map((tc) => tc.id),
     });
-    if (!sessionFp) return;
+    if (!sessionFp) {
+      this.logger.trace('Reasoning cache skipped: could not compute session fingerprint');
+      return;
+    }
 
     const msgFp = computeMessageFingerprint(response.content, response.toolCalls);
-    if (!msgFp) return;
+    if (!msgFp) {
+      this.logger.trace('Reasoning cache skipped: could not compute message fingerprint');
+      return;
+    }
 
     this.repo.cache(sessionFp, msgFp, fields);
+    const longest = extractReasoning(fields);
+    this.logger.debug(
+      'Reasoning cached',
+      `session_fp=${sessionFp.slice(0, 8)}...`,
+      `msg_fp=${msgFp.slice(0, 8)}...`,
+      `reasoning_len=${longest?.length ?? 0}`,
+    );
   }
 }

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { UsageRecordRepository, ModelRepository } from '../../repositories/index.js';
 import type { UsageRecord } from '../../db/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /**
  * Token counts extracted from a chat completion
@@ -118,6 +119,7 @@ export class UsageTracker {
   constructor(
     private readonly repo: UsageRecordRepository,
     private readonly modelRepo: ModelRepository,
+    private readonly logger: Logger,
   ) {}
 
   /**
@@ -139,6 +141,7 @@ export class UsageTracker {
     const today = new Date().toISOString().slice(0, 10);
 
     if (!input.success) {
+      this.logger.debug('Usage recorded: error', `provider=${providerId}`, `model=${modelId}`);
       this.repo.upsert({
         providerId,
         modelId,
@@ -169,6 +172,17 @@ export class UsageTracker {
           model.outputCostPer1m,
         )
       : 0;
+
+    this.logger.debug(
+      'Usage recorded',
+      `provider=${providerId}`,
+      `model=${modelId}`,
+      `prompt=${input.promptTokens}`,
+      `completion=${input.completionTokens}`,
+      `cached=${input.cachedTokens}`,
+      `reasoning=${input.reasoningTokens}`,
+      `cost=$${cost.toFixed(6)}`,
+    );
 
     this.repo.upsert({
       providerId,
@@ -249,5 +263,13 @@ export class UsageTracker {
       }
     }
     this.emitter.fire();
+  }
+
+  /**
+   * Disposes the usage tracker and releases the
+   * `onStatsChanged` event emitter.
+   */
+  dispose(): void {
+    this.emitter.dispose();
   }
 }

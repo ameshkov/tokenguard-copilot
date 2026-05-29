@@ -126,15 +126,21 @@ describe('ModelConfigDialog', () => {
       name: 'GPT-4o',
       maxContextWindowTokens: 128000,
       maxOutputTokens: 16384,
-      defaultReasoningEffort: null,
-      vision: null,
+      defaultReasoningEffort: 'medium',
+      vision: true,
+      supportedReasoningEfforts: ['none', 'low', 'medium', 'high'],
+      inputCostPer1M: 2.5,
+      outputCostPer1M: 10.0,
+      cachedInputCostPer1M: 1.25,
     };
 
     render(<ModelConfigDialog {...baseProps} fetchedModel={fetchedModel} />);
 
     const hints = screen.getAllByText('Pre-filled from provider');
-    // displayName, maxContextWindowTokens, maxOutputTokens
-    expect(hints.length).toBe(3);
+    // displayName, maxContextWindowTokens, maxOutputTokens, vision,
+    // defaultReasoningEffort, reasoningEffortMap,
+    // inputCostPer1m, outputCostPer1m, cachedInputCostPer1m
+    expect(hints.length).toBe(9);
   });
 
   it('shows per-field defaults hints when pre-filled from defaults', () => {

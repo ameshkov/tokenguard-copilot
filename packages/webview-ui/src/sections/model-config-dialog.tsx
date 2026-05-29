@@ -177,6 +177,33 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         setDefaultReasoningEffort(fetchedModel.defaultReasoningEffort);
         filled.defaultReasoningEffort = 'provider';
       }
+
+      // Pre-fill reasoning effort map from provider's supportedReasoningEfforts
+      if (
+        fetchedModel.supportedReasoningEfforts !== null &&
+        fetchedModel.supportedReasoningEfforts.length > 0
+      ) {
+        const entries: Record<string, string> = {};
+        for (const effort of fetchedModel.supportedReasoningEfforts) {
+          entries[effort] = JSON.stringify({ reasoning_effort: effort });
+        }
+        setReasoningEffortMap(entries);
+        filled.reasoningEffortMap = 'provider';
+      }
+
+      // Pre-fill costs from provider pricing
+      if (fetchedModel.inputCostPer1M !== null) {
+        setInputCostPer1m(String(fetchedModel.inputCostPer1M));
+        filled.inputCostPer1m = 'provider';
+      }
+      if (fetchedModel.outputCostPer1M !== null) {
+        setOutputCostPer1m(String(fetchedModel.outputCostPer1M));
+        filled.outputCostPer1m = 'provider';
+      }
+      if (fetchedModel.cachedInputCostPer1M !== null) {
+        setCachedInputCostPer1m(String(fetchedModel.cachedInputCostPer1M));
+        filled.cachedInputCostPer1m = 'provider';
+      }
     }
 
     // Pre-fill remaining fields from bundled defaults
@@ -189,23 +216,27 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
         setMaxOutputTokens(String(defaults.maxTokens));
         filled.maxOutputTokens = 'defaults';
       }
-      if (defaults.inputCostPer1M !== undefined) {
+      if (defaults.inputCostPer1M !== undefined && !filled.inputCostPer1m) {
         setInputCostPer1m(String(defaults.inputCostPer1M));
         filled.inputCostPer1m = 'defaults';
       }
-      if (defaults.outputCostPer1M !== undefined) {
+      if (defaults.outputCostPer1M !== undefined && !filled.outputCostPer1m) {
         setOutputCostPer1m(String(defaults.outputCostPer1M));
         filled.outputCostPer1m = 'defaults';
       }
-      if (defaults.cachedInputCostPer1M !== undefined) {
+      if (defaults.cachedInputCostPer1M !== undefined && !filled.cachedInputCostPer1m) {
         setCachedInputCostPer1m(String(defaults.cachedInputCostPer1M));
         filled.cachedInputCostPer1m = 'defaults';
+      }
+      if (defaults.supportedCapabilities?.includes('streaming') && !filled.streaming) {
+        // streaming defaults to true, but mark it as pre-filled
+        filled.streaming = 'defaults';
       }
       if (defaults.supportedCapabilities?.includes('vision') && !filled.vision) {
         setVision(true);
         filled.vision = 'defaults';
       }
-      if (defaults.reasoningEffortMap) {
+      if (!filled.reasoningEffortMap && defaults.reasoningEffortMap) {
         // Build efforts from map keys
         const entries: Record<string, string> = {};
         for (const [key, val] of Object.entries(defaults.reasoningEffortMap)) {
@@ -525,6 +556,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
           <div className="model-config-dialog__section">
             <h3 className="model-config-dialog__section-title">Capabilities</h3>
             <FormGroup>
+              {prefillHint('streaming')}
               <vscode-checkbox
                 checked={streaming || undefined}
                 disabled={loading || undefined}
@@ -538,6 +570,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               </vscode-form-helper>
             </FormGroup>
             <FormGroup>
+              {prefillHint('vision')}
               <vscode-checkbox
                 checked={vision || undefined}
                 disabled={loading || undefined}
@@ -629,6 +662,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
             )}
 
             <FormGroup>
+              {prefillHint('defaultReasoningEffort')}
               <Label htmlFor="model-default-effort">Default Reasoning Effort</Label>
               <vscode-single-select
                 id="model-default-effort"
@@ -653,6 +687,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               </vscode-single-select>
             </FormGroup>
             <FormGroup>
+              {prefillHint('preserveReasoning')}
               <vscode-checkbox
                 checked={preserveReasoning || undefined}
                 disabled={loading || undefined}

@@ -53,11 +53,15 @@ export class ChatDebugCleanupService {
     const cutoffMs = Date.now() - ttlHours * 60 * 60 * 1000;
     const cutoffIso = new Date(cutoffMs).toISOString();
 
+    this.logger.trace('Running chat debug cleanup', `ttl=${ttlHours}h`, `cutoff=${cutoffIso}`);
+
     // 1. Delete expired DB session mappings.
     this.mappingRepo.deleteExpired(cutoffIso);
 
     // 2. Delete expired session directories.
     this.deleteExpiredDirectories(cutoffMs);
+
+    this.logger.debug('Chat debug cleanup completed');
 
     // Refresh tree view after cleanup.
     this.onTreeRefresh?.();

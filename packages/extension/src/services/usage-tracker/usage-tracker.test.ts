@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { UsageRecordRepository, ModelRepository } from '../../repositories/index.js';
 import { UsageTracker, computeCost } from './usage-tracker.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 import { providers } from '../../db/index.js';
 import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
@@ -143,7 +144,7 @@ describe('UsageTracker', () => {
       .run();
     repo = new UsageRecordRepository(db);
     modelRepo = new ModelRepository(db);
-    tracker = new UsageTracker(repo, modelRepo);
+    tracker = new UsageTracker(repo, modelRepo, createMockLogger());
   });
 
   afterEach(() => {

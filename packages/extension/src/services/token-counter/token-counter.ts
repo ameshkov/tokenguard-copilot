@@ -118,6 +118,7 @@ export class TokenCounter {
     // Check cache first
     const cached = this.tokenCache.get(text);
     if (cached !== undefined) {
+      this.logger.trace('Token count cache hit', `count=${cached}`, `text_len=${text.length}`);
       return cached;
     }
 
@@ -126,6 +127,7 @@ export class TokenCounter {
     try {
       const count = tokenizer.encode(text).length;
       this.tokenCache.set(text, count);
+      this.logger.trace('Token count computed', `count=${count}`, `text_len=${text.length}`);
       return count;
     } catch {
       // Fallback: estimate tokens from character count

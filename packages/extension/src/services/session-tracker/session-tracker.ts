@@ -1,5 +1,6 @@
 import type { SessionMappingRepository } from '../../repositories/index.js';
 import { computeFingerprint, type FingerprintMessage } from '../../utils/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /** Input for resolving a session ID. */
 export interface ResolveSessionInput {
@@ -33,7 +34,10 @@ export interface ResolveSessionResult {
  * across all turns of a conversation.
  */
 export class SessionTracker {
-  constructor(private readonly mappingRepo: SessionMappingRepository) {}
+  constructor(
+    private readonly mappingRepo: SessionMappingRepository,
+    private readonly logger: Logger,
+  ) {}
 
   /**
    * Resolve a chat request to a session ID.
@@ -51,6 +55,11 @@ export class SessionTracker {
       const mapping = this.mappingRepo.findByContentFingerprint(fingerprint);
       if (mapping) {
         this.mappingRepo.bumpSession(mapping.sessionId, new Date().toISOString());
+        this.logger.trace(
+          'Session resolved: existing session',
+          `session_id=${mapping.sessionId.slice(0, 8)}...`,
+          `model=${input.modelName}`,
+        );
         return { sessionId: mapping.sessionId, isNew: false };
       }
 
@@ -63,10 +72,16 @@ export class SessionTracker {
         modelName: input.modelName,
         createdAt: new Date().toISOString(),
       });
+      this.logger.debug(
+        'Session resolved: new session with fingerprint',
+        `session_id=${sessionId.slice(0, 8)}...`,
+        `model=${input.modelName}`,
+      );
       return { sessionId, isNew: true };
     }
 
     // No fingerprint possible — create session without mapping
+    this.logger.trace('Session resolved: new session without fingerprint');
     return {
       sessionId: crypto.randomUUID(),
       isNew: true,
@@ -75,6 +90,7 @@ export class SessionTracker {
 
   /** Remove all session mappings. */
   clearMappings(): void {
+    this.logger.debug('Clearing all session mappings');
     this.mappingRepo.deleteAll();
   }
 }

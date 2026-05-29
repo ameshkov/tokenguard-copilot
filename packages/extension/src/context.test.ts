@@ -125,4 +125,34 @@ describe('ExtensionContext', () => {
     expect(ctx.logger).toBeDefined();
     expect(ctx.logger).toBe(deps.logger);
   });
+
+  it('dispose disposes modelRegistry', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    vi.spyOn(ctx.modelRegistry, 'disposeAll');
+
+    ctx.dispose();
+
+    expect(ctx.modelRegistry.disposeAll).toHaveBeenCalled();
+  });
+
+  it('dispose disposes providerManager', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    vi.spyOn(ctx.providerManager, 'dispose');
+
+    ctx.dispose();
+
+    expect(ctx.providerManager.dispose).toHaveBeenCalled();
+  });
+
+  it('dispose disposes usageTracker', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    vi.spyOn(ctx.usageTracker, 'dispose');
+
+    ctx.dispose();
+
+    expect(ctx.usageTracker.dispose).toHaveBeenCalled();
+  });
 });

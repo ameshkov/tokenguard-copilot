@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { SettingsRepository } from '../../repositories/index.js';
 import { ChatDebugSettingsService } from './chat-debug-settings.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -13,7 +14,7 @@ describe('ChatDebugSettingsService', () => {
   beforeEach(() => {
     ({ db, raw } = createTestDb());
     const repo = new SettingsRepository(db);
-    service = new ChatDebugSettingsService(repo);
+    service = new ChatDebugSettingsService(repo, createMockLogger());
   });
 
   afterEach(() => {
@@ -85,7 +86,7 @@ describe('ChatDebugSettingsService', () => {
       });
 
       const repo2 = new SettingsRepository(db);
-      const service2 = new ChatDebugSettingsService(repo2);
+      const service2 = new ChatDebugSettingsService(repo2, createMockLogger());
       const result = service2.getSettings();
 
       expect(result.enabled).toBe(true);

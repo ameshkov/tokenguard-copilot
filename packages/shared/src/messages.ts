@@ -65,6 +65,14 @@ export interface FetchedModel {
   maxOutputTokens: number | null;
   defaultReasoningEffort: string | null;
   vision: boolean | null;
+  /** Reasoning effort levels supported by the provider. */
+  supportedReasoningEfforts: string[] | null;
+  /** Cost per 1M input tokens from provider pricing, if available. */
+  inputCostPer1M: number | null;
+  /** Cost per 1M output tokens from provider pricing, if available. */
+  outputCostPer1M: number | null;
+  /** Cost per 1M cached input tokens from provider pricing, if available. */
+  cachedInputCostPer1M: number | null;
 }
 
 /** Model defaults data returned to the webview. */

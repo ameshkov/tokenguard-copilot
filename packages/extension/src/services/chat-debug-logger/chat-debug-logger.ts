@@ -366,6 +366,7 @@ export class ChatDebugLogger {
     try {
       const settings = this.settingsService.getSettings();
       if (!settings.enabled) {
+        this.logger.trace('Debug log skipped: debug logging disabled');
         return;
       }
 
@@ -400,6 +401,13 @@ export class ChatDebugLogger {
       // Atomic write: temp file + rename
       writeFileSync(tmpPath, content, 'utf-8');
       renameSync(tmpPath, filePath);
+
+      this.logger.debug(
+        'Debug log written',
+        `file=${fileName}`,
+        `session=${sessionId.slice(0, 8)}...`,
+        `model=${input.modelName}`,
+      );
 
       // Fire refresh callback after successful write.
       this.onLogWrite?.();

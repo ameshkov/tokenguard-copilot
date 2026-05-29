@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { SessionMappingRepository } from '../../repositories/index.js';
 import { SessionTracker } from './session-tracker.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -13,7 +14,7 @@ describe('SessionTracker', () => {
   beforeEach(() => {
     ({ db, raw } = createTestDb());
     const repo = new SessionMappingRepository(db);
-    tracker = new SessionTracker(repo);
+    tracker = new SessionTracker(repo, createMockLogger());
   });
 
   afterEach(() => {

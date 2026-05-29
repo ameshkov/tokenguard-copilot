@@ -17,6 +17,10 @@ describe('SelectModelPage', () => {
       maxOutputTokens: null,
       defaultReasoningEffort: null,
       vision: null,
+      supportedReasoningEfforts: null,
+      inputCostPer1M: null,
+      outputCostPer1M: null,
+      cachedInputCostPer1M: null,
     },
     {
       id: 'gpt-3.5-turbo',
@@ -25,6 +29,10 @@ describe('SelectModelPage', () => {
       maxOutputTokens: null,
       defaultReasoningEffort: null,
       vision: null,
+      supportedReasoningEfforts: null,
+      inputCostPer1M: null,
+      outputCostPer1M: null,
+      cachedInputCostPer1M: null,
     },
   ];
 

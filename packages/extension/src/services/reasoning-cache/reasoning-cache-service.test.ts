@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { ReasoningCacheRepository } from '../../repositories/index.js';
 import { ReasoningCacheService } from './reasoning-cache-service.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 import type { OpenAIMessage } from '../chat-handler/index.js';
 import type { ReasoningFields, FingerprintToolCall } from '../../utils/index.js';
 
@@ -36,7 +37,7 @@ describe('ReasoningCacheService', () => {
   beforeEach(() => {
     clearTestDb(raw);
     repo = new ReasoningCacheRepository(db);
-    svc = new ReasoningCacheService(repo);
+    svc = new ReasoningCacheService(repo, createMockLogger());
   });
 
   // --- Edge cases ---

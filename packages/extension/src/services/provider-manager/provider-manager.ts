@@ -199,6 +199,8 @@ export class ProviderManager {
       await this.secrets.store(`tokenguard-copilot.provider.${id}`, trimmedKey);
     }
 
+    this.logger.debug('Provider updated', `id=${id}`, `name=${trimmedName}`);
+
     this.emitter.fire();
 
     return toProviderInfo(updated);
@@ -220,6 +222,8 @@ export class ProviderManager {
 
     await this.secrets.delete(`tokenguard-copilot.provider.${id}`);
 
+    this.logger.debug('Provider removed', `id=${id}`);
+
     this.emitter.fire();
   }
 
@@ -228,9 +232,18 @@ export class ProviderManager {
    * SecretStorage.
    */
   async resetAll(): Promise<void> {
+    this.logger.info('Resetting all settings');
     await this.resetCallback();
     this.modelRegistry.disposeAll();
     this.emitter.fire();
+  }
+
+  /**
+   * Disposes the provider manager and releases the
+   * `onProvidersChanged` event emitter.
+   */
+  dispose(): void {
+    this.emitter.dispose();
   }
 }
 

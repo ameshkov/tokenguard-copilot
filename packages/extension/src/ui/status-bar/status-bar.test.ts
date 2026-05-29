@@ -16,7 +16,7 @@ vi.mock('vscode', () => {
     StatusBarAlignment: { Left: 1, Right: 2 },
     EventEmitter: vi.fn(function () {
       return {
-        event: vi.fn(),
+        event: vi.fn(() => ({ dispose: vi.fn() })),
         fire: vi.fn(),
       };
     }),
@@ -42,7 +42,7 @@ const mockVscode = vscode as unknown as {
 function makeProviderManager(providers: ProviderInfo[]) {
   return {
     getProviders: vi.fn(() => providers),
-    onProvidersChanged: vi.fn(),
+    onProvidersChanged: vi.fn(() => ({ dispose: vi.fn() })),
   };
 }
 
@@ -68,7 +68,7 @@ function makeUsageSource(
         ...r,
       })),
     ),
-    onStatsChanged: vi.fn(),
+    onStatsChanged: vi.fn(() => ({ dispose: vi.fn() })),
   };
 }
 
@@ -129,10 +129,15 @@ describe('createStatusBarItem', () => {
     expect(mockVscode._mockItem.show).toHaveBeenCalled();
   });
 
-  it('should return the status bar item', () => {
-    const item = createStatusBarItem(makeProviderManager([]));
+  it('should return a disposable that disposes the item and subscriptions', () => {
+    const result = createStatusBarItem(makeProviderManager([]));
 
-    expect(item).toBe(mockVscode._mockItem);
+    expect(result).toBeDefined();
+    expect(typeof result.dispose).toBe('function');
+
+    result.dispose();
+
+    expect(mockVscode._mockItem.dispose).toHaveBeenCalled();
   });
 
   it('should subscribe to onProvidersChanged', () => {
@@ -144,12 +149,13 @@ describe('createStatusBarItem', () => {
 
   it('should update tooltip when providers change', () => {
     const pm = makeProviderManager([]);
-    let listener: (() => void) | undefined;
+    let capturedListener: (() => void) | undefined;
 
     // Capture the listener passed to onProvidersChanged
     pm.onProvidersChanged = vi.fn((fn: () => void) => {
-      listener = fn;
-    });
+      capturedListener = fn;
+      return { dispose: vi.fn() };
+    }) as unknown as typeof pm.onProvidersChanged;
 
     createStatusBarItem(pm);
     expect(mockVscode._mockItem.tooltip).toContain('No providers configured');
@@ -158,7 +164,7 @@ describe('createStatusBarItem', () => {
     pm.getProviders = vi.fn(() => [
       { id: '1', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
     ]);
-    listener?.();
+    capturedListener?.();
     expect(mockVscode._mockItem.tooltip).toContain('1 provider configured: OpenAI');
   });
 

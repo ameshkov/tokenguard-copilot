@@ -1,4 +1,5 @@
 import type { SettingsRepository } from '../../repositories/index.js';
+import type { Logger } from '../../logger/index.js';
 
 /** Chat debug configuration values. */
 export interface ChatDebugSettings {
@@ -27,8 +28,12 @@ export class ChatDebugSettingsService {
    *
    * @param settingsRepo - Repository for key-value settings
    *   storage.
+   * @param logger - Logger for runtime diagnostics.
    */
-  constructor(private readonly settingsRepo: SettingsRepository) {}
+  constructor(
+    private readonly settingsRepo: SettingsRepository,
+    private readonly logger: Logger,
+  ) {}
 
   /**
    * Returns the current chat debug settings, falling back to
@@ -79,6 +84,12 @@ export class ChatDebugSettingsService {
       this.settingsRepo.set(SETTING_TTL_HOURS, String(partial.ttlHours));
     }
 
-    return this.getSettings();
+    const updated = this.getSettings();
+    this.logger.debug(
+      'Chat debug settings updated',
+      `enabled=${updated.enabled}`,
+      `ttl=${updated.ttlHours}h`,
+    );
+    return updated;
   }
 }

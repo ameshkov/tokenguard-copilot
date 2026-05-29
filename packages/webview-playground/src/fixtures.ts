@@ -106,6 +106,10 @@ export const sampleFetchedModels: FetchedModel[] = [
     maxOutputTokens: 16_384,
     defaultReasoningEffort: null,
     vision: true,
+    supportedReasoningEfforts: null,
+    inputCostPer1M: null,
+    outputCostPer1M: null,
+    cachedInputCostPer1M: null,
   },
   {
     id: 'gpt-4o-mini',
@@ -114,6 +118,10 @@ export const sampleFetchedModels: FetchedModel[] = [
     maxOutputTokens: 16_384,
     defaultReasoningEffort: null,
     vision: true,
+    supportedReasoningEfforts: null,
+    inputCostPer1M: null,
+    outputCostPer1M: null,
+    cachedInputCostPer1M: null,
   },
   {
     id: 'o3-mini',
@@ -122,6 +130,10 @@ export const sampleFetchedModels: FetchedModel[] = [
     maxOutputTokens: 100_000,
     defaultReasoningEffort: 'medium',
     vision: false,
+    supportedReasoningEfforts: ['none', 'low', 'medium', 'high'],
+    inputCostPer1M: null,
+    outputCostPer1M: null,
+    cachedInputCostPer1M: null,
   },
 ];
 

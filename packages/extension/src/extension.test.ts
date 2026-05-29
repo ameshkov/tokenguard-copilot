@@ -87,15 +87,24 @@ vi.mock('./logger/index.js', () => ({
 
 const mockExtensionContext = vi.hoisted(() =>
   vi.fn(function () {
+    const modelRegistry = {
+      registerAll: vi.fn(),
+      disposeAll: vi.fn(),
+    };
+    const providerManager = {
+      getProviders: vi.fn(),
+      onProvidersChanged: vi.fn(),
+      dispose: vi.fn(),
+    };
+    const usageTracker = {
+      getStats: vi.fn().mockReturnValue([]),
+      onStatsChanged: vi.fn(),
+      dispose: vi.fn(),
+    };
+
     return {
-      providerManager: {
-        getProviders: vi.fn(),
-        onProvidersChanged: vi.fn(),
-      },
-      modelRegistry: {
-        registerAll: vi.fn(),
-        disposeAll: vi.fn(),
-      },
+      providerManager,
+      modelRegistry,
       tokenCounter: {
         initialize: vi.fn().mockResolvedValue(undefined),
       },
@@ -116,10 +125,16 @@ const mockExtensionContext = vi.hoisted(() =>
       reasoningCacheCleanup: {
         startPeriodicCleanup: vi.fn(() => ({ dispose: vi.fn() })),
       },
-      usageTracker: {
-        getStats: vi.fn().mockReturnValue([]),
-        onStatsChanged: vi.fn(),
-      },
+      usageTracker,
+      dispose: vi.fn(function (this: {
+        modelRegistry: { disposeAll: () => void };
+        providerManager: { dispose: () => void };
+        usageTracker: { dispose: () => void };
+      }) {
+        this.modelRegistry.disposeAll();
+        this.providerManager.dispose();
+        this.usageTracker.dispose();
+      }),
     };
   }),
 );
@@ -295,12 +310,36 @@ describe('deactivate', () => {
     expect(mockClose).toHaveBeenCalled();
   });
 
-  it('should call modelRegistry.disposeAll on deactivation', async () => {
+  it('should call extCtx.dispose on deactivation', async () => {
+    await activate(context);
+    const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
+    deactivate();
+
+    expect(ctxInstance.dispose).toHaveBeenCalled();
+  });
+
+  it('should dispose modelRegistry through extCtx', async () => {
     await activate(context);
     const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
     deactivate();
 
     expect(ctxInstance.modelRegistry.disposeAll).toHaveBeenCalled();
+  });
+
+  it('should dispose providerManager through extCtx', async () => {
+    await activate(context);
+    const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
+    deactivate();
+
+    expect(ctxInstance.providerManager.dispose).toHaveBeenCalled();
+  });
+
+  it('should dispose usageTracker through extCtx', async () => {
+    await activate(context);
+    const ctxInstance = vi.mocked(ExtensionContext).mock.results[0].value;
+    deactivate();
+
+    expect(ctxInstance.usageTracker.dispose).toHaveBeenCalled();
   });
 
   it('should not throw if close fails', async () => {

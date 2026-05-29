@@ -73,6 +73,12 @@ export class ModelRegistry {
     const apiKey = await this.secrets.get(`tokenguard-copilot.provider.${providerId}`);
 
     const modelsUrl = provider.baseUrl.replace(/\/+$/, '') + '/models';
+    this.logger.debug(
+      'Fetching models from provider',
+      `provider=${provider.name}`,
+      `url=${modelsUrl}`,
+    );
+
     const response = await fetch(modelsUrl, {
       headers: {
         Authorization: `Bearer ${apiKey ?? ''}`,
@@ -80,6 +86,11 @@ export class ModelRegistry {
     });
 
     if (!response.ok) {
+      this.logger.warn(
+        'Failed to fetch models',
+        `provider=${provider.name}`,
+        `status=${response.status}`,
+      );
       throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
     }
 
@@ -91,9 +102,19 @@ export class ModelRegistry {
     // Get already-added model IDs to exclude
     const existing = new Set(this.modelRepo.findActive(providerId).map((m) => m.id));
 
-    return data
+    const fetched = data
       .filter((entry) => typeof entry.id === 'string' && !existing.has(entry.id))
       .map((entry) => parseFetchedModel(entry));
+
+    this.logger.debug(
+      'Models fetched',
+      `provider=${provider.name}`,
+      `total=${data.length}`,
+      `new=${fetched.length}`,
+      `existing=${existing.size}`,
+    );
+
+    return fetched;
   }
 
   /**
@@ -146,6 +167,13 @@ export class ModelRegistry {
       updatedAt: now,
     });
 
+    this.logger.debug(
+      'Model added',
+      `model=${row.id}`,
+      `provider_id=${row.providerId}`,
+      `display_name=${row.displayName ?? row.id}`,
+    );
+
     this.refreshRegistration();
     this.emitter.fire();
     return toModelInfo(row);
@@ -193,6 +221,8 @@ export class ModelRegistry {
     if (!updated) {
       throw new Error('Model not found');
     }
+
+    this.logger.debug('Model updated', `model=${modelId}`, `provider_id=${providerId}`);
 
     this.refreshRegistration();
     this.emitter.fire();
@@ -248,6 +278,8 @@ export class ModelRegistry {
       throw new Error('Model not found');
     }
 
+    this.logger.debug('Model removed', `model=${modelId}`, `provider_id=${providerId}`);
+
     this.refreshRegistration();
     this.emitter.fire();
   }
@@ -264,6 +296,12 @@ export class ModelRegistry {
     for (const model of activeModels) {
       this.modelRepo.softRemove(model.id, model.providerId);
     }
+
+    this.logger.debug(
+      'All models removed for provider',
+      `provider_id=${providerId}`,
+      `count=${activeModels.length}`,
+    );
 
     this.refreshRegistration();
     this.emitter.fire();
@@ -374,6 +412,7 @@ export class ModelRegistry {
       this.registration = null;
     }
     this.chatInfoEmitter.dispose();
+    this.emitter.dispose();
   }
 }
 
@@ -442,8 +481,18 @@ function toModelInfo(row: Model): ModelInfo {
 }
 
 /**
- * Parses a raw model object from the `/models` response into
+ * Parses a raw model object from a provider's `/models` endpoint into
  * a FetchedModel.
+ *
+ * Extraction rules:
+ * - vision is read from `capabilities.supports.vision` (nested path only).
+ * - maxOutputTokens tries `limits.max_output_tokens` first, then falls
+ *   back to `max_context_window_tokens - max_prompt_tokens` (assuming
+ *   max_prompt_tokens is the max *input* token limit).
+ * - supportedReasoningEfforts is read from the top-level array.
+ * - Pricing (inputCostPer1M, outputCostPer1M, cachedInputCostPer1M)
+ *   is read from the top-level `pricing` object. Values are treated
+ *   as per-1M-tokens.
  *
  * @param entry - Raw model object from the API response.
  * @returns Parsed FetchedModel.
@@ -451,8 +500,47 @@ function toModelInfo(row: Model): ModelInfo {
 function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
   const capabilities = entry.capabilities as Record<string, unknown> | undefined;
   const limits = capabilities?.limits as Record<string, unknown> | undefined;
+  const supports = capabilities?.supports as Record<string, unknown> | undefined;
+  const pricing = entry.pricing as Record<string, unknown> | undefined;
 
   const defaultEffort = entry.defaultReasoningEffort;
+
+  // maxOutputTokens: try max_output_tokens first, then calculate
+  let maxOutputTokens: number | null = null;
+  if (typeof limits?.max_output_tokens === 'number') {
+    maxOutputTokens = limits.max_output_tokens;
+  } else if (
+    typeof limits?.max_context_window_tokens === 'number' &&
+    typeof limits?.max_prompt_tokens === 'number'
+  ) {
+    maxOutputTokens = limits.max_context_window_tokens - limits.max_prompt_tokens;
+  }
+
+  // supportedReasoningEfforts: validate as array of strings
+  let supportedReasoningEfforts: string[] | null = null;
+  const rawEfforts = entry.supportedReasoningEfforts;
+  if (Array.isArray(rawEfforts)) {
+    const strings = rawEfforts.filter((e): e is string => typeof e === 'string');
+    if (strings.length > 0) {
+      supportedReasoningEfforts = strings;
+    }
+  }
+
+  // Pricing: extract from pricing object (values per 1M tokens)
+  let inputCostPer1M: number | null = null;
+  let outputCostPer1M: number | null = null;
+  let cachedInputCostPer1M: number | null = null;
+  if (pricing) {
+    if (typeof pricing.prompt === 'number') {
+      inputCostPer1M = pricing.prompt;
+    }
+    if (typeof pricing.completion === 'number') {
+      outputCostPer1M = pricing.completion;
+    }
+    if (typeof pricing.input_cache_read === 'number') {
+      cachedInputCostPer1M = pricing.input_cache_read;
+    }
+  }
 
   return {
     id: entry.id as string,
@@ -461,9 +549,12 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
       typeof limits?.max_context_window_tokens === 'number'
         ? limits.max_context_window_tokens
         : null,
-    maxOutputTokens:
-      typeof limits?.max_output_tokens === 'number' ? limits.max_output_tokens : null,
+    maxOutputTokens,
     defaultReasoningEffort: typeof defaultEffort === 'string' ? defaultEffort : null,
-    vision: typeof entry.vision === 'boolean' ? entry.vision : null,
+    vision: typeof supports?.vision === 'boolean' ? supports.vision : null,
+    supportedReasoningEfforts,
+    inputCostPer1M,
+    outputCostPer1M,
+    cachedInputCostPer1M,
   };
 }
