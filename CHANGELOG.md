@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Changed
+
+- Streaming chat handler now reports `LanguageModelThinkingPart` before
+  `LanguageModelTextPart` within each SSE chunk, consistent with the
+  non-streaming path.
+- Chat Debug log metadata now includes workspace folder paths
+  (`workspaces` field), supporting both single-root and multi-root
+  workspaces.
+- Chat Debug logs now include tool parameter schemas (`parameters`) in the
+  collapsible tool definitions section, not just `name` and `description`.
+
 ## [v1.1.0] - 2026-05-29
 
 ### Changed

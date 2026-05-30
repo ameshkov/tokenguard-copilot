@@ -39,6 +39,8 @@ export interface LogRequestInput {
   error: string | undefined;
   /** Workspace folder URI for computing workspace ID. */
   workspaceFolderUri: string;
+  /** Workspace folder paths (for multi-root workspaces). */
+  workspaceFolders: string[];
   /** Token usage from the API response, or null if unavailable. */
   usage?: ChatUsage | null;
 }
@@ -203,6 +205,7 @@ export class ChatDebugLogger {
     }
     metaLines.push(`toolCount     : ${toolCount}`);
     metaLines.push(`messageCount  : ${messageCount}`);
+    metaLines.push(`workspaces    : ${input.workspaceFolders.join(', ') || '(none)'}`);
     metaLines.push(`modelOptions  : ${JSON.stringify(safeOptions)}`);
 
     sections.push(metaLines.join('\n'));
@@ -213,6 +216,7 @@ export class ChatDebugLogger {
       const toolJson = input.tools.map((t) => ({
         name: t.function.name,
         description: t.function.description ?? '',
+        parameters: t.function.parameters ?? {},
       }));
       sections.push('<details>');
       sections.push(`<summary>tools (${toolCount}): ${toolNames}</summary>`);

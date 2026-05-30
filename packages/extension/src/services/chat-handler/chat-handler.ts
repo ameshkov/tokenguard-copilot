@@ -174,6 +174,12 @@ export interface ChatContext {
   workspaceFolderUri?: string;
 
   /**
+   * Workspace folder paths for display in debug log
+   * metadata (supports multi-root workspaces).
+   */
+  workspaceFolders?: string[];
+
+  /**
    * Cache control configuration for injecting
    * `cache_control` markers into content blocks.
    * When enabled, markers are placed on the farthest
@@ -830,12 +836,7 @@ export class ChatHandler {
             `content_len=${(choice?.delta?.content ?? '').length}`,
           );
 
-          const content = choice.delta?.content;
-          if (content) {
-            progress.report(new vscode.LanguageModelTextPart(content));
-          }
-
-          // Surface reasoning content as thinking parts
+          // Surface reasoning content as thinking parts (before main content)
           const reasoning = extractReasoning(choice.delta ?? {});
           if (reasoning) {
             progress.report(
@@ -843,6 +844,11 @@ export class ChatHandler {
                 reasoning,
               ) as unknown as vscode.LanguageModelResponsePart,
             );
+          }
+
+          const content = choice.delta?.content;
+          if (content) {
+            progress.report(new vscode.LanguageModelTextPart(content));
           }
 
           // Accumulate reasoning fields from deltas
@@ -1082,6 +1088,7 @@ export class ChatHandler {
             error,
             usage: usageCollector?.usage ?? null,
             workspaceFolderUri: this.ctx.workspaceFolderUri,
+            workspaceFolders: this.ctx.workspaceFolders ?? [],
           });
         } catch (logError: unknown) {
           // Fire-and-forget: logging errors must not

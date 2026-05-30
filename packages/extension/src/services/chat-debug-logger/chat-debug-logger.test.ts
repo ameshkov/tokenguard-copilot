@@ -23,6 +23,7 @@ const baseInput: LogRequestInput = {
   cancelled: false,
   error: undefined,
   workspaceFolderUri: 'file:///home/user/project',
+  workspaceFolders: ['/home/user/project'],
 };
 
 describe('ChatDebugLogger', () => {

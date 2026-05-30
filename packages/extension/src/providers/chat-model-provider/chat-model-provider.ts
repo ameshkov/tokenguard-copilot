@@ -140,6 +140,7 @@ export class ChatModelProvider {
           toolMode,
           chatDebugLogger: deps.chatDebugLogger,
           workspaceFolderUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
+          workspaceFolders: vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [],
           cacheControl,
           logger: deps.logger,
         };

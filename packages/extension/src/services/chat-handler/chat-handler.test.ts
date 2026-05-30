@@ -2234,6 +2234,7 @@ describe('ChatHandler', () => {
           model: mockModel({ streaming: 0 }),
           chatDebugLogger: logger,
           workspaceFolderUri: 'file:///workspace',
+          workspaceFolders: ['/workspace'],
         },
         noopReasoningCacheService(),
       );
@@ -2256,6 +2257,7 @@ describe('ChatHandler', () => {
       expect(input.cancelled).toBe(false);
       expect(input.error).toBeUndefined();
       expect(input.workspaceFolderUri).toBe('file:///workspace');
+      expect(input.workspaceFolders).toEqual(['/workspace']);
     });
 
     it('calls chatDebugLogger.logRequest after successful streaming response', async () => {
@@ -2266,6 +2268,7 @@ describe('ChatHandler', () => {
           model: mockModel({ streaming: 1 }),
           chatDebugLogger: logger,
           workspaceFolderUri: 'file:///workspace',
+          workspaceFolders: ['/workspace'],
         },
         noopReasoningCacheService(),
       );
@@ -2298,6 +2301,7 @@ describe('ChatHandler', () => {
           ...baseContext,
           chatDebugLogger: logger,
           workspaceFolderUri: 'file:///workspace',
+          workspaceFolders: ['/workspace'],
         },
         noopReasoningCacheService(),
       );
@@ -2322,6 +2326,7 @@ describe('ChatHandler', () => {
           ...baseContext,
           chatDebugLogger: logger,
           workspaceFolderUri: 'file:///workspace',
+          workspaceFolders: ['/workspace'],
         },
         noopReasoningCacheService(),
       );
@@ -2367,6 +2372,7 @@ describe('ChatHandler', () => {
           model: mockModel({ streaming: 0 }),
           chatDebugLogger: logger,
           workspaceFolderUri: 'file:///workspace',
+          workspaceFolders: ['/workspace'],
         },
         noopReasoningCacheService(),
       );
