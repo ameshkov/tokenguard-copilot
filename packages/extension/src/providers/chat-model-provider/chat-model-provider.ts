@@ -157,19 +157,35 @@ export class ChatModelProvider {
         try {
           await handler.handle(messages, progress, token, usageCollector);
         } catch (e) {
-          deps.usageTracker.recordError(entry.model.providerId, entry.model.id);
+          try {
+            deps.usageTracker.recordError(entry.model.providerId, entry.model.id);
+          } catch (dbError) {
+            deps.logger.warn(
+              'Failed to record usage error',
+              `model=${entry.model.id}`,
+              `error=${String(dbError)}`,
+            );
+          }
           throw e;
         }
 
         // Record successful usage.
         const usage = usageCollector.usage;
-        deps.usageTracker.recordUsage(entry.model.providerId, entry.model.id, {
-          promptTokens: usage?.promptTokens ?? 0,
-          completionTokens: usage?.completionTokens ?? 0,
-          cachedTokens: usage?.cachedTokens ?? 0,
-          reasoningTokens: usage?.reasoningTokens ?? 0,
-          success: true,
-        });
+        try {
+          deps.usageTracker.recordUsage(entry.model.providerId, entry.model.id, {
+            promptTokens: usage?.promptTokens ?? 0,
+            completionTokens: usage?.completionTokens ?? 0,
+            cachedTokens: usage?.cachedTokens ?? 0,
+            reasoningTokens: usage?.reasoningTokens ?? 0,
+            success: true,
+          });
+        } catch (dbError) {
+          deps.logger.warn(
+            'Failed to record usage',
+            `model=${entry.model.id}`,
+            `error=${String(dbError)}`,
+          );
+        }
       },
       provideTokenCount: async (_model, text) => {
         if (typeof text === 'string') {

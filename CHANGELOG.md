@@ -27,6 +27,10 @@ and this project adheres to
   characters to prevent large gateway HTML pages from polluting the
   error display. The full response body is still logged to the output
   channel for debugging.
+- Fixed "database is locked" error by setting `PRAGMA busy_timeout`
+  (5-second wait) on the SQLite connection, and wrapping usage
+  recording and reasoning cache writes in try-catch so that
+  transient DB lock contention does not crash chat responses.
 
 ## [v1.1.0] - 2026-05-29
 

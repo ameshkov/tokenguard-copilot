@@ -1061,21 +1061,29 @@ export class ChatHandler {
       );
 
       // Cache reasoning after successful response
-      this.reasoningCacheService.cacheReasoning(
-        translated,
-        reasoningCollector.fields,
-        {
-          content: responseContent,
-          toolCalls: responseToolCalls.map((tc) => ({
-            id: tc.id,
-            function: {
-              name: tc.name,
-              arguments: tc.arguments,
-            },
-          })),
-        },
-        this.ctx.model.preserveReasoning === 1,
-      );
+      try {
+        this.reasoningCacheService.cacheReasoning(
+          translated,
+          reasoningCollector.fields,
+          {
+            content: responseContent,
+            toolCalls: responseToolCalls.map((tc) => ({
+              id: tc.id,
+              function: {
+                name: tc.name,
+                arguments: tc.arguments,
+              },
+            })),
+          },
+          this.ctx.model.preserveReasoning === 1,
+        );
+      } catch (cacheError) {
+        this.ctx.logger?.warn(
+          'Failed to cache reasoning',
+          `model=${this.ctx.model.id}`,
+          `error=${String(cacheError)}`,
+        );
+      }
     } catch (e) {
       if (token.isCancellationRequested || (e instanceof Error && e.name === 'AbortError')) {
         cancelled = true;

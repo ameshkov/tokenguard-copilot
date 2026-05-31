@@ -52,6 +52,7 @@ export async function activate(
     rawDb = new DatabaseSync(dbPath);
     rawDb.exec('PRAGMA journal_mode = WAL');
     rawDb.exec('PRAGMA foreign_keys = ON');
+    rawDb.exec('PRAGMA busy_timeout = 5000');
 
     const db = createDb(rawDb);
     const migrationsFolder = path.join(__dirname, 'db', 'migrations');
