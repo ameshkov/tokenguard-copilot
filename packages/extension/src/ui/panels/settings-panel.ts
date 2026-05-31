@@ -21,8 +21,16 @@ import type {
   GetUsageStatsResponse,
   ResetUsageStatsResponse,
   UsageStatsSummary,
+  GetContentRulesResponse,
+  GetContentRuleResponse,
+  AddContentRuleResponse,
+  UpdateContentRuleResponse,
+  DeleteContentRuleResponse,
+  ReorderContentRulesResponse,
+  ContentRuleInfo,
 } from '@tokenguard/shared';
-import type { UsageRecord } from '../../db/index.js';
+import type { UsageRecord, ContentRule } from '../../db/index.js';
+import { safeParseJsonArray } from '../../utils/index.js';
 
 /**
  * Manages the settings webview panel.
@@ -319,6 +327,242 @@ export class SettingsPanel {
             }
             break;
           }
+          case 'getContentRules': {
+            const rules = appCtx.contentRules.getAll();
+            await this.panel.webview.postMessage({
+              type: 'getContentRulesResult',
+              requestId: message.requestId,
+              rules: rules.map((r) => SettingsPanel.toContentRuleInfo(r)),
+            } satisfies GetContentRulesResponse);
+            break;
+          }
+          case 'getContentRule': {
+            const rule = appCtx.contentRules.getById(message.id);
+            await this.panel.webview.postMessage({
+              type: 'getContentRuleResult',
+              requestId: message.requestId,
+              rule: rule ? SettingsPanel.toContentRuleInfo(rule) : null,
+            } satisfies GetContentRuleResponse);
+            break;
+          }
+          case 'addContentRule': {
+            try {
+              const validationError = SettingsPanel.validateContentRuleParams(
+                message.params,
+                (name, excludeId) => appCtx.contentRules.validateName(name, excludeId),
+              );
+              if (validationError) {
+                await this.panel.webview.postMessage({
+                  type: 'addContentRuleResult',
+                  requestId: message.requestId,
+                  success: false,
+                  error: validationError,
+                } satisfies AddContentRuleResponse);
+                break;
+              }
+              const rule = appCtx.contentRules.create({
+                ...message.params,
+                enabled: message.params.enabled ? 1 : 0,
+              });
+              await this.panel.webview.postMessage({
+                type: 'addContentRuleResult',
+                requestId: message.requestId,
+                success: true,
+                rule: SettingsPanel.toContentRuleInfo(rule),
+              } satisfies AddContentRuleResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'addContentRuleResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies AddContentRuleResponse);
+            }
+            break;
+          }
+          case 'updateContentRule': {
+            try {
+              // Validate name uniqueness if name is being changed
+              if (message.params.name !== undefined) {
+                const name = message.params.name.trim();
+                if (name.length === 0) {
+                  await this.panel.webview.postMessage({
+                    type: 'updateContentRuleResult',
+                    requestId: message.requestId,
+                    success: false,
+                    error: 'Name is required.',
+                  } satisfies UpdateContentRuleResponse);
+                  break;
+                }
+                if (appCtx.contentRules.validateName(name, message.id)) {
+                  await this.panel.webview.postMessage({
+                    type: 'updateContentRuleResult',
+                    requestId: message.requestId,
+                    success: false,
+                    error: `A content rule with the name "${name}" already exists.`,
+                  } satisfies UpdateContentRuleResponse);
+                  break;
+                }
+              }
+              // Validate regex pattern if changed
+              if (message.params.regexPattern !== undefined) {
+                try {
+                  new RegExp(message.params.regexPattern);
+                } catch {
+                  await this.panel.webview.postMessage({
+                    type: 'updateContentRuleResult',
+                    requestId: message.requestId,
+                    success: false,
+                    error: 'Invalid regex pattern.',
+                  } satisfies UpdateContentRuleResponse);
+                  break;
+                }
+              }
+              // Validate regex flags if changed
+              if (message.params.regexFlags !== undefined) {
+                if (!/^[gims]*$/.test(message.params.regexFlags)) {
+                  await this.panel.webview.postMessage({
+                    type: 'updateContentRuleResult',
+                    requestId: message.requestId,
+                    success: false,
+                    error: 'Invalid regex flags. Only g, i, m, s are allowed.',
+                  } satisfies UpdateContentRuleResponse);
+                  break;
+                }
+              }
+              // Validate match role if changed
+              if (
+                message.params.matchRole !== undefined &&
+                !['system', 'user', 'all'].includes(message.params.matchRole)
+              ) {
+                await this.panel.webview.postMessage({
+                  type: 'updateContentRuleResult',
+                  requestId: message.requestId,
+                  success: false,
+                  error: 'Match role must be "system", "user", or "all".',
+                } satisfies UpdateContentRuleResponse);
+                break;
+              }
+              // Validate match message number if changed
+              if (
+                message.params.matchMessageNumber !== undefined &&
+                message.params.matchMessageNumber !== null
+              ) {
+                if (
+                  typeof message.params.matchMessageNumber !== 'number' ||
+                  !Number.isInteger(message.params.matchMessageNumber) ||
+                  message.params.matchMessageNumber < 0
+                ) {
+                  await this.panel.webview.postMessage({
+                    type: 'updateContentRuleResult',
+                    requestId: message.requestId,
+                    success: false,
+                    error: 'Match message number must be a non-negative integer.',
+                  } satisfies UpdateContentRuleResponse);
+                  break;
+                }
+              }
+              // Validate match content pattern if changed
+              if (
+                message.params.matchContentPattern !== undefined &&
+                message.params.matchContentPattern !== null &&
+                message.params.matchContentPattern.length > 0
+              ) {
+                try {
+                  const flags = message.params.regexFlags ?? '';
+                  new RegExp(message.params.matchContentPattern, flags);
+                } catch {
+                  await this.panel.webview.postMessage({
+                    type: 'updateContentRuleResult',
+                    requestId: message.requestId,
+                    success: false,
+                    error: 'Invalid match content pattern.',
+                  } satisfies UpdateContentRuleResponse);
+                  break;
+                }
+              }
+
+              const changes: Record<string, unknown> = { ...message.params };
+              if (message.params.enabled !== undefined) {
+                changes.enabled = message.params.enabled ? 1 : 0;
+              }
+              const rule = appCtx.contentRules.update(message.id, changes);
+              if (!rule) {
+                await this.panel.webview.postMessage({
+                  type: 'updateContentRuleResult',
+                  requestId: message.requestId,
+                  success: false,
+                  error: 'Content rule not found.',
+                } satisfies UpdateContentRuleResponse);
+                break;
+              }
+              await this.panel.webview.postMessage({
+                type: 'updateContentRuleResult',
+                requestId: message.requestId,
+                success: true,
+                rule: SettingsPanel.toContentRuleInfo(rule),
+              } satisfies UpdateContentRuleResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'updateContentRuleResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies UpdateContentRuleResponse);
+            }
+            break;
+          }
+          case 'deleteContentRule': {
+            try {
+              const deleted = appCtx.contentRules.delete(message.id);
+              if (!deleted) {
+                await this.panel.webview.postMessage({
+                  type: 'deleteContentRuleResult',
+                  requestId: message.requestId,
+                  success: false,
+                  error: 'Content rule not found.',
+                } satisfies DeleteContentRuleResponse);
+                break;
+              }
+              await this.panel.webview.postMessage({
+                type: 'deleteContentRuleResult',
+                requestId: message.requestId,
+                success: true,
+              } satisfies DeleteContentRuleResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'deleteContentRuleResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies DeleteContentRuleResponse);
+            }
+            break;
+          }
+          case 'reorderContentRules': {
+            try {
+              appCtx.contentRules.reorder(message.orderedIds);
+              const rules = appCtx.contentRules.getAll();
+              await this.panel.webview.postMessage({
+                type: 'reorderContentRulesResult',
+                requestId: message.requestId,
+                success: true,
+                rules: rules.map((r) => SettingsPanel.toContentRuleInfo(r)),
+              } satisfies ReorderContentRulesResponse);
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error ? error.message : String(error);
+              await this.panel.webview.postMessage({
+                type: 'reorderContentRulesResult',
+                requestId: message.requestId,
+                success: false,
+                error: errorMsg,
+              } satisfies ReorderContentRulesResponse);
+            }
+            break;
+          }
           case 'getUsageStats': {
             const filter = {
               providerId: message.providerIds?.length === 1 ? message.providerIds[0] : undefined,
@@ -447,6 +691,93 @@ export class SettingsPanel {
       d.dispose();
     }
     this.disposables.length = 0;
+  }
+
+  /**
+   * Validates content rule parameters.
+   *
+   * @param params - The rule parameters to validate.
+   * @param existingName - Function to check if a name already
+   *   exists (receives name and optional exclude ID).
+   * @param excludeId - Optional rule ID to exclude from name
+   *   uniqueness check (for updates).
+   * @returns An error message string, or null if valid.
+   */
+  private static validateContentRuleParams(
+    params: {
+      name: string;
+      regexPattern: string;
+      regexFlags: string;
+      matchRole?: string;
+      matchMessageNumber?: number | null;
+      matchContentPattern?: string | null;
+    },
+    existingName: (name: string, excludeId?: string) => boolean,
+    excludeId?: string,
+  ): string | null {
+    if (!params.name || params.name.trim().length === 0) {
+      return 'Name is required.';
+    }
+    if (existingName(params.name.trim(), excludeId)) {
+      return `A content rule with the name "${params.name.trim()}" already exists.`;
+    }
+    try {
+      new RegExp(params.regexPattern);
+    } catch {
+      return 'Invalid regex pattern.';
+    }
+    if (!/^[gims]*$/.test(params.regexFlags)) {
+      return 'Invalid regex flags. Only g, i, m, s are allowed.';
+    }
+    if (params.matchRole != null && !['system', 'user', 'all'].includes(params.matchRole)) {
+      return 'Match role must be "system", "user", or "all".';
+    }
+    if (params.matchMessageNumber != null) {
+      if (
+        typeof params.matchMessageNumber !== 'number' ||
+        !Number.isInteger(params.matchMessageNumber) ||
+        params.matchMessageNumber < 0
+      ) {
+        return 'Match message number must be a non-negative integer.';
+      }
+    }
+    if (params.matchContentPattern != null && params.matchContentPattern.length > 0) {
+      try {
+        new RegExp(params.matchContentPattern, params.regexFlags);
+      } catch {
+        return 'Invalid match content pattern.';
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Converts a DB content rule row to the webview-friendly
+   * {@link ContentRuleInfo} shape.
+   *
+   * @param rule - The DB content rule row.
+   * @returns The content rule info for the webview.
+   */
+  private static toContentRuleInfo(rule: ContentRule): ContentRuleInfo {
+    return {
+      id: rule.id,
+      name: rule.name,
+      enabled: rule.enabled === 1,
+      matchRole: (rule.matchRole as 'system' | 'user' | 'all' | undefined) ?? 'all',
+      matchMessageNumber: rule.matchMessageNumber,
+      matchModelPattern: rule.matchModelPattern,
+      matchContentPattern: rule.matchContentPattern,
+      matchToolPresent:
+        rule.matchToolPresent === null ? null : safeParseJsonArray(rule.matchToolPresent),
+      matchToolAbsent:
+        rule.matchToolAbsent === null ? null : safeParseJsonArray(rule.matchToolAbsent),
+      regexPattern: rule.regexPattern,
+      regexFlags: rule.regexFlags,
+      substitution: rule.substitution,
+      sortOrder: rule.sortOrder,
+      createdAt: rule.createdAt,
+      updatedAt: rule.updatedAt,
+    };
   }
 
   /**

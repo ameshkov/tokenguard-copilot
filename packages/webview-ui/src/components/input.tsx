@@ -14,6 +14,8 @@ export interface InputProps {
   placeholder?: string;
   /** Step for number inputs. */
   step?: string;
+  /** Whether the input is in an invalid state (shows error styling). */
+  invalid?: boolean;
   /** Element ID for label association. */
   id?: string;
   /** Accessible label for the input. */

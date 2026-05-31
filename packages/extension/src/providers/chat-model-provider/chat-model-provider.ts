@@ -11,6 +11,7 @@ import type { ChatDebugLogger } from '../../services/chat-debug-logger/index.js'
 import type { TokenCounter } from '../../services/token-counter/index.js';
 import type { ReasoningCacheService } from '../../services/reasoning-cache/index.js';
 import type { UsageTracker } from '../../services/usage-tracker/index.js';
+import type { ContentRulesService } from '../../services/content-rules/index.js';
 import type { Logger } from '../../logger/index.js';
 
 /**
@@ -49,6 +50,8 @@ export interface ChatModelProviderDeps {
   reasoningCacheService: ReasoningCacheService;
   /** Usage tracker for recording request metrics. */
   usageTracker: UsageTracker;
+  /** Content rules service for message transformations. */
+  contentRulesService: ContentRulesService;
   /** Logger for runtime diagnostics. */
   logger: Logger;
 }
@@ -142,6 +145,7 @@ export class ChatModelProvider {
           workspaceFolderUri: vscode.workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
           workspaceFolders: vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [],
           cacheControl,
+          contentRules: deps.contentRulesService,
           logger: deps.logger,
         };
 

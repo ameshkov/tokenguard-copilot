@@ -4,15 +4,24 @@ import type { ChatDebugLogger } from '../../services/chat-debug-logger/index.js'
 import type { TokenCounter } from '../../services/token-counter/index.js';
 import type { ReasoningCacheService } from '../../services/reasoning-cache/index.js';
 import type { UsageTracker } from '../../services/usage-tracker/index.js';
+import type { ContentRulesService } from '../../services/content-rules/index.js';
 import type { ChatModelProviderDeps, ModelMapEntry } from './chat-model-provider.js';
 import { createMockLogger } from '../../test/mock-logger.js';
+import type {
+  CancellationToken,
+  EventEmitter,
+  LanguageModelChatInformation,
+  LanguageModelChatProvider,
+  LanguageModelChatRequestMessage,
+  PrepareLanguageModelChatModelOptions,
+  Progress,
+  ProvideLanguageModelChatResponseOptions,
+  SecretStorage,
+} from 'vscode';
 
 const mockRegister = vi.hoisted(() =>
   vi.fn<
-    (
-      vendor: string,
-      provider: import('vscode').LanguageModelChatProvider,
-    ) => { dispose: ReturnType<typeof vi.fn> }
+    (vendor: string, provider: LanguageModelChatProvider) => { dispose: ReturnType<typeof vi.fn> }
   >(() => ({
     dispose: vi.fn(),
   })),
@@ -116,11 +125,10 @@ describe('ChatModelProvider', () => {
           imageInput: false,
         },
       },
-    ] as unknown as import('vscode').LanguageModelChatInformation[];
+    ] as unknown as LanguageModelChatInformation[];
 
     const vscodeModule = await import('vscode');
-    const chatInfoEmitter =
-      new vscodeModule.EventEmitter() as unknown as import('vscode').EventEmitter<void>;
+    const chatInfoEmitter = new vscodeModule.EventEmitter() as unknown as EventEmitter<void>;
 
     deps = {
       modelMap,
@@ -131,7 +139,7 @@ describe('ChatModelProvider', () => {
         store: vi.fn(),
         delete: vi.fn(),
         onDidChange: vi.fn(),
-      } as unknown as import('vscode').SecretStorage,
+      } as unknown as SecretStorage,
       chatDebugLogger: {
         logRequest: vi.fn(),
       } as unknown as ChatDebugLogger,
@@ -147,6 +155,12 @@ describe('ChatModelProvider', () => {
         recordUsage: vi.fn(),
         recordError: vi.fn(),
       } as unknown as UsageTracker,
+      contentRulesService: {
+        applyRules: vi.fn().mockReturnValue({
+          messages: [],
+          ruleResults: [],
+        }),
+      } as unknown as ContentRulesService,
       logger: createMockLogger(),
     };
   });
@@ -177,8 +191,8 @@ describe('ChatModelProvider', () => {
 
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const infos = registeredProvider.provideLanguageModelChatInformation(
-      {} as import('vscode').PrepareLanguageModelChatModelOptions,
-      null as unknown as import('vscode').CancellationToken,
+      {} as PrepareLanguageModelChatModelOptions,
+      null as unknown as CancellationToken,
     );
     expect(infos).toEqual(deps.chatInfos);
   });
@@ -189,19 +203,19 @@ describe('ChatModelProvider', () => {
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const modelInfo = {
       id: 'tokenguard-copilot.TestProvider.gpt-4o',
-    } as import('vscode').LanguageModelChatInformation;
-    const messages: import('vscode').LanguageModelChatRequestMessage[] = [];
+    } as LanguageModelChatInformation;
+    const messages: LanguageModelChatRequestMessage[] = [];
     const options = {
       tools: [],
       toolMode: 1,
-    } as unknown as import('vscode').ProvideLanguageModelChatResponseOptions;
+    } as unknown as ProvideLanguageModelChatResponseOptions;
     const progress = {
       report: vi.fn(),
-    } as unknown as import('vscode').Progress<unknown>;
+    } as unknown as Progress<unknown>;
     const token = {
       isCancellationRequested: false,
       onCancellationRequested: vi.fn(),
-    } as unknown as import('vscode').CancellationToken;
+    } as unknown as CancellationToken;
 
     await registeredProvider.provideLanguageModelChatResponse(
       modelInfo,
@@ -220,7 +234,7 @@ describe('ChatModelProvider', () => {
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const modelInfo = {
       id: 'tokenguard-copilot.Unknown.model',
-    } as import('vscode').LanguageModelChatInformation;
+    } as LanguageModelChatInformation;
 
     await expect(
       registeredProvider.provideLanguageModelChatResponse(
@@ -229,12 +243,12 @@ describe('ChatModelProvider', () => {
         {
           tools: [],
           toolMode: 1,
-        } as unknown as import('vscode').ProvideLanguageModelChatResponseOptions,
-        { report: vi.fn() } as unknown as import('vscode').Progress<unknown>,
+        } as unknown as ProvideLanguageModelChatResponseOptions,
+        { report: vi.fn() } as unknown as Progress<unknown>,
         {
           isCancellationRequested: false,
           onCancellationRequested: vi.fn(),
-        } as unknown as import('vscode').CancellationToken,
+        } as unknown as CancellationToken,
       ),
     ).rejects.toThrow('Unknown model');
   });
@@ -246,7 +260,7 @@ describe('ChatModelProvider', () => {
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const modelInfo = {
       id: 'tokenguard-copilot.TestProvider.gpt-4o',
-    } as import('vscode').LanguageModelChatInformation;
+    } as LanguageModelChatInformation;
 
     await expect(
       registeredProvider.provideLanguageModelChatResponse(
@@ -255,12 +269,12 @@ describe('ChatModelProvider', () => {
         {
           tools: [],
           toolMode: 1,
-        } as unknown as import('vscode').ProvideLanguageModelChatResponseOptions,
-        { report: vi.fn() } as unknown as import('vscode').Progress<unknown>,
+        } as unknown as ProvideLanguageModelChatResponseOptions,
+        { report: vi.fn() } as unknown as Progress<unknown>,
         {
           isCancellationRequested: false,
           onCancellationRequested: vi.fn(),
-        } as unknown as import('vscode').CancellationToken,
+        } as unknown as CancellationToken,
       ),
     ).rejects.toThrow('API error');
 
@@ -273,7 +287,7 @@ describe('ChatModelProvider', () => {
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const modelInfo = {
       id: 'tokenguard-copilot.TestProvider.gpt-4o',
-    } as import('vscode').LanguageModelChatInformation;
+    } as LanguageModelChatInformation;
 
     await registeredProvider.provideLanguageModelChatResponse(
       modelInfo,
@@ -281,12 +295,12 @@ describe('ChatModelProvider', () => {
       {
         tools: [],
         toolMode: 1,
-      } as unknown as import('vscode').ProvideLanguageModelChatResponseOptions,
-      { report: vi.fn() } as unknown as import('vscode').Progress<unknown>,
+      } as unknown as ProvideLanguageModelChatResponseOptions,
+      { report: vi.fn() } as unknown as Progress<unknown>,
       {
         isCancellationRequested: false,
         onCancellationRequested: vi.fn(),
-      } as unknown as import('vscode').CancellationToken,
+      } as unknown as CancellationToken,
     );
 
     expect(deps.usageTracker.recordUsage).toHaveBeenCalledWith(
@@ -303,9 +317,9 @@ describe('ChatModelProvider', () => {
     const result = await registeredProvider.provideTokenCount!(
       {
         id: 'test',
-      } as import('vscode').LanguageModelChatInformation,
+      } as LanguageModelChatInformation,
       'Hello world',
-      null as unknown as import('vscode').CancellationToken,
+      null as unknown as CancellationToken,
     );
     expect(result).toBe(42);
     expect(deps.tokenCounter.countTokens).toHaveBeenCalledWith('Hello world');
@@ -319,9 +333,9 @@ describe('ChatModelProvider', () => {
     const result = await registeredProvider.provideTokenCount!(
       {
         id: 'test',
-      } as import('vscode').LanguageModelChatInformation,
-      msg as unknown as import('vscode').LanguageModelChatRequestMessage,
-      null as unknown as import('vscode').CancellationToken,
+      } as LanguageModelChatInformation,
+      msg as unknown as LanguageModelChatRequestMessage,
+      null as unknown as CancellationToken,
     );
     expect(result).toBe(10);
     expect(deps.tokenCounter.countMessageTokens).toHaveBeenCalledWith(msg);
@@ -337,8 +351,8 @@ describe('ChatModelProvider', () => {
 
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const infos = registeredProvider.provideLanguageModelChatInformation(
-      {} as import('vscode').PrepareLanguageModelChatModelOptions,
-      null as unknown as import('vscode').CancellationToken,
+      {} as PrepareLanguageModelChatModelOptions,
+      null as unknown as CancellationToken,
     );
     expect(infos).toHaveLength(0);
   });
@@ -350,7 +364,7 @@ describe('ChatModelProvider', () => {
     const registeredProvider = mockRegister.mock.calls[0]![1]!;
     const modelInfo = {
       id: 'tokenguard-copilot.TestProvider.gpt-4o',
-    } as import('vscode').LanguageModelChatInformation;
+    } as LanguageModelChatInformation;
 
     // Should not throw — empty string is used as fallback
     await registeredProvider.provideLanguageModelChatResponse(
@@ -359,12 +373,12 @@ describe('ChatModelProvider', () => {
       {
         tools: [],
         toolMode: 1,
-      } as unknown as import('vscode').ProvideLanguageModelChatResponseOptions,
-      { report: vi.fn() } as unknown as import('vscode').Progress<unknown>,
+      } as unknown as ProvideLanguageModelChatResponseOptions,
+      { report: vi.fn() } as unknown as Progress<unknown>,
       {
         isCancellationRequested: false,
         onCancellationRequested: vi.fn(),
-      } as unknown as import('vscode').CancellationToken,
+      } as unknown as CancellationToken,
     );
 
     expect(mockHandle).toHaveBeenCalledOnce();

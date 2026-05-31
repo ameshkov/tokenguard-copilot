@@ -7,7 +7,13 @@
  * fixture data and dispatched back via `window.postMessage`.
  */
 
-import type { ProviderInfo, ModelInfo, ModelConfig } from '@tokenguard/shared';
+import type {
+  ProviderInfo,
+  ModelInfo,
+  ModelConfig,
+  ContentRuleInfo,
+  AddContentRuleParams,
+} from '@tokenguard/shared';
 import {
   sampleProviders,
   sampleModels,
@@ -15,6 +21,7 @@ import {
   sampleDefaults,
   sampleUsageRecords,
   sampleUsageSummary,
+  sampleContentRules,
 } from './fixtures.js';
 
 /** Simulated async delay for read operations (ms). */
@@ -41,6 +48,10 @@ let chatDebugSettings = {
 
 /** In-memory usage records for the mock. */
 let usageRecords: typeof sampleUsageRecords = [...sampleUsageRecords];
+
+/** In-memory content rules for the mock. */
+let contentRules: ContentRuleInfo[] = [...sampleContentRules.map((r) => ({ ...r }))];
+let nextRuleId = 100;
 
 /**
  * Dispatches a mock response back to the window after a
@@ -84,6 +95,27 @@ function buildModelInfo(providerId: string, modelId: string, config: ModelConfig
     cachedInputCostPer1m: config.cachedInputCostPer1m,
     cacheControl: config.cacheControl,
     customFields: config.customFields,
+  };
+}
+
+/** Returns the current time as an ISO 8601 string. */
+function nowISO(): string {
+  return new Date().toISOString();
+}
+
+/** Builds a full ContentRuleInfo from add params and generated fields. */
+function buildContentRule(
+  id: string,
+  params: AddContentRuleParams,
+  sortOrder: number,
+): ContentRuleInfo {
+  const now = nowISO();
+  return {
+    id,
+    ...params,
+    sortOrder,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -264,6 +296,105 @@ function handleMessage(msg: any): void {
         success: true,
       });
       break;
+
+    case 'getContentRules':
+      respond(requestId, {
+        type: 'getContentRulesResult',
+        rules: [...contentRules],
+      });
+      break;
+
+    case 'getContentRule': {
+      const rule = contentRules.find((r) => r.id === msg.id) ?? null;
+      respond(requestId, {
+        type: 'getContentRuleResult',
+        rule: rule ? { ...rule } : null,
+      });
+      break;
+    }
+
+    case 'addContentRule': {
+      const id = `rule-${String(nextRuleId++)}`;
+      const sortOrder =
+        contentRules.length > 0 ? Math.max(...contentRules.map((r) => r.sortOrder)) + 1 : 0;
+      const rule = buildContentRule(id, msg.params as AddContentRuleParams, sortOrder);
+      contentRules.push(rule);
+      respondSlow(requestId, {
+        type: 'addContentRuleResult',
+        success: true,
+        rule: { ...rule },
+      });
+      break;
+    }
+
+    case 'updateContentRule': {
+      const idx = contentRules.findIndex((r) => r.id === msg.id);
+      if (idx !== -1) {
+        contentRules[idx] = {
+          ...contentRules[idx],
+          ...msg.params,
+          updatedAt: nowISO(),
+        };
+        respondSlow(requestId, {
+          type: 'updateContentRuleResult',
+          success: true,
+          rule: { ...contentRules[idx] },
+        });
+      } else {
+        respondSlow(requestId, {
+          type: 'updateContentRuleResult',
+          success: false,
+          error: `Content rule not found: ${String(msg.id)}`,
+        });
+      }
+      break;
+    }
+
+    case 'deleteContentRule': {
+      const idx = contentRules.findIndex((r) => r.id === msg.id);
+      if (idx !== -1) {
+        contentRules.splice(idx, 1);
+        respondSlow(requestId, {
+          type: 'deleteContentRuleResult',
+          success: true,
+        });
+      } else {
+        respondSlow(requestId, {
+          type: 'deleteContentRuleResult',
+          success: false,
+          error: `Content rule not found: ${String(msg.id)}`,
+        });
+      }
+      break;
+    }
+
+    case 'reorderContentRules': {
+      const orderedIds: string[] = msg.orderedIds;
+      const reordered: ContentRuleInfo[] = [];
+      for (let i = 0; i < orderedIds.length; i++) {
+        const rule = contentRules.find((r) => r.id === orderedIds[i]);
+        if (rule) {
+          reordered.push({ ...rule, sortOrder: i, updatedAt: nowISO() });
+        }
+      }
+      // Preserve any rules not in the ordered list (append at end).
+      for (const rule of contentRules) {
+        if (!orderedIds.includes(rule.id)) {
+          reordered.push({
+            ...rule,
+            sortOrder: reordered.length,
+            updatedAt: nowISO(),
+          });
+        }
+      }
+      contentRules = reordered;
+      respondSlow(requestId, {
+        type: 'reorderContentRulesResult',
+        success: true,
+        rules: contentRules.map((r) => ({ ...r })),
+      });
+      break;
+    }
 
     default:
       console.warn('[mock] Unhandled message type:', type);

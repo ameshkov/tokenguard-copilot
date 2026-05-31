@@ -5,6 +5,7 @@ import type {
   ModelInfo,
   FetchedModel,
   ModelDefaultsResult,
+  ContentRuleInfo,
   GetProvidersResponse,
   AddProviderResponse,
   EditProviderResponse,
@@ -26,8 +27,9 @@ import {
   GlobalActions,
   ModelConfigDialog,
   ChatDebugSection,
+  ContentRulesSection,
 } from './sections/index.js';
-import { SelectProviderPage, SelectModelPage } from './pages/index.js';
+import { SelectProviderPage, SelectModelPage, ContentRuleFormPage } from './pages/index.js';
 import { SectionHeader, Button } from './components/index.js';
 
 /**
@@ -51,7 +53,9 @@ export type Page =
       fetchedModel: FetchedModel;
       defaults: ModelDefaultsResult | null;
     }
-  | { type: 'editModel'; model: ModelInfo };
+  | { type: 'editModel'; model: ModelInfo }
+  | { type: 'contentRules' }
+  | { type: 'editContentRule'; rule: ContentRuleInfo };
 
 /**
  * Root settings application component.
@@ -375,6 +379,20 @@ export function SettingsApp(): React.JSX.Element {
         </main>
       );
 
+    case 'contentRules':
+      return (
+        <main className="settings-container">
+          <ContentRuleFormPage onDone={goSettings} />
+        </main>
+      );
+
+    case 'editContentRule':
+      return (
+        <main className="settings-container">
+          <ContentRuleFormPage editingRule={page.rule} onDone={goSettings} />
+        </main>
+      );
+
     case 'settings':
     default:
       return (
@@ -402,6 +420,10 @@ export function SettingsApp(): React.JSX.Element {
             providers={providers}
             models={models}
             refreshTrigger={statsRefreshKey}
+          />
+          <ContentRulesSection
+            onAdd={() => setPage({ type: 'contentRules' })}
+            onEdit={(rule) => setPage({ type: 'editContentRule', rule })}
           />
           <ChatDebugSection />
           <GlobalActions

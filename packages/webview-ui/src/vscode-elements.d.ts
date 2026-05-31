@@ -101,8 +101,20 @@ declare global {
       'vscode-table': BaseProps & {
         'bordered-rows'?: boolean;
         'columns-hidden'?: string;
+        /**
+         * Initial column widths. Set as a property (array) via
+         * a ref — passing via JSX does not work in React 19 due
+         * to property/attribute reflection mismatch in Lit.
+         */
+        columns?: string[];
+        'min-column-width'?: number;
+        resizable?: boolean;
+        'delayed-resizing'?: boolean;
         responsive?: boolean;
         breakpoint?: number;
+        zebra?: boolean;
+        'bordered-columns'?: boolean;
+        'zebra-odd'?: boolean;
       };
       'vscode-table-header': BaseProps;
       'vscode-table-header-cell': BaseProps;

@@ -101,6 +101,12 @@ describe('ModelRegistry', () => {
       recordUsage: vi.fn(),
       recordError: vi.fn(),
     };
+    const mockContentRulesService = {
+      applyRules: vi.fn().mockReturnValue({
+        messages: [],
+        ruleResults: [],
+      }),
+    };
     registry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -109,6 +115,7 @@ describe('ModelRegistry', () => {
       mockTokenCounter as unknown as import('../token-counter/index.js').TokenCounter,
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
       mockUsageTracker as unknown as import('../usage-tracker/index.js').UsageTracker,
+      mockContentRulesService as unknown as import('../content-rules/index.js').ContentRulesService,
       createMockLogger(),
     );
   });

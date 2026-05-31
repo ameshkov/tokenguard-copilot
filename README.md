@@ -40,6 +40,15 @@ the hood — you just add a provider and start chatting.
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Features](#features)
+    - [Status Bar](#status-bar)
+    - [Provider Management](#provider-management)
+    - [Model Configuration](#model-configuration)
+    - [Bundled Model Defaults](#bundled-model-defaults)
+    - [Reasoning Model Support](#reasoning-model-support)
+    - [Prompt Caching](#prompt-caching)
+    - [Token Counting and Usage Tracking](#token-counting-and-usage-tracking)
+    - [Debug Logging](#debug-logging)
+    - [Content Rules](#content-rules)
 - [Commands](#commands)
 - [FAQ / Troubleshooting](#faq--troubleshooting)
 - [Acknowledgments](#acknowledgments)
@@ -88,6 +97,15 @@ have access to the VS Code Marketplace, [install from Open VSX][openvsx].
 <img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_choose_model.png" alt="TokenGuard Copilot choose model screenshot" width="400">
 
 ## Features
+
+### Status Bar
+
+A status bar item (`TokenGuard`) appears on the right side.
+Click it to open the settings panel.
+The tooltip shows a summary of configured providers, total tokens in/out, cache
+hit percentage, request count, and estimated cost.
+
+<img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_status_bar.png" alt="TokenGuard Copilot status bar screenshot" width="300">
 
 ### Provider Management
 
@@ -175,13 +193,6 @@ Reset stats individually or in bulk.
 
 <img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_usage_stats.png" alt="TokenGuard Copilot usage stats screenshot" width="600">
 
-### Status Bar
-
-A status bar item (`TokenGuard`) appears on the right side.
-Click it to open the settings panel.
-The tooltip shows a summary of configured providers, total tokens in/out, cache
-hit percentage, request count, and estimated cost.
-
 ### Debug Logging
 
 Enable debug logging to capture structured Markdown files for each
@@ -197,6 +208,65 @@ Configure the log TTL (default 24 hours) — old logs are automatically cleaned
 up.
 
 <img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_debug.png" alt="TokenGuard Copilot chat debug screenshot" width="600">
+
+### Content Rules
+
+Content Rules are ordered regex-based transformations applied to system and user
+messages before the first assistant response. This lets you strip unwanted
+prompt sections, inject prefixes, normalize roles, or reshape messages to fit
+specific model requirements — all without modifying Copilot Chat itself.
+
+<img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_content_rules.png" alt="TokenGuard Copilot content rules screenshot" width="600">
+
+Each rule has a **regex pattern** and **substitution string** (with `$1`, `$2`
+capture group support), plus optional matching criteria to control which
+messages it targets:
+
+- **Role** — only `system` messages, only `user` messages, or both (`all`).
+- **Message number** — the exact 0-based position in the message list
+  (e.g., `0` for the system prompt).
+- **Model pattern** — glob/wildcard pattern (e.g., `gpt-4*`) to target
+  specific models.
+- **Content pattern** — regex that must match the message content for the
+  rule to fire.
+- **Tools present / tools absent** — comma-separated tool names. All listed
+  tools must be present (or absent) for the rule to match.
+
+Rules run **sequentially** in the order you define — each rule's output becomes
+the next rule's input. Only messages before the first assistant response are
+transformed; later messages in multi-turn conversations are untouched.
+
+<img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_edit_content_rule.png" alt="TokenGuard Copilot edit content rule screenshot" width="600">
+
+### Example: Strip redundant built-in skills from the system prompt
+
+```text
+Name:           Strip redundant built-in skills
+Match role:     system
+Regex pattern:  <skill>[\s\S]*?<name>(project-setup-info-local|get-search-view-results|agent-customization)<\/name>[\s\S]*?<\/skill>
+Substitution:   (empty)
+```
+
+This removes only specific `<skill>` blocks from the system prompt by
+matching their `<name>` elements, leaving other skills and surrounding
+instructions intact.
+
+### Example: Remove memory instructions when the memory tool is absent
+
+```text
+Name:                Remove unused memory instructions
+Match role:          system
+Match tools absent:  memory
+Regex pattern:       <memoryInstructions>[\s\S]*?<\/memoryInstructions>
+Substitution:        (empty)
+```
+
+This strips `<memoryInstructions>...</memoryInstructions>` from the system
+prompt, but only when the `memory` tool is not available — leaving memory
+instructions in place when the model could use them.
+
+See [Content Rules Reference](docs/content-rules.md) for the full field
+reference, additional examples, and debugging tips.
 
 ## Commands
 
@@ -261,3 +331,10 @@ MIT
 - [Development](DEVELOPMENT.md) — how to build and contribute
 - [Changelog](CHANGELOG.md) — version history
 - [LLM agent rules](AGENTS.md) — AI-assisted development guidelines
+- Feature docs
+    - [Content Rules](docs/content-rules.md) — regex-based message transformations
+    - [Reasoning / Thinking Mode](docs/reasoning.md) — configuring reasoning across providers
+    - [Reasoning Preservation](docs/preserve_reasoning.md) — preserving thinking tokens across turns
+- Developer docs
+    - [Extension Structure](docs/structure.md) — monorepo organization and build pipeline
+    - [UI Plan](docs/ui.md) — settings panel React webview design

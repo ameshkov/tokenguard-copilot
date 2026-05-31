@@ -129,6 +129,98 @@ export interface ModelConfig {
   customFields: string | null;
 }
 
+/** A content transformation rule applied to messages before
+ *  they reach the language model. */
+export interface ContentRuleInfo {
+  /** Unique identifier (UUID v4). */
+  id: string;
+  /** User-defined label. Must be non-empty and unique. */
+  name: string;
+  /** Whether the rule participates in processing. */
+  enabled: boolean;
+  /** Role filter: 'system', 'user', or 'all' to match all roles. */
+  matchRole: 'system' | 'user' | 'all';
+  /** 0-indexed position in the messages array, or null for no filter. */
+  matchMessageNumber: number | null;
+  /** Glob/wildcard pattern for model ID, or null for no filter. */
+  matchModelPattern: string | null;
+  /** Regex pattern the message content must match for the rule to
+   *  apply. Uses {@link regexFlags} for matching behavior. Null or
+   *  empty means no content filter. */
+  matchContentPattern: string | null;
+  /** Tools that must ALL be present. Null or empty = no requirement. */
+  matchToolPresent: string[] | null;
+  /** Tools that must ALL be absent. Null or empty = no requirement. */
+  matchToolAbsent: string[] | null;
+  /** The find regex pattern (JavaScript RegExp syntax). */
+  regexPattern: string;
+  /** Regex flags string (e.g., 'gi', 'gim'). Applied to both
+   *  {@link regexPattern} (find-replace) and
+   *  {@link matchContentPattern} (content matching). */
+  regexFlags: string;
+  /** Replacement string with $1, $2 capture group references. */
+  substitution: string;
+  /** Position in the ordered rules list. */
+  sortOrder: number;
+  /** ISO 8601 creation timestamp. */
+  createdAt: string;
+  /** ISO 8601 last-modification timestamp. */
+  updatedAt: string;
+}
+
+/** Parameters for creating or updating a content rule.
+ *  Server-generated fields (id, sortOrder, timestamps) are
+ *  excluded. */
+export interface AddContentRuleParams {
+  name: string;
+  enabled: boolean;
+  matchRole: 'system' | 'user' | 'all';
+  matchMessageNumber: number | null;
+  matchModelPattern: string | null;
+  matchContentPattern: string | null;
+  matchToolPresent: string[] | null;
+  matchToolAbsent: string[] | null;
+  regexPattern: string;
+  regexFlags: string;
+  substitution: string;
+}
+
+/** Fetch all content rules, ordered by sortOrder. */
+export interface GetContentRulesRequest extends WebviewRequest {
+  type: 'getContentRules';
+}
+
+/** Fetch a single content rule by ID. */
+export interface GetContentRuleRequest extends WebviewRequest {
+  type: 'getContentRule';
+  id: string;
+}
+
+/** Add a new content rule. */
+export interface AddContentRuleRequest extends WebviewRequest {
+  type: 'addContentRule';
+  params: AddContentRuleParams;
+}
+
+/** Update an existing content rule. */
+export interface UpdateContentRuleRequest extends WebviewRequest {
+  type: 'updateContentRule';
+  id: string;
+  params: Partial<AddContentRuleParams>;
+}
+
+/** Delete a content rule. */
+export interface DeleteContentRuleRequest extends WebviewRequest {
+  type: 'deleteContentRule';
+  id: string;
+}
+
+/** Reorder content rules by providing the full ordered list of IDs. */
+export interface ReorderContentRulesRequest extends WebviewRequest {
+  type: 'reorderContentRules';
+  orderedIds: string[];
+}
+
 /** Fetch usage statistics. */
 export interface GetUsageStatsRequest extends WebviewRequest {
   type: 'getUsageStats';
@@ -259,7 +351,13 @@ export type WebviewCommand =
   | UpdateChatDebugSettingsRequest
   | ClearChatDebugLogsRequest
   | GetUsageStatsRequest
-  | ResetUsageStatsRequest;
+  | ResetUsageStatsRequest
+  | GetContentRulesRequest
+  | GetContentRuleRequest
+  | AddContentRuleRequest
+  | UpdateContentRuleRequest
+  | DeleteContentRuleRequest
+  | ReorderContentRulesRequest;
 
 // ---- Responses: host → webview ----
 
@@ -368,6 +466,49 @@ export interface ClearChatDebugLogsResponse extends HostResponse {
   error?: string;
 }
 
+/** Response to GetContentRulesRequest. */
+export interface GetContentRulesResponse extends HostResponse {
+  type: 'getContentRulesResult';
+  rules: ContentRuleInfo[];
+}
+
+/** Response to GetContentRuleRequest. */
+export interface GetContentRuleResponse extends HostResponse {
+  type: 'getContentRuleResult';
+  rule: ContentRuleInfo | null;
+}
+
+/** Response to AddContentRuleRequest. */
+export interface AddContentRuleResponse extends HostResponse {
+  type: 'addContentRuleResult';
+  success: boolean;
+  rule?: ContentRuleInfo;
+  error?: string;
+}
+
+/** Response to UpdateContentRuleRequest. */
+export interface UpdateContentRuleResponse extends HostResponse {
+  type: 'updateContentRuleResult';
+  success: boolean;
+  rule?: ContentRuleInfo;
+  error?: string;
+}
+
+/** Response to DeleteContentRuleRequest. */
+export interface DeleteContentRuleResponse extends HostResponse {
+  type: 'deleteContentRuleResult';
+  success: boolean;
+  error?: string;
+}
+
+/** Response to ReorderContentRulesRequest. */
+export interface ReorderContentRulesResponse extends HostResponse {
+  type: 'reorderContentRulesResult';
+  success: boolean;
+  rules?: ContentRuleInfo[];
+  error?: string;
+}
+
 /** Union of all host → webview messages. */
 export type HostMessage =
   | GetProvidersResponse
@@ -385,7 +526,13 @@ export type HostMessage =
   | UpdateChatDebugSettingsResponse
   | ClearChatDebugLogsResponse
   | GetUsageStatsResponse
-  | ResetUsageStatsResponse;
+  | ResetUsageStatsResponse
+  | GetContentRulesResponse
+  | GetContentRuleResponse
+  | AddContentRuleResponse
+  | UpdateContentRuleResponse
+  | DeleteContentRuleResponse
+  | ReorderContentRulesResponse;
 
 // ---- Usage Stats types ----
 

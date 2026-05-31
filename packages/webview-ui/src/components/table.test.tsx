@@ -38,4 +38,34 @@ describe('Table', () => {
     const { container } = render(<Table<TestRow> columns={[]} rows={[]} rowKey={(r) => r.id} />);
     expect(container.querySelector('vscode-table')).not.toBeNull();
   });
+
+  it('assigns columnWidths as array property on the underlying element', () => {
+    const { container } = render(
+      <Table<TestRow>
+        columns={[{ header: 'Name', render: (r) => r.name }]}
+        rows={[]}
+        rowKey={(r) => r.id}
+        columnWidths={['50px', 'auto', '120px']}
+      />,
+    );
+    const table = container.querySelector('vscode-table') as unknown as {
+      columns?: string[];
+    } | null;
+    expect(table).not.toBeNull();
+    expect(table?.columns).toEqual(['50px', 'auto', '120px']);
+  });
+
+  it('defaults to empty array when no columnWidths supplied', () => {
+    const { container } = render(
+      <Table<TestRow>
+        columns={[{ header: 'Name', render: (r) => r.name }]}
+        rows={[]}
+        rowKey={(r) => r.id}
+      />,
+    );
+    const table = container.querySelector('vscode-table') as unknown as {
+      columns?: string[];
+    } | null;
+    expect(table?.columns).toEqual([]);
+  });
 });

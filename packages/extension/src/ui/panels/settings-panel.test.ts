@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ExtensionContext as AppContext } from '../../context.js';
+import type { FetchedModel, ModelInfo } from '@tokenguard/shared';
 
 const FAKE_TEMPLATE = `<!DOCTYPE html>
 <html lang="en">
@@ -89,6 +90,15 @@ describe('SettingsPanel', () => {
     vi.clearAllMocks();
     extensionUri = '/test/extension' as unknown as vscode.Uri;
     appCtx = {
+      contentRules: {
+        getAll: vi.fn().mockReturnValue([]),
+        getById: vi.fn().mockReturnValue(undefined),
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn().mockReturnValue(false),
+        reorder: vi.fn(),
+        validateName: vi.fn().mockReturnValue(false),
+      },
       providerManager: {
         getProviders: vi.fn().mockReturnValue([]),
         addProvider: vi.fn(),
@@ -363,9 +373,7 @@ describe('SettingsPanel', () => {
 
     it('handles getModels request', async () => {
       const models = [{ id: 'm1', providerId: 'p1' }];
-      vi.mocked(appCtx.modelRegistry.getModels).mockReturnValue(
-        models as unknown as import('@tokenguard/shared').ModelInfo[],
-      );
+      vi.mocked(appCtx.modelRegistry.getModels).mockReturnValue(models as unknown as ModelInfo[]);
 
       const handler = getMessageHandler();
       await handler({ type: 'getModels', requestId: 'r10' });
@@ -380,7 +388,7 @@ describe('SettingsPanel', () => {
     it('handles fetchAvailableModels success', async () => {
       const fetched = [{ id: 'gpt-4o', name: 'GPT-4o' }];
       vi.mocked(appCtx.modelRegistry.fetchModels).mockResolvedValue(
-        fetched as unknown as import('@tokenguard/shared').FetchedModel[],
+        fetched as unknown as FetchedModel[],
       );
 
       const handler = getMessageHandler();
@@ -418,9 +426,7 @@ describe('SettingsPanel', () => {
 
     it('handles addModel success', async () => {
       const model = { id: 'gpt-4o', providerId: 'p1' };
-      vi.mocked(appCtx.modelRegistry.addModel).mockReturnValue(
-        model as unknown as import('@tokenguard/shared').ModelInfo,
-      );
+      vi.mocked(appCtx.modelRegistry.addModel).mockReturnValue(model as unknown as ModelInfo);
 
       const handler = getMessageHandler();
       await handler({
@@ -463,9 +469,7 @@ describe('SettingsPanel', () => {
 
     it('handles editModel success', async () => {
       const model = { id: 'gpt-4o', providerId: 'p1', displayName: 'Custom' };
-      vi.mocked(appCtx.modelRegistry.updateModel).mockReturnValue(
-        model as unknown as import('@tokenguard/shared').ModelInfo,
-      );
+      vi.mocked(appCtx.modelRegistry.updateModel).mockReturnValue(model as unknown as ModelInfo);
 
       const handler = getMessageHandler();
       await handler({
@@ -653,6 +657,421 @@ describe('SettingsPanel', () => {
         type: 'clearChatDebugLogsResult',
         requestId: 'r24',
         success: true,
+      });
+    });
+
+    it('handles getContentRules request', async () => {
+      const rule = {
+        id: 'r1',
+        name: 'Test Rule',
+        enabled: 1,
+        matchRole: 'all',
+        matchMessageNumber: null,
+        matchModelPattern: null,
+        matchContentPattern: null,
+        matchToolPresent: null,
+        matchToolAbsent: null,
+        regexPattern: 'hello',
+        regexFlags: 'gi',
+        substitution: 'hi',
+        sortOrder: 0,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      vi.mocked(appCtx.contentRules.getAll).mockReturnValue([rule]);
+
+      const handler = getMessageHandler();
+      await handler({ type: 'getContentRules', requestId: 'r-cr-1' });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getContentRulesResult',
+        requestId: 'r-cr-1',
+        rules: [
+          {
+            id: 'r1',
+            name: 'Test Rule',
+            enabled: true,
+            matchRole: 'all',
+            matchMessageNumber: null,
+            matchModelPattern: null,
+            matchContentPattern: null,
+            matchToolPresent: null,
+            matchToolAbsent: null,
+            regexPattern: 'hello',
+            regexFlags: 'gi',
+            substitution: 'hi',
+            sortOrder: 0,
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          },
+        ],
+      });
+    });
+
+    it('handles getContentRule request — found', async () => {
+      const rule = {
+        id: 'r1',
+        name: 'Test Rule',
+        enabled: 1,
+        matchRole: 'user' as const,
+        matchMessageNumber: null,
+        matchModelPattern: null,
+        matchContentPattern: null,
+        matchToolPresent: null,
+        matchToolAbsent: null,
+        regexPattern: 'hello',
+        regexFlags: 'g',
+        substitution: 'hi',
+        sortOrder: 0,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      vi.mocked(appCtx.contentRules.getById).mockReturnValue(rule);
+
+      const handler = getMessageHandler();
+      await handler({ type: 'getContentRule', requestId: 'r-cr-2', id: 'r1' });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getContentRuleResult',
+        requestId: 'r-cr-2',
+        rule: expect.objectContaining({ id: 'r1', enabled: true }),
+      });
+    });
+
+    it('handles getContentRule request — not found', async () => {
+      vi.mocked(appCtx.contentRules.getById).mockReturnValue(undefined);
+
+      const handler = getMessageHandler();
+      await handler({ type: 'getContentRule', requestId: 'r-cr-3', id: 'nonexistent' });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'getContentRuleResult',
+        requestId: 'r-cr-3',
+        rule: null,
+      });
+    });
+
+    it('handles addContentRule success', async () => {
+      const created = {
+        id: 'r-new',
+        name: 'New Rule',
+        enabled: 1,
+        matchRole: 'all',
+        matchMessageNumber: null,
+        matchModelPattern: null,
+        matchContentPattern: null,
+        matchToolPresent: null,
+        matchToolAbsent: null,
+        regexPattern: 'test',
+        regexFlags: 'gi',
+        substitution: 'replaced',
+        sortOrder: 0,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      vi.mocked(appCtx.contentRules.create).mockReturnValue(created);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'addContentRule',
+        requestId: 'r-cr-4',
+        params: {
+          name: 'New Rule',
+          enabled: true,
+          matchRole: 'all',
+          matchMessageNumber: null,
+          matchModelPattern: null,
+          matchContentPattern: null,
+          matchToolPresent: null,
+          matchToolAbsent: null,
+          regexPattern: 'test',
+          regexFlags: 'gi',
+          substitution: 'replaced',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'addContentRuleResult',
+        requestId: 'r-cr-4',
+        success: true,
+        rule: expect.objectContaining({ id: 'r-new', enabled: true }),
+      });
+    });
+
+    it('handles addContentRule validation failure — empty name', async () => {
+      const handler = getMessageHandler();
+      await handler({
+        type: 'addContentRule',
+        requestId: 'r-cr-5',
+        params: {
+          name: '',
+          enabled: true,
+          matchRole: 'all',
+          matchMessageNumber: null,
+          matchModelPattern: null,
+          matchContentPattern: null,
+          matchToolPresent: null,
+          matchToolAbsent: null,
+          regexPattern: 'test',
+          regexFlags: 'g',
+          substitution: 'x',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'addContentRuleResult',
+        requestId: 'r-cr-5',
+        success: false,
+        error: 'Name is required.',
+      });
+    });
+
+    it('handles addContentRule validation failure — invalid regex', async () => {
+      const handler = getMessageHandler();
+      await handler({
+        type: 'addContentRule',
+        requestId: 'r-cr-6',
+        params: {
+          name: 'Bad Regex',
+          enabled: true,
+          matchRole: 'all',
+          matchMessageNumber: null,
+          matchModelPattern: null,
+          matchContentPattern: null,
+          matchToolPresent: null,
+          matchToolAbsent: null,
+          regexPattern: '[unclosed',
+          regexFlags: 'g',
+          substitution: 'x',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'addContentRuleResult',
+        requestId: 'r-cr-6',
+        success: false,
+        error: 'Invalid regex pattern.',
+      });
+    });
+
+    it('handles addContentRule validation failure — invalid flags', async () => {
+      const handler = getMessageHandler();
+      await handler({
+        type: 'addContentRule',
+        requestId: 'r-cr-7',
+        params: {
+          name: 'Bad Flags',
+          enabled: true,
+          matchRole: 'all',
+          matchMessageNumber: null,
+          matchModelPattern: null,
+          matchContentPattern: null,
+          matchToolPresent: null,
+          matchToolAbsent: null,
+          regexPattern: 'test',
+          regexFlags: 'gix',
+          substitution: 'x',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'addContentRuleResult',
+        requestId: 'r-cr-7',
+        success: false,
+        error: 'Invalid regex flags. Only g, i, m, s are allowed.',
+      });
+    });
+
+    it('handles updateContentRule success', async () => {
+      const updated = {
+        id: 'r1',
+        name: 'Updated Rule',
+        enabled: 0,
+        matchRole: 'user' as const,
+        matchMessageNumber: null,
+        matchModelPattern: null,
+        matchContentPattern: null,
+        matchToolPresent: null,
+        matchToolAbsent: null,
+        regexPattern: 'updated',
+        regexFlags: 'g',
+        substitution: 'new',
+        sortOrder: 0,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      vi.mocked(appCtx.contentRules.update).mockReturnValue(updated);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'updateContentRule',
+        requestId: 'r-cr-8',
+        id: 'r1',
+        params: {
+          name: 'Updated Rule',
+          enabled: false,
+          matchRole: 'user',
+          regexPattern: 'updated',
+          regexFlags: 'g',
+          substitution: 'new',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'updateContentRuleResult',
+        requestId: 'r-cr-8',
+        success: true,
+        rule: expect.objectContaining({ id: 'r1', enabled: false }),
+      });
+    });
+
+    it('handles updateContentRule — not found', async () => {
+      vi.mocked(appCtx.contentRules.update).mockReturnValue(undefined);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'updateContentRule',
+        requestId: 'r-cr-9',
+        id: 'nonexistent',
+        params: {
+          name: 'Ghost',
+          regexPattern: 'test',
+          regexFlags: 'g',
+          substitution: 'x',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'updateContentRuleResult',
+        requestId: 'r-cr-9',
+        success: false,
+        error: 'Content rule not found.',
+      });
+    });
+
+    it('handles updateContentRule validation failure — duplicate name', async () => {
+      vi.mocked(appCtx.contentRules.validateName).mockReturnValue(true);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'updateContentRule',
+        requestId: 'r-cr-10',
+        id: 'r2',
+        params: {
+          name: 'Duplicate',
+          regexPattern: 'test',
+          regexFlags: 'g',
+          substitution: 'x',
+        },
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'updateContentRuleResult',
+        requestId: 'r-cr-10',
+        success: false,
+        error: 'A content rule with the name "Duplicate" already exists.',
+      });
+    });
+
+    it('handles deleteContentRule success', async () => {
+      vi.mocked(appCtx.contentRules.delete).mockReturnValue(true);
+
+      const handler = getMessageHandler();
+      await handler({ type: 'deleteContentRule', requestId: 'r-cr-11', id: 'r1' });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'deleteContentRuleResult',
+        requestId: 'r-cr-11',
+        success: true,
+      });
+    });
+
+    it('handles deleteContentRule — not found', async () => {
+      vi.mocked(appCtx.contentRules.delete).mockReturnValue(false);
+
+      const handler = getMessageHandler();
+      await handler({ type: 'deleteContentRule', requestId: 'r-cr-12', id: 'nonexistent' });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'deleteContentRuleResult',
+        requestId: 'r-cr-12',
+        success: false,
+        error: 'Content rule not found.',
+      });
+    });
+
+    it('handles reorderContentRules success', async () => {
+      const reorderedRules = [
+        {
+          id: 'r2',
+          name: 'B',
+          enabled: 1,
+          matchRole: 'all',
+          matchMessageNumber: null,
+          matchModelPattern: null,
+          matchContentPattern: null,
+          matchToolPresent: null,
+          matchToolAbsent: null,
+          regexPattern: 'b',
+          regexFlags: 'g',
+          substitution: 'bb',
+          sortOrder: 0,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'r1',
+          name: 'A',
+          enabled: 1,
+          matchRole: 'all',
+          matchMessageNumber: null,
+          matchModelPattern: null,
+          matchContentPattern: null,
+          matchToolPresent: null,
+          matchToolAbsent: null,
+          regexPattern: 'a',
+          regexFlags: 'g',
+          substitution: 'aa',
+          sortOrder: 1,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+      vi.mocked(appCtx.contentRules.reorder).mockImplementation(() => {});
+      vi.mocked(appCtx.contentRules.getAll).mockReturnValue(reorderedRules);
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'reorderContentRules',
+        requestId: 'r-cr-13',
+        orderedIds: ['r2', 'r1'],
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'reorderContentRulesResult',
+        requestId: 'r-cr-13',
+        success: true,
+        rules: expect.any(Array),
+      });
+    });
+
+    it('handles reorderContentRules failure', async () => {
+      vi.mocked(appCtx.contentRules.reorder).mockImplementation(() => {
+        throw new Error('Rule not found');
+      });
+
+      const handler = getMessageHandler();
+      await handler({
+        type: 'reorderContentRules',
+        requestId: 'r-cr-14',
+        orderedIds: ['bad-id'],
+      });
+
+      expect(mockVscode._mockPanel.webview.postMessage).toHaveBeenCalledWith({
+        type: 'reorderContentRulesResult',
+        requestId: 'r-cr-14',
+        success: false,
+        error: 'Rule not found',
       });
     });
   });

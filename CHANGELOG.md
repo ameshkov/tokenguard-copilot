@@ -8,16 +8,21 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
-### Changed
+### Added
 
-- Streaming chat handler now reports `LanguageModelThinkingPart` before
-  `LanguageModelTextPart` within each SSE chunk, consistent with the
-  non-streaming path.
-- Chat Debug log metadata now includes workspace folder paths
-  (`workspaces` field), supporting both single-root and multi-root
-  workspaces.
-- Chat Debug logs now include tool parameter schemas (`parameters`) in the
-  collapsible tool definitions section, not just `name` and `description`.
+- Content Rules: regex-based message transformation engine. Rules can
+  match on role, message number, model/content patterns, and tool
+  presence, then apply regex substitutions to chat messages. Includes
+  a management UI in the settings webview, database persistence, and
+  full documentation.
+
+### Fixed
+
+- Streaming chat handler now reports `LanguageModelThinkingPart`
+  before `LanguageModelTextPart` within each SSE chunk, consistent
+  with the non-streaming path.
+- Chat Debug logs now include tool parameter schemas (`parameters`)
+  and workspace folder paths (`workspaces` field) in metadata.
 
 ## [v1.1.0] - 2026-05-29
 

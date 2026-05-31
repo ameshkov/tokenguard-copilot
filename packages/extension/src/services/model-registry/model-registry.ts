@@ -6,6 +6,7 @@ import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { TokenCounter } from '../token-counter/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import type { UsageTracker } from '../usage-tracker/index.js';
+import type { ContentRulesService } from '../content-rules/index.js';
 import { ChatModelProvider } from '../../providers/index.js';
 import type { Logger } from '../../logger/index.js';
 
@@ -53,6 +54,7 @@ export class ModelRegistry {
     private readonly tokenCounter: TokenCounter,
     private readonly reasoningCacheService: ReasoningCacheService,
     private readonly usageTracker: UsageTracker,
+    private readonly contentRulesService: ContentRulesService,
     private readonly logger: Logger,
   ) {}
 
@@ -395,6 +397,7 @@ export class ModelRegistry {
       tokenCounter: this.tokenCounter,
       reasoningCacheService: this.reasoningCacheService,
       usageTracker: this.usageTracker,
+      contentRulesService: this.contentRulesService,
       logger: this.logger,
     });
 

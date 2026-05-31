@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
 import type { OpenAIMessage, OpenAITool, ChatUsage } from '../chat-handler/index.js';
+import type { RuleApplicationResult } from '../content-rules/index.js';
 import { extractTextContent, extractImageParts, extractReasoning } from '../../utils/index.js';
 import type { Logger } from '../../logger/index.js';
 
@@ -43,6 +44,11 @@ export interface LogRequestInput {
   workspaceFolders: string[];
   /** Token usage from the API response, or null if unavailable. */
   usage?: ChatUsage | null;
+  /**
+   * Per-rule results from content rules application.
+   * `undefined` when no content rules are configured.
+   */
+  contentRules?: RuleApplicationResult[];
 }
 
 const SENSITIVE_KEYS = new Set([
@@ -228,7 +234,24 @@ export class ChatDebugLogger {
       sections.push('</details>');
     }
 
-    // Usage details
+    // Content rules
+    if (input.contentRules !== undefined) {
+      sections.push('<details>');
+      const ruleCount = input.contentRules.length;
+      const matchedCount = input.contentRules.filter((r) => r.matched).length;
+      const appliedCount = input.contentRules.filter((r) => r.applied).length;
+      sections.push(
+        `<summary>contentRules (${ruleCount}): ${matchedCount} matched, ${appliedCount} applied</summary>`,
+      );
+      sections.push('');
+      sections.push('```json');
+      sections.push(JSON.stringify(input.contentRules, null, 2));
+      sections.push('```');
+      sections.push('');
+      sections.push('</details>');
+    }
+
+    // Usage details (always last in metadata)
     if (input.usage) {
       const u = input.usage;
       const total = u.promptTokens + u.completionTokens;

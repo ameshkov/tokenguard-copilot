@@ -182,3 +182,37 @@ export type ReasoningCacheRow = typeof reasoningCache.$inferSelect;
 
 /** TypeScript type for inserting a new reasoning cache row. */
 export type NewReasoningCacheRow = typeof reasoningCache.$inferInsert;
+
+/**
+ * Content rules table — stores regex-based transformation
+ * rules applied to system and user messages before the first
+ * assistant response.
+ *
+ * matchToolPresent and matchToolAbsent are stored as
+ * JSON-serialized string arrays (e.g., '["memory","read_file"]')
+ * since SQLite via Drizzle does not natively support array
+ * columns.
+ */
+export const contentRules = sqliteTable('content_rules', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  enabled: integer('enabled').notNull().default(1),
+  matchRole: text('match_role'),
+  matchMessageNumber: integer('match_message_number'),
+  matchModelPattern: text('match_model_pattern'),
+  matchContentPattern: text('match_content_pattern'),
+  matchToolPresent: text('match_tool_present'),
+  matchToolAbsent: text('match_tool_absent'),
+  regexPattern: text('regex_pattern').notNull(),
+  regexFlags: text('regex_flags').notNull().default(''),
+  substitution: text('substitution').notNull(),
+  sortOrder: integer('sort_order').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+/** TypeScript type for a selected content rule row. */
+export type ContentRule = typeof contentRules.$inferSelect;
+
+/** TypeScript type for inserting a new content rule. */
+export type NewContentRule = typeof contentRules.$inferInsert;

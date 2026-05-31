@@ -143,6 +143,10 @@ tokenguard-copilot/
 │   │       ├── services/        # Business logic layer
 │   │       │   ├── chat-handler/  # Chat completion handler
 │   │       │   │   └── index.ts # Module barrel
+│   │       │   ├── content-rules/ # Content rules runtime engine
+│   │       │   │   ├── index.ts                 # Barrel exports
+│   │       │   │   ├── content-rules-service.ts # Rule application + CRUD
+│   │       │   │   └── content-rules-service.test.ts # Unit tests
 │   │       │   ├── model-defaults/ # Model defaults lookup
 │   │       │   │   └── index.ts # Module barrel
 │   │       │   └── provider-manager/ # Provider CRUD
@@ -347,6 +351,14 @@ All code MUST meet documentation and style requirements before merge:
 - **File naming**: Use kebab-case for all file names. TypeScript source
   files MUST use lower-case kebab-case (e.g., `model-provider.ts`).
   Do NOT use PascalCase or camelCase file names.
+- **No inline type imports**: Do NOT use `import('…').Type` inline
+  import expressions to reference types. Always use top-level
+  `import type { … } from '…'` declarations instead. This keeps
+  type dependencies explicit and greppable. The only exceptions:
+  `typeof import('…')` for type queries, `await import('…')` for
+  dynamic runtime imports in tests (where `vscode` is mocked), and
+  lazy-loading `import('…')` for code splitting in webview entry
+  points.
 
 ### Testing
 

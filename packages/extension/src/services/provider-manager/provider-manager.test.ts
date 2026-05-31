@@ -92,6 +92,12 @@ describe('ProviderManager', () => {
         recordUsage: vi.fn(),
         recordError: vi.fn(),
       } as unknown as import('../usage-tracker/index.js').UsageTracker,
+      {
+        applyRules: vi.fn().mockReturnValue({
+          messages: [],
+          ruleResults: [],
+        }),
+      } as unknown as import('../content-rules/index.js').ContentRulesService,
       createMockLogger(),
     );
     manager = new ProviderManager(

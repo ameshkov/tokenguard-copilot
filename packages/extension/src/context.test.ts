@@ -13,6 +13,7 @@ import { ChatDebugLogger } from './services/chat-debug-logger/index.js';
 import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js';
 import { ReasoningCacheCleanupService } from './services/reasoning-cache-cleanup/index.js';
 import { UsageTracker } from './services/usage-tracker/index.js';
+import { ContentRulesService } from './services/content-rules/index.js';
 import type { Database } from './db/index.js';
 
 vi.mock('vscode', () => {
@@ -154,5 +155,12 @@ describe('ExtensionContext', () => {
     ctx.dispose();
 
     expect(ctx.usageTracker.dispose).toHaveBeenCalled();
+  });
+
+  it('exposes contentRules', () => {
+    const deps = setup();
+    const ctx = new ExtensionContext(deps);
+    expect(ctx.contentRules).toBeDefined();
+    expect(ctx.contentRules).toBeInstanceOf(ContentRulesService);
   });
 });

@@ -229,6 +229,16 @@ vscode-table {
   gap: 8px;
 }
 
+/* ── Content rules section ──────────────────────── */
+.content-rules-section__actions {
+  display: flex;
+  gap: 8px;
+}
+.content-rules-section__reorder {
+  display: flex;
+  gap: 8px;
+}
+
 /* ── Select model page ──────────────────────────── */
 .select-model-page__loading {
   display: flex;
@@ -289,4 +299,20 @@ vscode-collapsible {
 }
 .model-config-dialog__effort-actions-col {
   max-width: 40px;
+}
+
+/* ── Content rule form page ───────────────────── */
+.content-rule-form-page__error {
+  padding: 8px 12px;
+  margin-bottom: 0;
+  background-color: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+  border-radius: 2px;
+  font-size: 0.9em;
+}
+.content-rule-form-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
 }

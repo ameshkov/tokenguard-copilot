@@ -12,11 +12,13 @@ import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js'
 import { ProviderManager, type ResetCallback } from './services/provider-manager/index.js';
 import { ModelRegistry } from './services/model-registry/index.js';
 import { TokenCounter } from './services/token-counter/index.js';
+import { ContentRulesRepository } from './repositories/index.js';
 import { ReasoningCacheRepository } from './repositories/index.js';
 import { ReasoningCacheService } from './services/reasoning-cache/index.js';
 import { ReasoningCacheCleanupService } from './services/reasoning-cache-cleanup/index.js';
 import { UsageRecordRepository } from './repositories/index.js';
 import { UsageTracker } from './services/usage-tracker/index.js';
+import { ContentRulesService } from './services/content-rules/index.js';
 
 /**
  * Dependencies required to create an
@@ -80,6 +82,9 @@ export class ExtensionContext {
   /** Usage tracker service. */
   readonly usageTracker: UsageTracker;
 
+  /** Content rules service. */
+  readonly contentRules: ContentRulesService;
+
   /** Logger for runtime diagnostics. */
   readonly logger: Logger;
 
@@ -117,6 +122,8 @@ export class ExtensionContext {
     this.tokenCounter = new TokenCounter(deps.extensionPath, deps.logger);
     const usageRecordRepo = new UsageRecordRepository(deps.db);
     this.usageTracker = new UsageTracker(usageRecordRepo, modelRepo, deps.logger);
+    const contentRulesRepo = new ContentRulesRepository(deps.db);
+    this.contentRules = new ContentRulesService(contentRulesRepo, deps.logger);
     this.modelRegistry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -125,6 +132,7 @@ export class ExtensionContext {
       this.tokenCounter,
       reasoningCacheService,
       this.usageTracker,
+      this.contentRules,
       deps.logger,
     );
     this.providerManager = new ProviderManager(

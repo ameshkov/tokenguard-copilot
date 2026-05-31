@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { getColumns } from 'drizzle-orm';
-import { providers, models, usageRecords, settings, sessionMappings } from './schema.js';
+import {
+  providers,
+  models,
+  usageRecords,
+  settings,
+  sessionMappings,
+  contentRules,
+} from './schema.js';
 
 describe('providers table', () => {
   it('should have the expected columns', () => {
@@ -77,6 +84,27 @@ describe('sessionMappings table', () => {
     expect(columns).toHaveProperty('sessionId');
     expect(columns).toHaveProperty('workspaceId');
     expect(columns).toHaveProperty('modelName');
+    expect(columns).toHaveProperty('createdAt');
+    expect(columns).toHaveProperty('updatedAt');
+  });
+});
+
+describe('contentRules table', () => {
+  it('should have the expected columns', () => {
+    const columns = getColumns(contentRules);
+    expect(columns).toHaveProperty('id');
+    expect(columns).toHaveProperty('name');
+    expect(columns).toHaveProperty('enabled');
+    expect(columns).toHaveProperty('matchRole');
+    expect(columns).toHaveProperty('matchMessageNumber');
+    expect(columns).toHaveProperty('matchModelPattern');
+    expect(columns).toHaveProperty('matchContentPattern');
+    expect(columns).toHaveProperty('matchToolPresent');
+    expect(columns).toHaveProperty('matchToolAbsent');
+    expect(columns).toHaveProperty('regexPattern');
+    expect(columns).toHaveProperty('regexFlags');
+    expect(columns).toHaveProperty('substitution');
+    expect(columns).toHaveProperty('sortOrder');
     expect(columns).toHaveProperty('createdAt');
     expect(columns).toHaveProperty('updatedAt');
   });

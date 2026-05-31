@@ -7,6 +7,7 @@ import { extractReasoning, extractReasoningFields } from '../../utils/index.js';
 import type { ReasoningFields } from '../../utils/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import { CacheControlService } from '../cache-control/index.js';
+import type { ContentRulesService, RuleApplicationResult } from '../content-rules/index.js';
 import type { Logger } from '../../logger/index.js';
 
 /**
@@ -193,6 +194,13 @@ export interface ChatContext {
    * and errors.
    */
   logger?: Logger;
+
+  /**
+   * Content rules service for applying regex-based
+   * message transformations before the request is sent.
+   * `undefined` when no rules service is configured.
+   */
+  contentRules?: ContentRulesService;
 }
 
 /**
@@ -930,17 +938,31 @@ export class ChatHandler {
   ): Promise<void> {
     const translated = ChatHandler.translateMessages(messages);
 
+    // Apply content rules (if configured)
+    let ruleResults: RuleApplicationResult[] | undefined;
+    let processedMessages = translated;
+    if (this.ctx.contentRules) {
+      const toolNames = this.ctx.tools?.map((t) => t.function.name) ?? [];
+      const result = this.ctx.contentRules.applyRules(
+        processedMessages,
+        this.ctx.model.id,
+        toolNames,
+      );
+      processedMessages = result.messages;
+      ruleResults = result.ruleResults;
+    }
+
     // Backfill reasoning from cache into assistant messages
     this.reasoningCacheService.backfillReasoning(
-      translated,
+      processedMessages,
       this.ctx.model.preserveReasoning === 1,
     );
 
     // Inject cache control markers when enabled
     const finalMessages =
       this.ctx.cacheControl?.enabled === true
-        ? CacheControlService.injectMarkers(translated, this.ctx.cacheControl)
-        : translated;
+        ? CacheControlService.injectMarkers(processedMessages, this.ctx.cacheControl)
+        : processedMessages;
 
     const body = ChatHandler.buildRequestBody(finalMessages, this.ctx);
 
@@ -1089,6 +1111,7 @@ export class ChatHandler {
             usage: usageCollector?.usage ?? null,
             workspaceFolderUri: this.ctx.workspaceFolderUri,
             workspaceFolders: this.ctx.workspaceFolders ?? [],
+            contentRules: ruleResults,
           });
         } catch (logError: unknown) {
           // Fire-and-forget: logging errors must not

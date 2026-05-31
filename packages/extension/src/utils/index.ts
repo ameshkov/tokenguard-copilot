@@ -9,4 +9,6 @@ export {
   type FingerprintToolCall,
 } from './fingerprint.js';
 export { getImageDimensions } from './image-dimensions.js';
+export { safeParseJsonArray } from './json.js';
 export { extractReasoning, extractReasoningFields, type ReasoningFields } from './reasoning.js';
+export { truncate } from './string.js';

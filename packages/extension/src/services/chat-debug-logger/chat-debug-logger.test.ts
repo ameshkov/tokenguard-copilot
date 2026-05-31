@@ -365,6 +365,39 @@ describe('ChatDebugLogger', () => {
       expect(md).not.toContain('usage:');
     });
 
+    it('includes contentRules in metadata when present', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        contentRules: [
+          { ruleId: 'r1', ruleName: 'Strip skills', matched: true, applied: true, errored: false },
+          { ruleId: 'r2', ruleName: 'Add prefix', matched: false, applied: false, errored: false },
+        ],
+      };
+
+      const result = ChatDebugLogger.formatLogMarkdown(input, 'test-uuid');
+      expect(result).toContain('contentRules');
+      expect(result).toContain('Strip skills');
+      expect(result).toContain('Add prefix');
+    });
+
+    it('omits contentRules when undefined', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        // contentRules intentionally omitted
+      };
+      const result = ChatDebugLogger.formatLogMarkdown(input, 'test-uuid');
+      expect(result).not.toContain('contentRules');
+    });
+
+    it('renders empty contentRules array', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        contentRules: [],
+      };
+      const result = ChatDebugLogger.formatLogMarkdown(input, 'test-uuid');
+      expect(result).toContain('contentRules');
+    });
+
     it('renders image part placeholder for data-URI images', () => {
       const input: LogRequestInput = {
         ...baseInput,

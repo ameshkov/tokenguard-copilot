@@ -187,6 +187,13 @@ class MockLabel extends HTMLElement {
   }
 }
 
+class MockProgressRing extends HTMLElement {
+  /** @internal */
+  connectedCallback(): void {
+    this.setAttribute('role', 'progressbar');
+  }
+}
+
 /* ── generic (no special behaviour) ────────────────────── */
 
 class MockGeneric extends HTMLElement {}
@@ -207,6 +214,7 @@ export function registerMockElements(): void {
   );
   defineMock('vscode-textfield', MockTextfield);
   defineMock('vscode-label', MockLabel);
+  defineMock('vscode-progress-ring', MockProgressRing);
 
   const generics = [
     'vscode-badge',
@@ -217,7 +225,6 @@ export function registerMockElements(): void {
     'vscode-form-helper',
     'vscode-icon',
     'vscode-option',
-    'vscode-progress-ring',
     'vscode-single-select',
     'vscode-table',
     'vscode-table-header',
