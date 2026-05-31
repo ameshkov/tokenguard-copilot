@@ -334,7 +334,7 @@ MIT
 - Feature docs
     - [Content Rules](docs/content-rules.md) — regex-based message transformations
     - [Reasoning / Thinking Mode](docs/reasoning.md) — configuring reasoning across providers
-    - [Reasoning Preservation](docs/preserve_reasoning.md) — preserving thinking tokens across turns
+    - [Reasoning Preservation](docs/preserve-reasoning.md) — preserving thinking tokens across turns
 - Developer docs
     - [Extension Structure](docs/structure.md) — monorepo organization and build pipeline
     - [UI Plan](docs/ui.md) — settings panel React webview design
