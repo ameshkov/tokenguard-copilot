@@ -3,7 +3,7 @@ import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
 import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
-import { extractReasoning, extractReasoningFields } from '../../utils/index.js';
+import { extractReasoning, extractReasoningFields, truncate } from '../../utils/index.js';
 import type { ReasoningFields } from '../../utils/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import { CacheControlService } from '../cache-control/index.js';
@@ -21,6 +21,9 @@ function uint8ArrayToBase64(data: Uint8Array, mimeType: string): string {
   const base64 = Buffer.from(data).toString('base64');
   return `data:${mimeType};base64,${base64}`;
 }
+
+/** Maximum length of error response body text included in error messages. */
+const MAX_ERROR_TEXT_LENGTH = 128;
 
 /**
  * OpenAI-format tool definition for the
@@ -585,8 +588,13 @@ export class ChatHandler {
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
+      logger?.error(
+        `HTTP ${response.status} ${response.statusText} response body:`,
+        errorText || '(empty)',
+      );
       throw new Error(
-        `${response.status} ${response.statusText}` + (errorText ? `: ${errorText}` : ''),
+        `${response.status} ${response.statusText}` +
+          (errorText ? `: ${truncate(errorText, MAX_ERROR_TEXT_LENGTH)}` : ''),
       );
     }
 
@@ -714,8 +722,13 @@ export class ChatHandler {
   ): Promise<void> {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
+      logger?.error(
+        `HTTP ${response.status} ${response.statusText} response body:`,
+        errorText || '(empty)',
+      );
       throw new Error(
-        `${response.status} ${response.statusText}` + (errorText ? `: ${errorText}` : ''),
+        `${response.status} ${response.statusText}` +
+          (errorText ? `: ${truncate(errorText, MAX_ERROR_TEXT_LENGTH)}` : ''),
       );
     }
 

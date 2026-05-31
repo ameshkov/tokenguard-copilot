@@ -23,6 +23,10 @@ and this project adheres to
   with the non-streaming path.
 - Chat Debug logs now include tool parameter schemas (`parameters`)
   and workspace folder paths (`workspaces` field) in metadata.
+- Error messages from failed HTTP responses are now truncated to 128
+  characters to prevent large gateway HTML pages from polluting the
+  error display. The full response body is still logged to the output
+  channel for debugging.
 
 ## [v1.1.0] - 2026-05-29
 

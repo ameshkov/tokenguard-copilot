@@ -10,6 +10,7 @@ import type { ChatDebugLogger, LogRequestInput } from '../chat-debug-logger/inde
 import type { Model, Provider } from '../../db/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import type { ContentRulesService, RuleApplicationResult } from '../content-rules/index.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 
 /** No-op ReasoningCacheService mock for tests that don't exercise reasoning preservation. */
 function noopReasoningCacheService(): ReasoningCacheService {
@@ -907,13 +908,49 @@ describe('ChatHandler', () => {
       };
 
       const progress = { report: vi.fn() };
+      const logger = createMockLogger();
 
       await expect(
         ChatHandler.handleNonStreaming(
           response as unknown as Response,
           progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+          undefined,
+          undefined,
+          logger,
         ),
       ).rejects.toThrow('401 Unauthorized');
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'HTTP 401 Unauthorized response body:',
+        'Invalid API key',
+      );
+    });
+
+    it('truncates long error response body in error message', async () => {
+      const longHtml = '<html>' + 'x'.repeat(600) + '</html>';
+      const response = {
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        text: async () => longHtml,
+      };
+
+      const progress = { report: vi.fn() };
+      const logger = createMockLogger();
+
+      // The error message should be truncated, not contain the full HTML
+      await expect(
+        ChatHandler.handleNonStreaming(
+          response as unknown as Response,
+          progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+          undefined,
+          undefined,
+          logger,
+        ),
+      ).rejects.toThrow(/^502 Bad Gateway: .*\.\.\.$/);
+
+      // Logger should receive the full body
+      expect(logger.error).toHaveBeenCalledWith('HTTP 502 Bad Gateway response body:', longHtml);
     });
 
     it('throws on empty choices', async () => {
@@ -1419,14 +1456,56 @@ describe('ChatHandler', () => {
         isCancellationRequested: false,
         onCancellationRequested: vi.fn(),
       };
+      const logger = createMockLogger();
 
       await expect(
         ChatHandler.handleStreaming(
           response as unknown as Response,
           progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
           token as unknown as vscode.CancellationToken,
+          undefined,
+          undefined,
+          logger,
         ),
       ).rejects.toThrow('500 Internal Server Error');
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'HTTP 500 Internal Server Error response body:',
+        'Server error',
+      );
+    });
+
+    it('truncates long error response body in error message', async () => {
+      const longHtml = '<html>' + 'x'.repeat(600) + '</html>';
+      const response = {
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        text: async () => longHtml,
+        body: null,
+      };
+
+      const progress = { report: vi.fn() };
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      };
+      const logger = createMockLogger();
+
+      // The error message should be truncated, not contain the full HTML
+      await expect(
+        ChatHandler.handleStreaming(
+          response as unknown as Response,
+          progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+          token as unknown as vscode.CancellationToken,
+          undefined,
+          undefined,
+          logger,
+        ),
+      ).rejects.toThrow(/^502 Bad Gateway: .*\.\.\.$/);
+
+      // Logger should receive the full body
+      expect(logger.error).toHaveBeenCalledWith('HTTP 502 Bad Gateway response body:', longHtml);
     });
 
     it('handles cancellation', async () => {
