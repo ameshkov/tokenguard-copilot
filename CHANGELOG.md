@@ -31,6 +31,12 @@ and this project adheres to
   floating-point values like `0.95` due to restrictive `step="0.1"`
   attribute
   ([#1](https://github.com/ameshkov/tokenguard-copilot/issues/1)).
+- Fixed model context size displayed in Copilot Chat model picker
+  being inflated (context window + output tokens instead of just
+  context window). `maxInputTokens` was incorrectly set to the full
+  context window; it is now correctly computed as
+  `maxContextWindowTokens - maxOutputTokens`
+  ([#2](https://github.com/ameshkov/tokenguard-copilot/issues/2)).
 
 ## [v1.2.0] - 2026-05-31
 

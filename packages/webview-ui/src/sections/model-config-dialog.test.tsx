@@ -84,7 +84,7 @@ describe('ModelConfigDialog', () => {
     expect(screen.getAllByText('Must be a positive number').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('validates max output tokens cannot exceed context window', async () => {
+  it('validates max output tokens must be less than context window', async () => {
     const user = userEvent.setup();
     render(<ModelConfigDialog {...baseProps} />);
 
@@ -92,7 +92,18 @@ describe('ModelConfigDialog', () => {
     await user.type(screen.getByLabelText('Max Output Tokens'), '2000');
     await user.click(screen.getByRole('button', { name: 'Add Model' }));
 
-    expect(screen.getByText('Cannot exceed max context window tokens')).toBeDefined();
+    expect(screen.getByText('Must be less than max context window tokens')).toBeDefined();
+  });
+
+  it('validates max output tokens cannot equal context window', async () => {
+    const user = userEvent.setup();
+    render(<ModelConfigDialog {...baseProps} />);
+
+    await user.type(screen.getByLabelText('Max Context Window Tokens'), '1000');
+    await user.type(screen.getByLabelText('Max Output Tokens'), '1000');
+    await user.click(screen.getByRole('button', { name: 'Add Model' }));
+
+    expect(screen.getByText('Must be less than max context window tokens')).toBeDefined();
   });
 
   it('clears validation error when user types in the field', async () => {

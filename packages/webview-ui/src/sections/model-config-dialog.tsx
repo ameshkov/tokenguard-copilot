@@ -300,8 +300,8 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
     if (!maxOutputTokens || isNaN(prompt) || prompt <= 0) {
       newErrors.maxOutputTokens = 'Must be a positive number';
     }
-    if (ctx > 0 && prompt > 0 && prompt > ctx) {
-      newErrors.maxOutputTokens = 'Cannot exceed max context window tokens';
+    if (ctx > 0 && prompt > 0 && prompt >= ctx) {
+      newErrors.maxOutputTokens = 'Must be less than max context window tokens';
     }
     if (temperature !== '') {
       const t = Number(temperature);

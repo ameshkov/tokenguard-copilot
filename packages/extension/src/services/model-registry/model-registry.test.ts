@@ -375,6 +375,16 @@ describe('ModelRegistry', () => {
       ).toThrow('Max output tokens must be positive');
     });
 
+    it('validates maxOutputTokens < maxContextWindowTokens', () => {
+      expect(() =>
+        registry.addModel(providerId, 'gpt-4o', {
+          ...validConfig,
+          maxContextWindowTokens: 128000,
+          maxOutputTokens: 128000,
+        }),
+      ).toThrow('Max output tokens must be less than max context window tokens');
+    });
+
     it('validates temperature range', () => {
       expect(() =>
         registry.addModel(providerId, 'gpt-4o', {

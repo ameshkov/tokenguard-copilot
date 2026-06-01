@@ -403,7 +403,7 @@ export class ModelRegistry {
         name: displayName,
         family: model.id,
         version: model.id,
-        maxInputTokens: model.maxContextWindowTokens,
+        maxInputTokens: model.maxContextWindowTokens - model.maxOutputTokens,
         maxOutputTokens: model.maxOutputTokens,
         tooltip: `${displayName} is contributed via the TokenGuard Copilot extension.`,
         isUserSelectable: true,
@@ -458,6 +458,9 @@ function validateConfig(config: ModelConfig): void {
   }
   if (config.maxOutputTokens <= 0) {
     throw new Error('Max output tokens must be positive');
+  }
+  if (config.maxOutputTokens >= config.maxContextWindowTokens) {
+    throw new Error('Max output tokens must be less than max context window tokens');
   }
   if (config.temperature !== null && (config.temperature < 0 || config.temperature > 2)) {
     throw new Error('Temperature must be between 0 and 2');
