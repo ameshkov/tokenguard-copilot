@@ -43,7 +43,7 @@ What you get out of the box:
 | Language | TypeScript 5.9, ES2022 target, strict mode |
 | Runtime | VS Code Extension Host (Node.js) |
 | Package Manager | pnpm |
-| VS Code API | `^1.116.0` (proposed `chatProvider` API) |
+| VS Code API | `^1.120.0` (proposed `chatProvider` API) |
 | Linting | ESLint 9.x + typescript-eslint |
 | Formatting | Prettier 3.x, Markdownlint (markdownlint-cli2) |
 | Testing | Vitest 4.x (unit), @vscode/test-cli (E2E) |

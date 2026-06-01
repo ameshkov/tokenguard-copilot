@@ -703,7 +703,15 @@ describe('ModelRegistry', () => {
           reasoningEffort: {
             type: 'string',
             enum: ['low', 'medium', 'high'],
+            enumItemLabels: ['Low', 'Medium', 'High'],
+            enumDescriptions: [
+              'Faster responses with less reasoning',
+              'Balanced reasoning and speed',
+              'Greater reasoning depth but slower',
+            ],
             default: 'medium',
+            title: 'Thinking Effort',
+            group: 'navigation',
           },
         },
       });

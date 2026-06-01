@@ -360,8 +360,33 @@ export class ModelRegistry {
               properties: {
                 reasoningEffort: {
                   type: 'string',
+                  title: 'Thinking Effort',
                   enum: keys,
+                  enumItemLabels: keys.map(
+                    (level) => level.charAt(0).toUpperCase() + level.slice(1),
+                  ),
+                  enumDescriptions: keys.map((level) => {
+                    switch (level) {
+                      case 'none':
+                        return 'No reasoning applied';
+                      case 'minimal':
+                        return 'Minimal reasoning for fastest responses';
+                      case 'low':
+                        return 'Faster responses with less reasoning';
+                      case 'medium':
+                        return 'Balanced reasoning and speed';
+                      case 'high':
+                        return 'Greater reasoning depth but slower';
+                      case 'xhigh':
+                        return 'Highest reasoning depth but slowest';
+                      case 'max':
+                        return 'Absolute maximum capability with no constraints';
+                      default:
+                        return level;
+                    }
+                  }),
                   default: model.defaultReasoningEffort ?? keys[0],
+                  group: 'navigation',
                 },
               },
             };
@@ -372,13 +397,15 @@ export class ModelRegistry {
         }
       }
 
+      const displayName = model.displayName ?? `${provider.name}/${model.id}`;
       chatInfos.push({
         id: identifier,
-        name: model.displayName ?? `${provider.name}/${model.id}`,
+        name: displayName,
         family: model.id,
         version: model.id,
         maxInputTokens: model.maxContextWindowTokens,
         maxOutputTokens: model.maxOutputTokens,
+        tooltip: `${displayName} is contributed via the TokenGuard Copilot extension.`,
         isUserSelectable: true,
         capabilities: {
           toolCalling: true,

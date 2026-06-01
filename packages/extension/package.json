@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@types/vscode": "^1.116.0",
+    "@types/vscode": "^1.120.0",
     "drizzle-kit": "1.0.0-rc.2",
     "esbuild": "0.28.0",
     "tsx": "4.21.0",

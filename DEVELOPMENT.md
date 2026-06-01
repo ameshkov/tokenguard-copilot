@@ -4,7 +4,7 @@
 
 - Node.js 22
 - pnpm (install via `npm install -g pnpm@10.28.1`)
-- VS Code >= 1.116.0 (or VS Code Insiders for proposed API support)
+- VS Code >= 1.120.0 (or VS Code Insiders for proposed API support)
 
 ## Node.js Version
 
