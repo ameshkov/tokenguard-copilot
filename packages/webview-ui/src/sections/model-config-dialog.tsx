@@ -765,7 +765,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               <Input
                 id="model-temperature"
                 type="number"
-                step="0.1"
+                step="0.01"
                 value={temperature}
                 onChange={(e) => {
                   setTemperature(e.target.value);
@@ -785,7 +785,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               <Input
                 id="model-top-p"
                 type="number"
-                step="0.1"
+                step="0.01"
                 value={topP}
                 onChange={(e) => {
                   setTopP(e.target.value);
@@ -805,7 +805,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               <Input
                 id="model-freq-penalty"
                 type="number"
-                step="0.1"
+                step="0.01"
                 value={frequencyPenalty}
                 onChange={(e) => {
                   setFrequencyPenalty(e.target.value);
@@ -825,7 +825,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
               <Input
                 id="model-pres-penalty"
                 type="number"
-                step="0.1"
+                step="0.01"
                 value={presencePenalty}
                 onChange={(e) => {
                   setPresencePenalty(e.target.value);

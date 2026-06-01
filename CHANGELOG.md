@@ -26,6 +26,11 @@ and this project adheres to
 - Fixed Usage Stats graph not filtering data when a model is selected
   without a provider
   ([#3](https://github.com/ameshkov/tokenguard-copilot/issues/3)).
+- Fixed model sampling parameter inputs (temperature, top_p,
+  frequency_penalty, presence_penalty) rejecting arbitrary
+  floating-point values like `0.95` due to restrictive `step="0.1"`
+  attribute
+  ([#1](https://github.com/ameshkov/tokenguard-copilot/issues/1)).
 
 ## [v1.2.0] - 2026-05-31
 
