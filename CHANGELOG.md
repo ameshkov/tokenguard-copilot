@@ -8,8 +8,21 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Added
+
+- Model defaults: added MiniMax-M3 model entry with vision support,
+  reasoning effort, 512K context window, and pricing of $0.6/$2.4
+  per 1M input/output tokens ($0.12 cached).
+
+### Changed
+
+- **`@types/vscode`**: Updated from `^1.116.0` to `^1.120.0` and
+  minimum VS Code engine from `^1.116.0` to `^1.120.0` (closes #??).
+
 ### Fixed
 
+- Reasoning effort picker is now visible for models added via
+  TokenGuard Copilot.
 - Fixed Usage Stats graph not filtering data when a model is selected
   without a provider
   ([#3](https://github.com/ameshkov/tokenguard-copilot/issues/3)).

@@ -875,5 +875,30 @@
     "customFields": {
       "reasoning_split": true
     }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)MiniMax-M3$"
+    },
+    "contextSize": 512000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.6,
+    "outputCostPer1M": 2.4,
+    "cachedInputCostPer1M": 0.12,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "preserveReasoning": true,
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_split": false
+      },
+      "high": {
+        "reasoning_split": true
+      }
+    },
+    "defaultReasoningEffort": "high",
+    "customFields": {
+      "reasoning_split": true
+    }
   }
 ]
