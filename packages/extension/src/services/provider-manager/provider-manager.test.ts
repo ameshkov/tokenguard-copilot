@@ -99,6 +99,7 @@ describe('ProviderManager', () => {
         }),
       } as unknown as import('../content-rules/index.js').ContentRulesService,
       createMockLogger(),
+      '0.0.0-test',
     );
     manager = new ProviderManager(
       repo,
@@ -106,6 +107,7 @@ describe('ProviderManager', () => {
       resetCallback,
       modelRegistry,
       createMockLogger(),
+      '0.0.0-test',
     );
   });
 
@@ -329,7 +331,10 @@ describe('ProviderManager', () => {
       const lastCall = fetchCalls[fetchCalls.length - 1];
       expect(lastCall[1]).toEqual(
         expect.objectContaining({
-          headers: { Authorization: 'Bearer existing-key' },
+          headers: {
+            Authorization: 'Bearer existing-key',
+            'User-Agent': 'TokenGuardCopilot/v0.0.0-test',
+          },
         }),
       );
     });
@@ -344,7 +349,10 @@ describe('ProviderManager', () => {
       const lastCall = fetchCalls[fetchCalls.length - 1];
       expect(lastCall[1]).toEqual(
         expect.objectContaining({
-          headers: { Authorization: 'Bearer new-key' },
+          headers: {
+            Authorization: 'Bearer new-key',
+            'User-Agent': 'TokenGuardCopilot/v0.0.0-test',
+          },
         }),
       );
     });

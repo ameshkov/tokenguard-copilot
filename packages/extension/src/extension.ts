@@ -69,6 +69,7 @@ export async function activate(
       logsBasePath,
       extensionPath: context.extensionPath,
       logger: log,
+      version: context.extension.packageJSON.version as string,
       onTreeRefresh,
       resetCallback: async () => {
         // Read all provider IDs before deleting

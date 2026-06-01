@@ -54,6 +54,8 @@ export interface ChatModelProviderDeps {
   contentRulesService: ContentRulesService;
   /** Logger for runtime diagnostics. */
   logger: Logger;
+  /** Extension version for User-Agent header. */
+  version: string;
 }
 
 /**
@@ -147,6 +149,7 @@ export class ChatModelProvider {
           cacheControl,
           contentRules: deps.contentRulesService,
           logger: deps.logger,
+          version: deps.version,
         };
 
         const handler = new ChatHandler(ctx, deps.reasoningCacheService);

@@ -2242,6 +2242,49 @@ describe('ChatHandler', () => {
       expect(parts[0].value).toBe('Response');
     });
 
+    it('sends User-Agent header when version is set', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const ctx: ChatContext = { ...baseContext, version: '1.2.1' };
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+
+      const handler = new ChatHandler(ctx, noopReasoningCacheService());
+      await handler.handle(messages, progress, token);
+
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers['User-Agent']).toBe('TokenGuardCopilot/v1.2.1');
+    });
+
+    it('omits explicit version but still sets User-Agent header', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+
+      const handler = new ChatHandler(baseContext, noopReasoningCacheService());
+      await handler.handle(messages, progress, token);
+
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers['User-Agent']).toBe('TokenGuardCopilot/v0.0.0');
+    });
+
     it('aborts fetch on cancellation', async () => {
       let onCancel: () => void = () => {};
       const token = mockToken({

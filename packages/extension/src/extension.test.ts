@@ -158,6 +158,10 @@ describe('activate', () => {
       globalStorageUri: {
         fsPath: '/mock/storage',
       },
+      extensionPath: '/mock/extension',
+      extension: {
+        packageJSON: { version: '0.0.0-test' },
+      },
       secrets: {
         store: vi.fn(),
         get: vi.fn(),
@@ -226,7 +230,9 @@ describe('activate', () => {
       db: mockDb,
       secrets: context.secrets,
       logsBasePath: expect.stringContaining('logs'),
+      extensionPath: expect.any(String),
       logger: mockLogger,
+      version: expect.any(String),
       resetCallback: expect.any(Function),
       onTreeRefresh: expect.any(Function),
     });
@@ -294,6 +300,10 @@ describe('deactivate', () => {
       subscriptions: [],
       globalStorageUri: {
         fsPath: '/mock/storage',
+      },
+      extensionPath: '/mock/extension',
+      extension: {
+        packageJSON: { version: '0.0.0-test' },
       },
       secrets: {
         store: vi.fn(),
@@ -383,6 +393,10 @@ describe('activate resetCallback', () => {
       subscriptions: [],
       globalStorageUri: {
         fsPath: '/mock/storage',
+      },
+      extensionPath: '/mock/extension',
+      extension: {
+        packageJSON: { version: '0.0.0-test' },
       },
       secrets: {
         store: vi.fn(),

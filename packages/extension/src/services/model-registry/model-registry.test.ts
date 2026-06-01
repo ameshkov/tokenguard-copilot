@@ -117,6 +117,7 @@ describe('ModelRegistry', () => {
       mockUsageTracker as unknown as import('../usage-tracker/index.js').UsageTracker,
       mockContentRulesService as unknown as import('../content-rules/index.js').ContentRulesService,
       createMockLogger(),
+      '0.0.0-test',
     );
   });
 

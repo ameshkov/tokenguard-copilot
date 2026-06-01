@@ -9,6 +9,7 @@ import type { UsageTracker } from '../usage-tracker/index.js';
 import type { ContentRulesService } from '../content-rules/index.js';
 import { ChatModelProvider } from '../../providers/index.js';
 import type { Logger } from '../../logger/index.js';
+import { buildUserAgent } from '../../utils/index.js';
 
 /**
  * Manages model lifecycle: fetch from providers, persist
@@ -45,6 +46,7 @@ export class ModelRegistry {
    * @param reasoningCacheService - Service for caching reasoning.
    * @param usageTracker - Service for tracking usage metrics.
    * @param logger - Logger for runtime diagnostics.
+   * @param version - Extension version for User-Agent header.
    */
   constructor(
     private readonly modelRepo: ModelRepository,
@@ -56,6 +58,7 @@ export class ModelRegistry {
     private readonly usageTracker: UsageTracker,
     private readonly contentRulesService: ContentRulesService,
     private readonly logger: Logger,
+    private readonly version: string,
   ) {}
 
   /**
@@ -84,6 +87,7 @@ export class ModelRegistry {
     const response = await fetch(modelsUrl, {
       headers: {
         Authorization: `Bearer ${apiKey ?? ''}`,
+        'User-Agent': buildUserAgent(this.version),
       },
     });
 
@@ -397,7 +401,8 @@ export class ModelRegistry {
         }
       }
 
-      const displayName = model.displayName ?? `${provider.name}/${model.id}`;
+      const fullModelId = `${provider.name}/${model.id}`;
+      const displayName = model.displayName ?? `${fullModelId}`;
       chatInfos.push({
         id: identifier,
         name: displayName,
@@ -405,7 +410,7 @@ export class ModelRegistry {
         version: model.id,
         maxInputTokens: model.maxContextWindowTokens - model.maxOutputTokens,
         maxOutputTokens: model.maxOutputTokens,
-        tooltip: `${displayName} is contributed via the TokenGuard Copilot extension.`,
+        tooltip: `${displayName} is contributed via the TokenGuard Copilot (${fullModelId}).`,
         isUserSelectable: true,
         capabilities: {
           toolCalling: true,
@@ -426,6 +431,7 @@ export class ModelRegistry {
       usageTracker: this.usageTracker,
       contentRulesService: this.contentRulesService,
       logger: this.logger,
+      version: this.version,
     });
 
     // Force Copilot Chat to re-query model info through the

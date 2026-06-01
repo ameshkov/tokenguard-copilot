@@ -189,7 +189,7 @@ Usage is aggregated daily per model:
 - Estimated cost based on configured per-1M token rates
 
 View usage stats in the settings panel, filtered by period, provider, or model.
-Reset stats individually or in bulk.
+Reset all collected usage statistics at any time.
 
 <img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_usage_stats.png" alt="TokenGuard Copilot usage stats screenshot" width="600">
 
@@ -229,8 +229,9 @@ messages it targets:
   specific models.
 - **Content pattern** — regex that must match the message content for the
   rule to fire.
-- **Tools present / tools absent** — comma-separated tool names. All listed
-  tools must be present (or absent) for the rule to match.
+- **Tools present / tools absent** — comma-separated tool names in the
+  form (matched as a set). All listed tools must be present (or absent) for
+  the rule to match.
 
 Rules run **sequentially** in the order you define — each rule's output becomes
 the next rule's input. Only messages before the first assistant response are

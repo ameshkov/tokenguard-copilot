@@ -49,6 +49,7 @@ describe('ExtensionContext', () => {
       logsBasePath: tmpdir(),
       extensionPath: tmpdir(),
       logger: createMockLogger(),
+      version: '0.0.0-test',
     };
   }
 

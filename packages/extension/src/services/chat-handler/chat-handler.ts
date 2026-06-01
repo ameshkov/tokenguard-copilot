@@ -3,7 +3,12 @@ import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
 import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
-import { extractReasoning, extractReasoningFields, truncate } from '../../utils/index.js';
+import {
+  extractReasoning,
+  extractReasoningFields,
+  truncate,
+  buildUserAgent,
+} from '../../utils/index.js';
 import type { ReasoningFields } from '../../utils/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import { CacheControlService } from '../cache-control/index.js';
@@ -204,6 +209,13 @@ export interface ChatContext {
    * `undefined` when no rules service is configured.
    */
   contentRules?: ContentRulesService;
+
+  /**
+   * Extension version string for the User-Agent header
+   * sent with the HTTP request. When not provided, the
+   * User-Agent falls back to `TokenGuardCopilot/v0.0.0`.
+   */
+  version?: string;
 }
 
 /**
@@ -1026,6 +1038,7 @@ export class ChatHandler {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.ctx.apiKey}`,
+          'User-Agent': buildUserAgent(this.ctx.version),
         },
         body: JSON.stringify(body),
         signal: abortController.signal,

@@ -37,6 +37,8 @@ export interface ExtensionContextDeps {
   extensionPath: string;
   /** Logger instance for runtime diagnostics. */
   logger: Logger;
+  /** Extension version from package.json. */
+  version: string;
   /** Optional callback to refresh the chat debug tree view. */
   onTreeRefresh?: () => void;
 }
@@ -134,6 +136,7 @@ export class ExtensionContext {
       this.usageTracker,
       this.contentRules,
       deps.logger,
+      deps.version,
     );
     this.providerManager = new ProviderManager(
       providerRepo,
@@ -141,6 +144,7 @@ export class ExtensionContext {
       deps.resetCallback,
       this.modelRegistry,
       deps.logger,
+      deps.version,
     );
     this.reasoningCacheCleanup = new ReasoningCacheCleanupService(reasoningCacheRepo, deps.logger);
   }

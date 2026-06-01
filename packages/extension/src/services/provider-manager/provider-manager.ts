@@ -4,6 +4,7 @@ import type { ProviderRepository } from '../../repositories/index.js';
 import type { Provider } from '../../db/index.js';
 import type { ModelRegistry } from '../model-registry/index.js';
 import type { Logger } from '../../logger/index.js';
+import { buildUserAgent } from '../../utils/index.js';
 
 /**
  * Callback that clears all data from the database and
@@ -29,6 +30,7 @@ export class ProviderManager {
    * @param resetCallback - Callback to clear all data.
    * @param modelRegistry - Model registry for cascade removal.
    * @param logger - Logger for runtime diagnostics.
+   * @param version - Extension version for User-Agent header.
    */
   constructor(
     private readonly providerRepo: ProviderRepository,
@@ -36,6 +38,7 @@ export class ProviderManager {
     private readonly resetCallback: ResetCallback,
     private readonly modelRegistry: ModelRegistry,
     private readonly logger: Logger,
+    private readonly version: string,
   ) {}
 
   /**
@@ -75,6 +78,7 @@ export class ProviderManager {
     const response = await fetch(modelsUrl, {
       headers: {
         Authorization: `Bearer ${trimmedKey}`,
+        'User-Agent': buildUserAgent(this.version),
       },
     });
     if (!response.ok) {
@@ -180,6 +184,7 @@ export class ProviderManager {
     const response = await fetch(modelsUrl, {
       headers: {
         Authorization: `Bearer ${verifyKey}`,
+        'User-Agent': buildUserAgent(this.version),
       },
     });
     if (!response.ok) {

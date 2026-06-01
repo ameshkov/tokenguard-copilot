@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Changed
+
+- User-Agent header for all HTTP requests sent by the extension is now
+  `TokenGuardCopilot/v${version}`
+
 ## [v1.2.1] - 2026-06-01
 
 ### Added

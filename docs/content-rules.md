@@ -60,8 +60,8 @@ Key behaviors:
 | Match Message Number | No | (all) | 0-based index; only that exact message position matches |
 | Match Model Pattern | No | (all) | Glob/wildcard pattern (e.g., `gpt-4*`, `*deepseek*`) |
 | Match Content Pattern | No | (all) | Regex; must match the message content (uses same flags as the find-replace regex) |
-| Match Tools Present | No | (all) | Comma-separated tool names; ALL must be present (AND logic) |
-| Match Tools Absent | No | (all) | Comma-separated tool names; ALL must be absent (AND logic) |
+| Match Tools Present | No | (all) | Comma-separated tool names in the form (matched as a set); ALL must be present (AND logic) |
+| Match Tools Absent | No | (all) | Comma-separated tool names in the form (matched as a set); ALL must be absent (AND logic) |
 | Regex Pattern | Yes | — | JavaScript regex for find-replace |
 | Regex Flags | No | `gm` | Flags: `g` (global), `i` (ignore case), `m` (multiline), `s` (dotAll) |
 | Substitution | No | `""` | Replacement string; supports `$1`–`$n` capture group references |
@@ -87,8 +87,8 @@ How each criterion is evaluated:
 - **Match Content Pattern**: `RegExp.test()` against the message content
   string. The regex is compiled using the same flags as the find-replace
   regex (the **Regex Flags** field).
-- **Match Tools Present**: Each tool name in the comma-separated list is
-  checked against the set of available tools. ALL must be present.
+- **Match Tools Present**: Each tool name entered (comma-separated in the
+  form) is checked against the set of available tools. ALL must be present.
 - **Match Tools Absent**: Each tool name is checked against the set of
   available tools. ALL must be absent.
 
@@ -125,59 +125,44 @@ useful combination for transforming multi-line messages.
 
 ## Common Recipes
 
-### Strip Built-in Skills
+### Strip Redundant Built-in Skills
 
-Removes the `<skills>...</skills>` block from the system prompt.
+Removes the `<skill>` blocks for redundant built-in skills from the
+system prompt.
 
-| Field | Value |
-| --- | --- |
-| Name | Strip built-in skills |
-| Match Role | `system` |
-| Regex Pattern | `<skills>[\s\S]*?</skills>` |
-| Regex Flags | `gi` |
-| Substitution | *(empty)* |
+```text
+Name:           Strip redundant built-in skills
+Match role:     system
+Regex pattern:  <skill>[\s\S]*?<name>(project-setup-info-local|get-search-view-results|agent-customization)<\/name>[\s\S]*?<\/skill>
+Substitution:   (empty)
+```
 
 ### Remove Memory Instructions (When Memory Tool Absent)
 
 Removes `<memoryInstructions>...</memoryInstructions>` from the system prompt,
 but only when the `memory` tool is not available.
 
-| Field | Value |
-| --- | --- |
-| Name | Remove memory instructions |
-| Match Role | `system` |
-| Match Tools Absent | `memory` |
-| Regex Pattern | `<memoryInstructions>[\s\S]*?</memoryInstructions>` |
-| Regex Flags | `gi` |
-| Substitution | *(empty)* |
+```text
+Name:                Remove unused memory instructions
+Match role:          system
+Match tools absent:  memory
+Regex pattern:       <memoryInstructions>[\s\S]*?<\/memoryInstructions>
+Substitution:        (empty)
+```
 
 ### Prefix Injection
 
 Prepends a custom instruction to every system message.
 
-| Field | Value |
-| --- | --- |
-| Name | Add system prefix |
-| Match Role | `system` |
-| Regex Pattern | `^` |
-| Regex Flags | `m` |
-| Substitution | `You are an expert programming assistant.` |
+```text
+Name:           Add system prefix
+Match role:     system
+Regex pattern:  ^(.*)
+Regex flags:    gms
+Substitution:   You are an expert programming assistant. $1.
+```
 
-This uses the `m` flag so `^` matches the start of every line. The
-substitution prepends text to each line. To add text only at the very
-beginning of the message, remove the `m` flag.
-
-### Strip Notes from All Messages
-
-Removes `<notes>...</notes>` blocks from both system and user messages.
-
-| Field | Value |
-| --- | --- |
-| Name | Strip notes |
-| Match Role | `all` |
-| Regex Pattern | `<notes>[\s\S]*?</notes>` |
-| Regex Flags | `gi` |
-| Substitution | *(empty)* |
+This uses the `gms` flag so `^` matches the start of the prompt.
 
 ## Debugging Rules
 
