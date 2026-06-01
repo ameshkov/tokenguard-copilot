@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.2.1] - 2026-06-01
+
 ### Added
 
 - Model defaults: added MiniMax-M3 model entry with vision support,
@@ -105,7 +107,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.0...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.1...HEAD
+[v1.2.1]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.1
 [v1.2.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.0
 [v1.1.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.0.0
