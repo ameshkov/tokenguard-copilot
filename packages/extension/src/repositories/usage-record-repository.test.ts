@@ -291,6 +291,82 @@ describe('UsageRecordRepository', () => {
       const all = repo.findByDateRange();
       expect(all).toHaveLength(2);
     });
+
+    it('filters by modelId without providerId', () => {
+      repo.upsert({
+        providerId: 'p1',
+        modelId: 'm1',
+        date: '2026-05-25',
+        promptTokens: 100,
+        completionTokens: 50,
+        cachedTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        errorCount: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
+      });
+      repo.upsert({
+        providerId: 'p1',
+        modelId: 'm2',
+        date: '2026-05-25',
+        promptTokens: 200,
+        completionTokens: 100,
+        cachedTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        errorCount: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
+      });
+
+      const result = repo.findByDateRange({ modelId: 'm1' });
+      expect(result).toHaveLength(1);
+      expect(result[0].modelId).toBe('m1');
+      expect(result[0].promptTokens).toBe(100);
+    });
+
+    it('filters by modelId combined with date range', () => {
+      repo.upsert({
+        providerId: 'p1',
+        modelId: 'm1',
+        date: '2026-05-25',
+        promptTokens: 100,
+        completionTokens: 50,
+        cachedTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        errorCount: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
+      });
+      repo.upsert({
+        providerId: 'p1',
+        modelId: 'm1',
+        date: '2026-05-26',
+        promptTokens: 200,
+        completionTokens: 100,
+        cachedTokens: 0,
+        reasoningTokens: 0,
+        requestCount: 1,
+        errorCount: 0,
+        promptTokensCost: 0,
+        completionTokensCost: 0,
+        cachedTokensCost: 0,
+      });
+
+      const result = repo.findByDateRange({
+        modelId: 'm1',
+        dateFrom: '2026-05-25',
+        dateTo: '2026-05-25',
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2026-05-25');
+      expect(result[0].promptTokens).toBe(100);
+    });
   });
 
   describe('deleteByProvider', () => {

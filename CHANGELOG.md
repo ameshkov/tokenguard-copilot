@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+- Fixed Usage Stats graph not filtering data when a model is selected
+  without a provider
+  ([#3](https://github.com/ameshkov/tokenguard-copilot/issues/3)).
+
 ## [v1.2.0] - 2026-05-31
 
 ### Added
