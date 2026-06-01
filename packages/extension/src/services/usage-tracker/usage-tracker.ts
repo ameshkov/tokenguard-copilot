@@ -52,7 +52,7 @@ export interface RecordUsageInput {
 export interface UsageStatsFilter {
   /** Provider ID filter (optional). */
   providerId?: string;
-  /** Model ID filter (optional, requires providerId). */
+  /** Model ID filter (optional). */
   modelId?: string;
   /** Start date in ISO format (optional, inclusive). */
   dateFrom?: string;

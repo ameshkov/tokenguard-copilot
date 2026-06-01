@@ -96,8 +96,7 @@ export class UsageRecordRepository {
    *
    * @param filters - Optional filter criteria.
    * @param filters.providerId - Provider ID filter.
-   * @param filters.modelId - Model ID filter (requires
-   *   providerId).
+   * @param filters.modelId - Model ID filter.
    * @param filters.dateFrom - Start date (ISO format,
    *   inclusive).
    * @param filters.dateTo - End date (ISO format,
@@ -115,7 +114,7 @@ export class UsageRecordRepository {
     if (filters?.providerId) {
       conditions.push(eq(usageRecords.providerId, filters.providerId));
     }
-    if (filters?.modelId && filters?.providerId) {
+    if (filters?.modelId) {
       conditions.push(eq(usageRecords.modelId, filters.modelId));
     }
     if (filters?.dateFrom) {
