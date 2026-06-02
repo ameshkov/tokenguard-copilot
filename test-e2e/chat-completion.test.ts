@@ -112,6 +112,17 @@ suite('Chat Completion E2E', () => {
     }
 
     assert.strictEqual(fullText, 'Hello from mock server!', 'Response should match mock output');
+
+    // Verify X-TokenGuard-Request-Id header was sent
+    assert.ok(server.lastRequestHeaders, 'Server should have captured request headers');
+    const requestIdHeader = server.lastRequestHeaders['x-tokenguard-request-id'];
+    assert.ok(requestIdHeader, 'X-TokenGuard-Request-Id header should be present');
+    const headerValue = Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader;
+    assert.match(
+      headerValue ?? '',
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'X-TokenGuard-Request-Id should be a valid UUID',
+    );
   });
 
   test('streaming chat completion works', async function () {
@@ -165,6 +176,17 @@ suite('Chat Completion E2E', () => {
       fullText,
       'Hello from mock server!',
       'Streaming response should match mock output',
+    );
+
+    // Verify X-TokenGuard-Request-Id header was sent
+    assert.ok(server.lastRequestHeaders, 'Server should have captured request headers');
+    const requestIdHeader = server.lastRequestHeaders['x-tokenguard-request-id'];
+    assert.ok(requestIdHeader, 'X-TokenGuard-Request-Id header should be present');
+    const headerValue = Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader;
+    assert.match(
+      headerValue ?? '',
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'X-TokenGuard-Request-Id should be a valid UUID',
     );
   });
 });

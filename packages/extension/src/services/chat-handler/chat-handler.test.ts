@@ -2339,6 +2339,7 @@ describe('ChatHandler', () => {
       expect(logger.error).toHaveBeenCalledWith(
         'Chat completion failed',
         `model=${ctx.model.id}`,
+        expect.stringMatching(/^requestId=[0-9a-f-]+$/),
         'error=fetch failed',
         expect.stringMatching(
           /detail=.*message=fetch failed.*code=ENOTFOUND.*syscall=getaddrinfo.*hostname=api\.example\.invalid/,

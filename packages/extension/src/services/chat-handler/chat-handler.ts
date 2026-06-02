@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { randomUUID } from 'node:crypto';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
 import type { Model, Provider } from '../../db/index.js';
@@ -964,6 +965,11 @@ export class ChatHandler {
   ): Promise<void> {
     const translated = ChatHandler.translateMessages(messages);
 
+    // Generate a unique request ID for correlation across
+    // headers, runtime logs, debug Markdown files, and
+    // error messages.
+    const requestId = randomUUID();
+
     // Apply content rules (if configured)
     let ruleResults: RuleApplicationResult[] | undefined;
     let processedMessages = translated;
@@ -998,6 +1004,7 @@ export class ChatHandler {
       'Chat completion request',
       `model=${this.ctx.model.id}`,
       `streaming=${this.ctx.model.streaming === 1}`,
+      `requestId=${requestId}`,
     );
 
     const abortController = new AbortController();
@@ -1040,6 +1047,7 @@ export class ChatHandler {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.ctx.apiKey}`,
           'User-Agent': buildUserAgent(this.ctx.version),
+          'X-TokenGuard-Request-Id': requestId,
         },
         body: JSON.stringify(body),
         signal: abortController.signal,
@@ -1072,6 +1080,7 @@ export class ChatHandler {
         `response_content_len=${responseContent.length}`,
         `tool_calls=${responseToolCalls.length}`,
         `has_reasoning=${!!reasoningCollector.fields}`,
+        `requestId=${requestId}`,
       );
 
       // Cache reasoning after successful response
@@ -1101,7 +1110,7 @@ export class ChatHandler {
     } catch (e) {
       if (token.isCancellationRequested || (e instanceof Error && e.name === 'AbortError')) {
         cancelled = true;
-        this.ctx.logger?.debug('Chat completion cancelled by user');
+        this.ctx.logger?.debug('Chat completion cancelled by user', `requestId=${requestId}`);
       } else {
         const message = e instanceof Error ? e.message : String(e);
         const detail = summarizeError(e);
@@ -1113,10 +1122,21 @@ export class ChatHandler {
         this.ctx.logger?.error(
           'Chat completion failed',
           `model=${this.ctx.model.id}`,
+          `requestId=${requestId}`,
           `error=${message}`,
           `detail=${detail}`,
         );
+
+        // Augment the thrown error message so VS Code shows
+        // the request ID for correlation.
+        if (e instanceof Error) {
+          e.message = `[req ${requestId}] ${e.message}`;
+          throw e;
+        }
+        throw new Error(`[req ${requestId}] ${String(e)}`);
       }
+      // Re-throw for cancellation; augmentation above already
+      // re-throws for non-cancellation errors.
       throw e;
     } finally {
       cancelDisposable.dispose();
@@ -1125,6 +1145,7 @@ export class ChatHandler {
       if (this.ctx.chatDebugLogger && this.ctx.workspaceFolderUri) {
         try {
           this.ctx.chatDebugLogger.logRequest({
+            requestId,
             messages: finalMessages,
             responseContent,
             responseToolCalls,

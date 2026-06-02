@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Added
+
+- `X-TokenGuard-Request-Id` header sent in chat completion requests,
+  logged in debug logs, and included in error messages.
+- Request ID is now generated per-chat-completion-request and
+  propagated to the per-session debug Markdown file names for
+  easy correlation between HTTP headers, runtime logs, debug
+  files, and error messages.
+
 ## [v1.2.2] - 2026-06-02
 
 ### Changed

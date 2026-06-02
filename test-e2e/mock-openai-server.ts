@@ -9,6 +9,8 @@ import * as http from 'node:http';
 export interface MockOpenAIServer {
   /** Base URL including the port, e.g. `http://127.0.0.1:9876`. */
   readonly baseUrl: string;
+  /** Headers received from the last `/chat/completions` request, or null if none. */
+  readonly lastRequestHeaders: Record<string, string | string[] | undefined> | null;
   /** Shuts down the server. */
   close(): Promise<void>;
 }
@@ -26,6 +28,8 @@ export interface MockOpenAIServer {
  */
 export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
   return new Promise((resolve, reject) => {
+    let lastRequestHeaders: Record<string, string | string[] | undefined> | null = null;
+
     const server = http.createServer((req, res) => {
       // Parse URL path
       const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
@@ -49,6 +53,8 @@ export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
       }
 
       if (req.method === 'POST' && url.pathname === '/chat/completions') {
+        // Capture request headers for assertion by tests
+        lastRequestHeaders = req.headers;
         let body = '';
         req.on('data', (chunk: Buffer) => {
           body += chunk.toString();
@@ -152,6 +158,9 @@ export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
 
       resolve({
         baseUrl: `http://127.0.0.1:${addr.port}`,
+        get lastRequestHeaders() {
+          return lastRequestHeaders;
+        },
         close: () =>
           new Promise<void>((res, rej) => {
             server.close((err) => (err ? rej(err) : res()));

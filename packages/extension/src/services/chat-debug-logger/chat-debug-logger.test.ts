@@ -8,6 +8,7 @@ import type { SessionTracker } from '../session-tracker/index.js';
 import { createMockLogger } from '../../test/mock-logger.js';
 
 const baseInput: LogRequestInput = {
+  requestId: 'test-request-id',
   messages: [
     { role: 'system', content: 'You are helpful.' },
     { role: 'user', content: 'Hello' },
@@ -494,6 +495,16 @@ describe('ChatDebugLogger', () => {
       rmSync(tmpDir, { recursive: true, force: true });
     });
 
+    it('uses provided requestId in filename', () => {
+      logger.logRequest(baseInput);
+
+      const workspaceId = ChatDebugLogger.computeWorkspaceId(baseInput.workspaceFolderUri);
+      const sessionDir = join(tmpDir, workspaceId, 'my-provider-test-model--test-session-id');
+      const files = readdirSync(sessionDir);
+      expect(files).toHaveLength(1);
+      expect(files[0]).toMatch(/^\d{8}-\d{6}-\d{3}-test-request-id\.md$/);
+    });
+
     it('creates session directory with encoded model name', () => {
       const input: LogRequestInput = {
         ...baseInput,
@@ -551,7 +562,7 @@ describe('ChatDebugLogger', () => {
 
     it('produces unique filenames for concurrent requests', () => {
       logger.logRequest(baseInput);
-      logger.logRequest(baseInput);
+      logger.logRequest({ ...baseInput, requestId: 'another-request-id' });
 
       const workspaceId = ChatDebugLogger.computeWorkspaceId(baseInput.workspaceFolderUri);
       const sessionDir = join(tmpDir, workspaceId, 'my-provider-test-model--test-session-id');
