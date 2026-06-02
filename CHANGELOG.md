@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+- `requestId` is now written to the metadata section of chat debug
+  Markdown logs for easy correlation with HTTP headers and runtime
+  log lines.
+
 ## [v1.2.3] - 2026-06-02
 
 ### Added

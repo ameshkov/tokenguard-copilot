@@ -201,6 +201,7 @@ export class ChatDebugLogger {
     sections.push('<pre><code>');
 
     const metaLines = [
+      `requestId     : ${requestId}`,
       `model         : ${input.modelName}`,
       `startTime     : ${input.startTime.toISOString()}`,
       `endTime       : ${input.endTime.toISOString()}`,

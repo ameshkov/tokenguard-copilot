@@ -64,6 +64,7 @@ describe('ChatDebugLogger', () => {
     it('includes metadata section with model and timing', () => {
       const md = ChatDebugLogger.formatLogMarkdown(baseInput, 'test-request-id');
       expect(md).toContain('## Metadata');
+      expect(md).toContain('requestId     : test-request-id');
       expect(md).toContain('my-provider/test-model');
       expect(md).toContain('2500ms');
       expect(md).toContain('cancelled     : false');
