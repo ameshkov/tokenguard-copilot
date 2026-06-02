@@ -6,6 +6,7 @@ import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import {
   extractReasoning,
   extractReasoningFields,
+  summarizeError,
   truncate,
   buildUserAgent,
 } from '../../utils/index.js';
@@ -1102,11 +1103,18 @@ export class ChatHandler {
         cancelled = true;
         this.ctx.logger?.debug('Chat completion cancelled by user');
       } else {
-        error = e instanceof Error ? e.message : String(e);
+        const message = e instanceof Error ? e.message : String(e);
+        const detail = summarizeError(e);
+        // Persist the bare message as the canonical error and
+        // append the cause-chain summary on a new line so the
+        // Chat Debug Markdown "Error" section is diagnosable
+        // from a single per-session file.
+        error = detail ? `${message}\n${detail}` : message;
         this.ctx.logger?.error(
           'Chat completion failed',
           `model=${this.ctx.model.id}`,
-          `error=${error}`,
+          `error=${message}`,
+          `detail=${detail}`,
         );
       }
       throw e;

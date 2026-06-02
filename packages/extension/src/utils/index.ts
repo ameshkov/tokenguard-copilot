@@ -2,6 +2,7 @@
  * Utilities barrel — re-exports all utility functions and types.
  */
 export { extractTextContent, extractImageParts, type ImagePartInfo } from './content.js';
+export { summarizeError } from './error.js';
 export {
   computeFingerprint,
   computeMessageFingerprint,

@@ -12,6 +12,12 @@ and this project adheres to
 
 - User-Agent header for all HTTP requests sent by the extension is now
   `TokenGuardCopilot/v${version}`
+- Chat completion error log and the per-session Chat Debug
+  Markdown "Error" section now include the underlying network
+  error cause (e.g. `code=ENOTFOUND`, `syscall=getaddrinfo`,
+  `hostname=...`) instead of just `"fetch failed"`, making DNS,
+  TCP, and TLS failures diagnosable from a single log line or
+  debug file.
 
 ## [v1.2.1] - 2026-06-01
 

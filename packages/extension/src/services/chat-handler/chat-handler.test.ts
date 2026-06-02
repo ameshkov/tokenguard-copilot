@@ -2308,6 +2308,86 @@ describe('ChatHandler', () => {
       await expect(handler.handle(messages, progress, token)).rejects.toThrow();
     });
 
+    it('logs underlying network error cause from a failed fetch', async () => {
+      // Simulate Node's typical wrapping of a low-level DNS error
+      // by fetch: a top-level TypeError with message "fetch failed"
+      // and the real cause on `cause` with `code`, `syscall`,
+      // `hostname`, etc.
+      const dnsCause = Object.assign(new Error('getaddrinfo ENOTFOUND api.example.invalid'), {
+        code: 'ENOTFOUND',
+        errno: -3008,
+        syscall: 'getaddrinfo',
+        hostname: 'api.example.invalid',
+      });
+      const wrapped = new TypeError('fetch failed', { cause: dnsCause });
+
+      fetchMock.mockRejectedValue(wrapped);
+
+      const logger = createMockLogger();
+      const ctx: ChatContext = {
+        ...baseContext,
+        logger,
+      };
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+      const handler = new ChatHandler(ctx, noopReasoningCacheService());
+
+      await expect(handler.handle(messages, progress, token)).rejects.toBe(wrapped);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Chat completion failed',
+        `model=${ctx.model.id}`,
+        'error=fetch failed',
+        expect.stringMatching(
+          /detail=.*message=fetch failed.*code=ENOTFOUND.*syscall=getaddrinfo.*hostname=api\.example\.invalid/,
+        ),
+      );
+    });
+
+    it('writes underlying network error cause to chat debug markdown on fetch failure', async () => {
+      // Same DNS failure shape as above, but this time asserts
+      // that the cause-chain summary flows through to the
+      // ChatDebugLogger payload, so the per-session debug
+      // markdown "Error" section is diagnosable on its own.
+      const dnsCause = Object.assign(new Error('getaddrinfo ENOTFOUND api.example.invalid'), {
+        code: 'ENOTFOUND',
+        errno: -3008,
+        syscall: 'getaddrinfo',
+        hostname: 'api.example.invalid',
+      });
+      const wrapped = new TypeError('fetch failed', { cause: dnsCause });
+
+      fetchMock.mockRejectedValue(wrapped);
+
+      const { logger: chatDebugLogger, logRequest } = mockLogger();
+      const ctx: ChatContext = {
+        ...baseContext,
+        chatDebugLogger,
+        workspaceFolderUri: 'file:///workspace',
+        workspaceFolders: ['/workspace'],
+      };
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+      const handler = new ChatHandler(ctx, noopReasoningCacheService());
+
+      await expect(handler.handle(messages, progress, token)).rejects.toBe(wrapped);
+
+      expect(logRequest).toHaveBeenCalledOnce();
+      const input = logRequest.mock.calls[0][0] as LogRequestInput;
+      expect(input.error).toBeDefined();
+      // Canonical message is on the first line; the cause-chain
+      // summary is appended on a new line.
+      expect(input.error).toContain('fetch failed');
+      expect(input.error).toMatch(
+        /message=fetch failed[\s\S]*code=ENOTFOUND[\s\S]*syscall=getaddrinfo[\s\S]*hostname=api\.example\.invalid/,
+      );
+      expect(input.cancelled).toBe(false);
+    });
+
     it('builds correct URL from baseUrl', async () => {
       fetchMock.mockResolvedValue({
         ok: true,
