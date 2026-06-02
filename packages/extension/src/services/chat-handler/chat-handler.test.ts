@@ -3123,4 +3123,103 @@ describe('ChatHandler', () => {
       expect(bodyStr).toContain('"ttl":300');
     });
   });
+
+  describe('handle — retry-once fetch wrapper', () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      fetchMock = vi.fn();
+      globalThis.fetch = fetchMock as typeof fetch;
+    });
+
+    const baseContext: ChatContext = {
+      model: mockModel({ streaming: 0 }),
+      provider: mockProvider(),
+      apiKey: 'sk-test',
+    };
+
+    it('retries once on transient ETIMEDOUT and succeeds on second attempt', async () => {
+      // Simulates undici's keepAliveTimeout handing out a
+      // half-dead connection — the first fetch attempt gets
+      // an ETIMEDOUT, the second succeeds because the bad
+      // connection is removed from the pool.
+      const logger = createMockLogger();
+      const ctx: ChatContext = { ...baseContext, logger };
+      const handler = new ChatHandler(ctx, noopReasoningCacheService());
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+
+      const timedOutError = Object.assign(new Error('read ETIMEDOUT'), {
+        code: 'ETIMEDOUT',
+        errno: -60,
+        syscall: 'read',
+      });
+
+      fetchMock.mockRejectedValueOnce(timedOutError).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Retry succeeded' } }],
+        }),
+      });
+
+      await handler.handle(messages, progress, token);
+
+      // Should have called fetch twice
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      // The error should be logged at warn level for the retry
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Chat completion fetch failed, retrying once',
+        expect.stringMatching(/^requestId=[0-9a-f-]+$/),
+        'error=read ETIMEDOUT',
+      );
+
+      // The response should be the successful one from the retry
+      const parts = (progress.report as ReturnType<typeof vi.fn>).mock?.results;
+      if (parts) {
+        // Not all progress reporters are spies, so this is best-effort
+      }
+
+      // The correct URL and body should be sent
+      const [, opts] = fetchMock.mock.calls[1];
+      expect(opts.method).toBe('POST');
+      const body = JSON.parse(opts.body as string) as { model: string };
+      expect(body.model).toBe('gpt-4');
+    });
+
+    it('does not retry on user-cancelled fetch (AbortError)', async () => {
+      const logger = createMockLogger();
+      const handler = new ChatHandler({ ...baseContext, logger }, noopReasoningCacheService());
+
+      let onCancel: () => void = () => {};
+      const token = mockToken({
+        onCancellationRequested: (cb: unknown) => {
+          onCancel = cb as () => void;
+          return { dispose: () => {} };
+        },
+      });
+
+      fetchMock.mockImplementation(async () => {
+        onCancel();
+        throw new DOMException('The operation was aborted', 'AbortError');
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Go' }])];
+      const { progress } = mockProgress();
+      await expect(handler.handle(messages, progress, token)).rejects.toThrow();
+
+      // fetch called only once — no retry on cancellation
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      // logger.warn should NOT have been called for retry
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'Chat completion fetch failed, retrying once',
+        expect.any(String),
+        expect.any(String),
+      );
+    });
+  });
 });

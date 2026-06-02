@@ -17,6 +17,14 @@ and this project adheres to
   easy correlation between HTTP headers, runtime logs, debug
   files, and error messages.
 
+### Fixed
+
+- Chat completion `fetch` requests are now retried once on a
+  transient network failure (e.g. `ETIMEDOUT` from undici's
+  keep-alive pool handing out a half-dead connection), with the
+  original failure logged at `warn` level. User-initiated
+  cancellation is not retried.
+
 ## [v1.2.2] - 2026-06-02
 
 ### Changed
