@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.2.2] - 2026-06-02
+
 ### Changed
 
 - User-Agent header for all HTTP requests sent by the extension is now
@@ -118,7 +120,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.1...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.2...HEAD
+[v1.2.2]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.2
 [v1.2.1]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.1
 [v1.2.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.0
 [v1.1.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.1.0
