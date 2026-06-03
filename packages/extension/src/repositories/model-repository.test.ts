@@ -236,6 +236,43 @@ describe('ModelRepository', () => {
     });
   });
 
+  describe('reactivate', () => {
+    it('restores a soft-removed model', () => {
+      const now = new Date().toISOString();
+      repo.insert({
+        id: 'gpt-4o',
+        providerId,
+        maxContextWindowTokens: 128000,
+        maxOutputTokens: 16384,
+        createdAt: now,
+        updatedAt: now,
+      });
+      repo.softRemove('gpt-4o', providerId);
+
+      const reactivated = repo.reactivate('gpt-4o', providerId, {
+        displayName: 'GPT-4o Reactivated',
+        temperature: 0.5,
+      });
+
+      expect(reactivated).toBeDefined();
+      expect(reactivated!.removed).toBe(0);
+      expect(reactivated!.enabled).toBe(1);
+      expect(reactivated!.displayName).toBe('GPT-4o Reactivated');
+      expect(reactivated!.temperature).toBe(0.5);
+
+      const active = repo.findActive();
+      expect(active).toHaveLength(1);
+      expect(active[0].id).toBe('gpt-4o');
+    });
+
+    it('returns undefined when no soft-deleted row exists', () => {
+      const result = repo.reactivate('nonexistent', providerId, {
+        displayName: 'X',
+      });
+      expect(result).toBeUndefined();
+    });
+  });
+
   describe('existsByKey', () => {
     it('returns true for existing non-removed model', () => {
       const now = new Date().toISOString();

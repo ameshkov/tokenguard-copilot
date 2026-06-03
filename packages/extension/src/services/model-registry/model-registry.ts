@@ -149,6 +149,45 @@ export class ModelRegistry {
     }
 
     const now = new Date().toISOString();
+
+    // If a soft-deleted row exists for this model, reactivate
+    // it instead of inserting a new row with a conflicting
+    // primary key. This is the fix for:
+    //   add a model → remove it → you cannot add it again
+    const existing = this.modelRepo.findByKey(modelId, providerId);
+    if (existing) {
+      const row = this.modelRepo.reactivate(modelId, providerId, {
+        displayName: config.displayName,
+        maxContextWindowTokens: config.maxContextWindowTokens,
+        maxOutputTokens: config.maxOutputTokens,
+        streaming: config.streaming ? 1 : 0,
+        vision: config.vision ? 1 : 0,
+        temperature: config.temperature,
+        topP: config.topP,
+        frequencyPenalty: config.frequencyPenalty,
+        presencePenalty: config.presencePenalty,
+        defaultReasoningEffort: config.defaultReasoningEffort,
+        reasoningEffortMap: config.reasoningEffortMap,
+        preserveReasoning: config.preserveReasoning ? 1 : 0,
+        inputCostPer1m: config.inputCostPer1m,
+        outputCostPer1m: config.outputCostPer1m,
+        cachedInputCostPer1m: config.cachedInputCostPer1m,
+        cacheControl: config.cacheControl ? JSON.stringify(config.cacheControl) : null,
+        customFields: config.customFields ?? null,
+      });
+
+      this.logger.debug(
+        'Model reactivated',
+        `model=${modelId}`,
+        `provider_id=${providerId}`,
+        `display_name=${config.displayName ?? modelId}`,
+      );
+
+      this.refreshRegistration();
+      this.emitter.fire();
+      return toModelInfo(row!);
+    }
+
     const row = this.modelRepo.insert({
       id: modelId,
       providerId,

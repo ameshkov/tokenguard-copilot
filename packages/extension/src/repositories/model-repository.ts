@@ -158,6 +158,63 @@ export class ModelRepository {
   }
 
   /**
+   * Reactivates a soft-removed model by setting `removed = 0`
+   * and updating all configuration fields.
+   *
+   * This is used when a user removes a model and then adds it
+   * again — instead of inserting a row with a conflicting
+   * primary key, we restore the existing soft-deleted row.
+   *
+   * @param id - The model ID.
+   * @param providerId - The provider ID.
+   * @param fields - Fields to set on the reactivated row.
+   * @returns The reactivated model row, or undefined if no
+   *   soft-deleted row was found.
+   */
+  reactivate(
+    id: string,
+    providerId: string,
+    fields: Partial<
+      Pick<
+        Model,
+        | 'displayName'
+        | 'maxContextWindowTokens'
+        | 'maxOutputTokens'
+        | 'streaming'
+        | 'vision'
+        | 'temperature'
+        | 'topP'
+        | 'frequencyPenalty'
+        | 'presencePenalty'
+        | 'defaultReasoningEffort'
+        | 'reasoningEffortMap'
+        | 'preserveReasoning'
+        | 'inputCostPer1m'
+        | 'outputCostPer1m'
+        | 'cachedInputCostPer1m'
+        | 'cacheControl'
+        | 'customFields'
+      >
+    >,
+  ): Model | undefined {
+    const existing = this.findByKey(id, providerId);
+    if (!existing) {
+      return undefined;
+    }
+    return this.db
+      .update(models)
+      .set({
+        ...fields,
+        removed: 0,
+        enabled: 1,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(and(eq(models.id, id), eq(models.providerId, providerId)))
+      .returning()
+      .get();
+  }
+
+  /**
    * Checks whether an active (non-removed) model with the given
    * display name exists.
    *

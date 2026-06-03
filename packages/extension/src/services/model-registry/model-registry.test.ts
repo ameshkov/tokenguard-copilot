@@ -126,6 +126,27 @@ describe('ModelRegistry', () => {
     vi.restoreAllMocks();
   });
 
+  describe('addModel', () => {
+    it('allows re-adding a model after it was removed', () => {
+      // Add model
+      const first = registry.addModel(providerId, 'gpt-4o', validConfig);
+      expect(first.id).toBe('gpt-4o');
+
+      // Remove (soft-delete) model
+      registry.removeModel(providerId, 'gpt-4o');
+
+      // Re-add the same model — should succeed
+      const second = registry.addModel(providerId, 'gpt-4o', {
+        ...validConfig,
+        displayName: 'GPT-4o Restored',
+        temperature: 0.5,
+      });
+      expect(second.id).toBe('gpt-4o');
+      expect(second.displayName).toBe('GPT-4o Restored');
+      expect(second.temperature).toBe(0.5);
+    });
+  });
+
   describe('fetchModels', () => {
     it('fetches and parses models from provider', async () => {
       vi.stubGlobal(

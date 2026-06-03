@@ -18,6 +18,12 @@ and this project adheres to
   Markdown logs for easy correlation with HTTP headers and runtime
   log lines.
 
+### Fixed
+
+- Re-adding a previously removed model no longer fails with a
+  primary key constraint violation. The stale soft-deleted row
+  is reactivated instead of attempting a duplicate insert.
+
 ## [v1.2.3] - 2026-06-02
 
 ### Added
