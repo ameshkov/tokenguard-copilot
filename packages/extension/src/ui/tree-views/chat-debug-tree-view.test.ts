@@ -142,11 +142,11 @@ describe('ChatDebugTreeViewProvider', () => {
 
       expect(children).toHaveLength(2);
       expect(children[0].label).toBe('openai-gpt-4o - sess-aaa');
-      expect(children[0].description).toBe('2 log(s)');
+      expect(children[0].description).toBe('2 turn(s)');
       expect(children[0].collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
       expect(children[0].contextValue).toBe('chatDebugSession');
       expect(children[1].label).toBe('anthropic-claude-3 - sess-bbb');
-      expect(children[1].description).toBe('1 log(s)');
+      expect(children[1].description).toBe('1 turn(s)');
     });
 
     it('returns placeholder when no sessions exist', async () => {
@@ -189,7 +189,7 @@ describe('ChatDebugTreeViewProvider', () => {
       const children = await provider.getChildren();
 
       expect(children).toHaveLength(1);
-      expect(children[0].description).toBe('1 log(s)');
+      expect(children[0].description).toBe('1 turn(s)');
     });
   });
 
@@ -221,8 +221,10 @@ describe('ChatDebugTreeViewProvider', () => {
       const logChildren = await provider.getChildren(sessionItem);
 
       expect(logChildren).toHaveLength(2);
-      expect(logChildren[0].label).toBe('20260521-100000-000');
-      expect(logChildren[1].label).toBe('20260521-100100-000');
+      expect(logChildren[0].label).toBe('1. 2026-05-21 10:00:00');
+      expect(logChildren[0].description).toBe('req1');
+      expect(logChildren[1].label).toBe('2. 2026-05-21 10:01:00');
+      expect(logChildren[1].description).toBe('req2');
     });
 
     it('log nodes have correct properties', async () => {
@@ -248,6 +250,7 @@ describe('ChatDebugTreeViewProvider', () => {
 
       expect(logItem.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
       expect(logItem.contextValue).toBe('chatDebugLog');
+      expect(logItem.description).toBe('req1');
       expect(logItem.command).toBeDefined();
       expect(logItem.command!.command).toBe('vscode.open');
       expect(logItem.resourceUri).toBeDefined();

@@ -8,8 +8,12 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
-### Fixed
+### Changed
 
+- Chat debug tree view items now display formatted timestamps
+  (`2026-05-21 10:00:00`), request IDs as descriptions, and
+  order numbers. "log(s)" renamed to "turn(s)" for session
+  descriptions.
 - `requestId` is now written to the metadata section of chat debug
   Markdown logs for easy correlation with HTTP headers and runtime
   log lines.
