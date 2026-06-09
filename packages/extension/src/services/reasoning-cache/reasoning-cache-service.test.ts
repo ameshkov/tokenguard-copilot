@@ -503,4 +503,171 @@ describe('ReasoningCacheService', () => {
     // reversed tool call order
     expect(t2[1].reasoning_content).toBe('R for tool calls');
   });
+
+  // --- Content rules + reasoning preservation ---
+
+  it('multi-turn with system prompt modified on each turn', () => {
+    // This simulates content rules modifying the system prompt
+    // on each turn. The key invariant: both caching and backfill
+    // use the processing (post-content-rules) messages so the
+    // session fingerprint stays consistent across turns.
+
+    // Turn 1: content rules add "Be concise." to system prompt
+    const t1PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'You are helpful. Be concise.' },
+      { role: 'user', content: 'Hi' },
+    ];
+    step(svc, t1PostRules, true, {
+      content: 'Hello there!',
+      fields: { reasoning_content: 'Simulated CoT reasoning.' },
+    });
+
+    // Turn 2: content rules again add "Be concise." to system
+    // prompt (same transformation). Both cache and backfill use
+    // the post-content-rules messages.
+    const t2PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'You are helpful. Be concise.' },
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello there!' },
+      { role: 'user', content: 'What is the weather?' },
+    ];
+    step(svc, t2PostRules, true);
+
+    // Reasoning should be properly preserved because both
+    // turns used the same (post-content-rules) system prompt
+    // for fingerprint computation.
+    expect(t2PostRules[2].reasoning_content).toBe('Simulated CoT reasoning.');
+    expect(t2PostRules[2].reasoning).toBe('Simulated CoT reasoning.');
+  });
+
+  it('multi-turn with system prompt added by content rules', () => {
+    // Simulates content rules that add a system message every
+    // turn. When consistently using post-rules messages for
+    // both cache and backfill, reasoning is preserved.
+
+    // Turn 1: content rules added a system message
+    const t1PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'Rules applied: be safe.' },
+      { role: 'user', content: 'Query' },
+    ];
+    step(svc, t1PostRules, true, {
+      content: 'Answer A',
+      fields: {
+        reasoning_content: 'Cot A',
+        reasoning_details: [{ type: 'text', text: 'Detail A' }],
+      },
+    });
+
+    // Turn 2: same content rules add the same system message
+    const t2PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'Rules applied: be safe.' },
+      { role: 'user', content: 'Query' },
+      { role: 'assistant', content: 'Answer A' },
+      { role: 'user', content: 'Follow-up' },
+    ];
+    step(svc, t2PostRules, true, {
+      content: 'Answer B',
+      fields: { reasoning_content: 'Cot B' },
+    });
+
+    // Turn 3: verify both reasoning values are preserved
+    const t3PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'Rules applied: be safe.' },
+      { role: 'user', content: 'Query' },
+      { role: 'assistant', content: 'Answer A' },
+      { role: 'user', content: 'Follow-up' },
+      { role: 'assistant', content: 'Answer B' },
+      { role: 'user', content: 'Another question' },
+    ];
+    step(svc, t3PostRules, true);
+
+    expect(t3PostRules[2].reasoning_content).toBe('Cot A');
+    expect(t3PostRules[2].reasoning_details).toEqual([{ type: 'text', text: 'Detail A' }]);
+    expect(t3PostRules[4].reasoning_content).toBe('Cot B');
+  });
+
+  it('multi-turn: content rules modify user message on each turn', () => {
+    // Simulates content rules rewriting user messages before
+    // the first assistant. Both cache and backfill use the
+    // post-rules messages for consistent fingerprints.
+
+    // Turn 1: content rules prepend prefix to user message
+    const t1PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: '[Enhanced] Hello' },
+    ];
+    step(svc, t1PostRules, true, {
+      content: 'Hi user!',
+      fields: { reasoning_content: 'R1 enhanced' },
+    });
+
+    // Turn 2: same content rules prepend prefix
+    const t2PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: '[Enhanced] Hello' },
+      { role: 'assistant', content: 'Hi user!' },
+      { role: 'user', content: '[Enhanced] How are you' },
+    ];
+    step(svc, t2PostRules, true);
+
+    expect(t2PostRules[2].reasoning_content).toBe('R1 enhanced');
+  });
+
+  it('multi-turn: pre-rules and post-rules messages differ (simulates bug)', () => {
+    // This test demonstrates the bug: if cache uses pre-rules
+    // messages and backfill uses post-rules messages, the
+    // fingerprints won't match and reasoning is lost.
+    //
+    // Fix: both cache AND backfill should use the same
+    // (post-content-rules) messages.
+
+    // Turn 1: pre-rules messages (no system prompt)
+    const t1PreRules: OpenAIMessage[] = [{ role: 'user', content: 'Hi' }];
+
+    // Cache using pre-rules messages (simulating the bug)
+    step(svc, t1PreRules, true, {
+      content: 'Hello!',
+      fields: { reasoning_content: 'My reasoning.' },
+    });
+
+    // Turn 2: post-rules messages (content rules add system prompt again)
+    const t2PostRules: OpenAIMessage[] = [
+      { role: 'system', content: 'You are an AI assistant.' },
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello!' },
+      { role: 'user', content: 'More?' },
+    ];
+
+    // Backfill uses post-rules messages — but cache was stored
+    // with pre-rules fingerprint, so it will MISS.
+    svc.backfillReasoning(t2PostRules, true);
+
+    // BUG: reasoning should be found but it's NOT because of
+    // fingerprint mismatch between pre-rules and post-rules.
+    expect(t2PostRules[2].reasoning_content).toBe('.');
+    expect(t2PostRules[2].reasoning).toBeUndefined();
+
+    // Now demonstrate the correct behavior: cache with
+    // post-rules messages on Turn 1.
+    const t1Fixed: OpenAIMessage[] = [
+      { role: 'system', content: 'You are an AI assistant.' },
+      { role: 'user', content: 'Hi' },
+    ];
+    step(svc, t1Fixed, true, {
+      content: 'Hello!',
+      fields: { reasoning_content: 'My reasoning.' },
+    });
+
+    const t2Fixed: OpenAIMessage[] = [
+      { role: 'system', content: 'You are an AI assistant.' },
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello!' },
+      { role: 'user', content: 'More?' },
+    ];
+    step(svc, t2Fixed, true);
+
+    // After fix: reasoning IS properly preserved
+    expect(t2Fixed[2].reasoning_content).toBe('My reasoning.');
+    expect(t2Fixed[2].reasoning).toBe('My reasoning.');
+  });
 });

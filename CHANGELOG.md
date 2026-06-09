@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Fixed
+
+- An issue with reasoning preservation not working when content rules are
+  applied.
+
 ## [v1.2.4] - 2026-06-03
 
 ### Changed

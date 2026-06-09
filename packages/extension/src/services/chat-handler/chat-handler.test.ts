@@ -20,6 +20,28 @@ function noopReasoningCacheService(): ReasoningCacheService {
   } as unknown as ReasoningCacheService;
 }
 
+/**
+ * Creates a ReasoningCacheService mock that exposes the
+ * underlying vi.fn() spies so tests can assert on call
+ * counts and arguments.
+ */
+function spyReasoningCacheService(): {
+  svc: ReasoningCacheService;
+  backfillMock: ReturnType<typeof vi.fn>;
+  cacheMock: ReturnType<typeof vi.fn>;
+} {
+  const backfillMock = vi.fn();
+  const cacheMock = vi.fn();
+  return {
+    svc: {
+      backfillReasoning: backfillMock,
+      cacheReasoning: cacheMock,
+    } as unknown as ReasoningCacheService,
+    backfillMock,
+    cacheMock,
+  };
+}
+
 vi.mock('vscode', () => ({
   LanguageModelChatMessageRole: { User: 1, Assistant: 2, System: 3 },
   LanguageModelTextPart: class {
@@ -2761,6 +2783,64 @@ describe('ChatHandler', () => {
       const toolNames = applyRulesFn.mock.calls[0][2] as string[];
       expect(toolNames).toEqual(['tool_a', 'tool_b']);
     });
+
+    it('cacheReasoning receives post-content-rules messages (not pre-rules)', async () => {
+      // When content rules modify messages (e.g. add a system prompt),
+      // cacheReasoning must use the post-rules messages so the
+      // session fingerprint matches what backfillReasoning computes
+      // on subsequent turns.
+
+      const vscodeModule = await import('vscode');
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const { svc, backfillMock, cacheMock } = spyReasoningCacheService();
+
+      const contentRules = mockContentRulesService();
+      // Content rules add a system message, changing the message array
+      contentRules.applyRules = vi.fn().mockReturnValue({
+        messages: [
+          { role: 'system', content: 'You are an AI assistant.' },
+          { role: 'user', content: 'Hello' },
+        ],
+        ruleResults: [],
+      });
+
+      const ctx: ChatContext = {
+        ...baseContext,
+        model: mockModel({ streaming: 0, preserveReasoning: 1 }),
+        contentRules,
+      };
+
+      const textPart = new vscodeModule.LanguageModelTextPart('Hello');
+      const messages = [mockMessage(1, [textPart as unknown as Record<string, unknown>])];
+      const handler = new ChatHandler(ctx, svc);
+      await handler.handle(messages, mockProgress().progress, mockToken());
+
+      // backfillReasoning receives post-rules messages
+      expect(backfillMock).toHaveBeenCalledOnce();
+      const backfillMessages = backfillMock.mock.calls[0][0] as OpenAIMessage[];
+      expect(backfillMessages).toEqual([
+        { role: 'system', content: 'You are an AI assistant.' },
+        { role: 'user', content: 'Hello' },
+      ]);
+
+      // cacheReasoning receives post-rules messages (same as backfill)
+      // This is the fix: previously it received pre-rules messages
+      expect(cacheMock).toHaveBeenCalledOnce();
+      const cacheMessages = cacheMock.mock.calls[0][0] as OpenAIMessage[];
+      expect(cacheMessages).toEqual([
+        { role: 'system', content: 'You are an AI assistant.' },
+        { role: 'user', content: 'Hello' },
+      ]);
+    });
   });
 
   describe('reasoning preservation', () => {
@@ -2770,28 +2850,6 @@ describe('ChatHandler', () => {
       fetchMock = vi.fn();
       globalThis.fetch = fetchMock as typeof fetch;
     });
-
-    /**
-     * Creates a ReasoningCacheService mock that exposes the
-     * underlying vi.fn() spies so tests can assert on call
-     * counts and arguments.
-     */
-    function spyReasoningCacheService(): {
-      svc: ReasoningCacheService;
-      backfillMock: ReturnType<typeof vi.fn>;
-      cacheMock: ReturnType<typeof vi.fn>;
-    } {
-      const backfillMock = vi.fn();
-      const cacheMock = vi.fn();
-      return {
-        svc: {
-          backfillReasoning: backfillMock,
-          cacheReasoning: cacheMock,
-        } as unknown as ReasoningCacheService,
-        backfillMock,
-        cacheMock,
-      };
-    }
 
     const baseContext: ChatContext = {
       model: mockModel({ streaming: 0, preserveReasoning: 1 }),

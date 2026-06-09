@@ -1091,7 +1091,7 @@ export class ChatHandler {
       // Cache reasoning after successful response
       try {
         this.reasoningCacheService.cacheReasoning(
-          translated,
+          processedMessages,
           reasoningCollector.fields,
           {
             content: responseContent,
