@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.2.5] - 2026-06-09
+
 ### Fixed
 
 - An issue with reasoning preservation not working when content rules are
@@ -162,7 +164,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.4...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.5...HEAD
+[v1.2.5]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.5
 [v1.2.4]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.4
 [v1.2.3]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.3
 [v1.2.2]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.2

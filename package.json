@@ -2,7 +2,7 @@
   "name": "tokenguard-copilot",
   "displayName": "TokenGuard Copilot",
   "description": "Use third-party OpenAI-compatible models with VS Code Copilot Chat",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "publisher": "adguard",
   "license": "MIT",
   "repository": {
