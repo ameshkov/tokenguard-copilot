@@ -256,6 +256,32 @@
   {
     "match": {
       "type": "regex",
+      "value": "(^|/)mimo-v2.5-pro-ultraspeed$"
+    },
+    "contextSize": 1050000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 1.305,
+    "outputCostPer1M": 2.61,
+    "cachedInputCostPer1M": 0.0108,
+    "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    },
+    "preserveReasoning": true
+  },
+  {
+    "match": {
+      "type": "regex",
       "value": "(^|/)mimo-v2.5$"
     },
     "contextSize": 1050000,

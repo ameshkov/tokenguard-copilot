@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Changed
+
+- Updated pricing for `mimo-v2.5-pro-ultraspeed` model defaults: input
+  $1.305/1M, output $2.61/1M, cached $0.0108/1M.
+
 ## [v1.2.5] - 2026-06-09
 
 ### Fixed
