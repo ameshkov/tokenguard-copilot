@@ -10,6 +10,10 @@ and this project adheres to
 
 ### Changed
 
+- Split `chat-handler.test.ts` into four logical test files:
+  `chat-handler.test.ts` (static methods), `chat-handler-non-streaming.test.ts`,
+  `chat-handler-streaming.test.ts`, and `chat-handler-orchestration.test.ts`,
+  with shared helpers extracted to `test-helpers.ts`.
 - Updated pricing for `mimo-v2.5-pro-ultraspeed` model defaults: input
   $1.305/1M, output $2.61/1M, cached $0.0108/1M.
 
