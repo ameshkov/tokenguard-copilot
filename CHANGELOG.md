@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.2.6] - 2026-06-10
+
 ### Changed
 
 - Reasoning preservation has been reworked — see
@@ -179,7 +181,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.5...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.6...HEAD
+[v1.2.6]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.6
 [v1.2.5]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.5
 [v1.2.4]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.4
 [v1.2.3]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.3
