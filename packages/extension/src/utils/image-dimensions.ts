@@ -8,9 +8,6 @@
  * - GIF  (header + Logical Screen Descriptor)
  * - WebP (VP8 / VP8L / VP8X chunk)
  *
- * @internal Exported for tests only; not part of the
- *   public module API.
- *
  * @param data - Raw image file bytes.
  * @param mimeType - MIME type of the image (e.g.
  *   `image/png`).

@@ -161,7 +161,7 @@ function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
     reasoningEffortMap:
       entry.reasoningEffortMap !== undefined ? { ...entry.reasoningEffortMap } : undefined,
     defaultReasoningEffort: entry.defaultReasoningEffort,
-    preserveReasoning: entry.preserveReasoning,
+    preserveReasoning: entry.preserveReasoning ?? true,
     cacheControl: entry.cacheControl,
     customFields: entry.customFields
       ? { ...builtInCustomFields, ...entry.customFields }

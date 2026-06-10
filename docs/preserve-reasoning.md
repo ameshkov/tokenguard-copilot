@@ -19,7 +19,7 @@ reasoning (thinking tokens) across multi-turn conversations.
     - [Session Fingerprint](#session-fingerprint-computefingerprint)
     - [Message Fingerprint](#message-fingerprint-computemessagefingerprint)
     - [How the Two Fingerprints Work Together](#how-the-two-fingerprints-work-together)
-- [Placeholder Handling](#placeholder-handling)
+- [Message Skipping vs Selective Backfill](#message-skipping-vs-selective-backfill)
 - [TTL and Cleanup](#ttl-and-cleanup)
 - [Configuration](#configuration)
 
@@ -67,42 +67,117 @@ stripped between turns:
 - The quality of follow-up responses degrades.
 - The conversation may feel disjointed or repetitive.
 
-VS Code Copilot Chat **does not** preserve reasoning parts across
-turns by default — the `LanguageModelThinkingPart` objects are passed
-to the chat UI but are not included in subsequent
-`LanguageModelChatRequestMessage` arrays. The extension's reasoning
-cache solves this by storing the reasoning server-side and
-re-injecting it before each API call.
+### VS Code's Built-in Mechanism
+
+VS Code provides `LanguageModelThinkingPart` to carry reasoning
+tokens. Within a multi-turn **agentic scenario** — where VS Code
+orchestrates a loop of model calls, tool invocations, and follow-up
+prompts — the runtime re-sends `LanguageModelThinkingPart` objects
+for previous assistant messages in each subsequent request. The
+extension can extract reasoning fields directly from these parts,
+which carry `presentFields` metadata recording exactly which server
+fields were originally returned.
+
+### The Limitation
+
+When the agentic script **finishes** and the user sends a **new
+message** into the same chat, VS Code starts a fresh request cycle.
+It does **not** re-send the `LanguageModelThinkingPart` objects from
+previous turns. The reasoning is lost — the model receives the
+assistant's text and tool calls but none of the thinking tokens that
+preceded them.
+
+### Why the Database Is Needed
+
+The SQLite reasoning cache acts as a **persistent fallback**. It
+stores reasoning fields keyed by a dual-fingerprint scheme:
+
+- **Session fingerprint** — identifies the conversation (derived
+  from system + user message prefix).
+- **Message fingerprint** — identifies each assistant message by
+  its content and tool calls.
+
+When VS Code does not provide thinking parts (after the agent script
+finishes, or in non-agentic scenarios), the extension retrieves
+cached reasoning from the database and backfills it into the API
+request. This ensures the model always has access to prior thinking
+tokens, regardless of whether VS Code re-sends them.
+
+### Two-Tier Strategy
+
+The extension uses a two-tier approach to reasoning preservation:
+
+1. **Primary source — VS Code thinking parts.** When VS Code
+   provides `LanguageModelThinkingPart` for a message (typically
+   within an active agentic loop), the extension extracts reasoning
+   fields directly from the parts. This is the most accurate source
+   because thinking parts carry `presentFields` metadata that
+   records exactly which server fields were returned.
+
+2. **Fallback — database cache.** When VS Code does not provide
+   thinking parts (after the agent script finishes, or when the
+   user sends a new message into an existing chat), the extension
+   falls back to the reasoning cache. The cache stores exactly the
+   fields the server originally returned, so selective backfill
+   preserves the correct field set.
+
+This two-tier strategy ensures reasoning is preserved both within
+active agentic loops (via thinking parts) and across non-contiguous
+chat turns (via the database cache).
 
 ## Architecture Overview
 
-The reasoning preservation system has four layers:
+The reasoning preservation system uses a two-tier strategy with four
+layers:
 
 ```text
-┌─────────────────────────────────────────────┐
-│              ChatHandler                    │
-│  (orchestrates translate → backfill → POST  │
-│   → extract → cache)                        │
-├─────────────────────────────────────────────┤
-│           ReasoningCacheService             │
-│  (backfillReasoning / cacheReasoning /      │
-│   computeFingerprint +                      │
-│   computeMessageFingerprint)                │
-├─────────────────────────────────────────────┤
-│          ReasoningCacheRepository           │
-│  (cache / get / deleteExpired / deleteAll)  │
-├─────────────────────────────────────────────┤
-│      SQLite + Drizzle (reasoning_cache)     │
-│  (fingerprint, message_fingerprint, fields) │
-└─────────────────────────────────────────────┘
+ChatHandler.handle()
+       │
+       ├─ translateMessages()          ← Primary: extract from
+       │   thinkingPartsToReasoning()     VS Code thinking parts
+       │   sets reasoning fields on       (presentFields metadata)
+       │   OpenAIMessage directly
+       │
+       ├─ backfillReasoning()          ← Fallback: read from cache
+       │   skips if reasoning already     (only when thinking parts
+       │   present on the message          were not provided)
+       │   computes fingerprints
+       │   repo.get() → inject fields
+       │
+       ├─ POST /v1/chat/completions
+       │
+       └─ cacheReasoning()             ← Store for future turns
+           computes fingerprints
+           repo.cache()
+       │
+       ▼
+┌──────────────────────────────────────────────┐
+│       ReasoningCacheService                  │
+│  (backfillReasoning / cacheReasoning /       │
+│   computeFingerprint +                       │
+│   computeMessageFingerprint)                 │
+├──────────────────────────────────────────────┤
+│       ReasoningCacheRepository               │
+│  (cache / get / deleteExpired / deleteAll)   │
+├──────────────────────────────────────────────┤
+│       SQLite + Drizzle (reasoning_cache)     │
+│  (fingerprint, message_fingerprint, fields)  │
+└──────────────────────────────────────────────┘
 ```
 
 | Layer | Responsibility |
 | --- | --- |
-| `ChatHandler` | Calls `backfillReasoning` before the API request and `cacheReasoning` after a successful response |
-| `ReasoningCacheService` | Computes session and message fingerprints, orchestrates backfill and cache logic |
-| `ReasoningCacheRepository` | CRUD operations on the `reasoning_cache` table |
-| SQLite / Drizzle | Persistent storage keyed by `(fingerprint, messageFingerprint)` |
+| `ChatHandler.translateMessages()` | **Primary source.** Extracts reasoning from `LanguageModelThinkingPart` objects via `thinkingPartsToReasoning()`, setting fields directly on `OpenAIMessage` when thinking parts are available. |
+| `ChatHandler.backfillReasoning()` | **Fallback.** Skips messages that already have reasoning (from thinking parts). For remaining messages, looks up cached reasoning by fingerprint and injects fields from the database. |
+| `ChatHandler.cacheReasoning()` | Stores reasoning fields from the API response into the cache for future turns. |
+| `ReasoningCacheService` | Computes session and message fingerprints, orchestrates conditional backfill and cache logic. |
+| `ReasoningCacheRepository` | CRUD operations on the `reasoning_cache` table. |
+| SQLite / Drizzle | Persistent storage keyed by `(fingerprint, messageFingerprint)`. |
+
+The utility `thinkingPartsToReasoning()` in
+`utils/reasoning-conversion.ts` converts `LanguageModelThinkingPart`
+objects into `ReasoningFields`, using `presentFields` metadata to
+determine which provider-dependent fields to populate.
 
 Periodic cleanup runs via `ReasoningCacheCleanupService`, which
 deletes expired entries every 30 minutes.
@@ -180,7 +255,7 @@ The `models` table also carries reasoning-related columns:
 ```typescript
 defaultReasoningEffort: text('default_reasoning_effort'),
 reasoningEffortMap: text('reasoning_effort_map'),   // JSON
-preserveReasoning: integer('preserve_reasoning').notNull().default(0),
+preserveReasoning: integer('preserve_reasoning').notNull().default(1),
 ```
 
 And the `usage_records` table tracks reasoning token consumption:
@@ -251,23 +326,24 @@ User sends follow-up message
 ChatHandler.handle()
        │
        ├─ translateMessages()
-       │   The previous assistant message is now in the
-       │   array, but WITHOUT reasoning fields (VS Code
-       │   doesn't preserve LanguageModelThinkingPart
-       │   across turns).
+       │   Collects LanguageModelThinkingPart from
+       │   previous assistant messages (if VS Code
+       │   re-sends them in an agentic loop).
+       │   Calls thinkingPartsToReasoning() to set
+       │   reasoning fields on the OpenAIMessage.
        │
        ├─ backfillReasoning()
        │   ├─ Computes session FP
        │   │   (same system+user prefix)
        │   ├─ For each assistant message:
+       │   │   ├─ If reasoning fields already present
+       │   │   │   (from thinking parts) → skip
        │   │   ├─ Computes message FP from
        │   │   │   (msg.content + msg.tool_calls)
        │   │   ├─ repo.get(sessionFP, msgFP)
        │   │   │   → cached fields
-       │   │   └─ Injects cached fields into the
-       │   │       assistant message
-       │   └─ If no cache hit and no agent reasoning:
-       │       injects placeholder "."
+       │   │   └─ Injects only the cached fields
+       │   │       (selective backfill)
        │
        ├─ buildRequestBody()
        │   Merges reasoningEffortMap again
@@ -360,23 +436,25 @@ The composite key `(sessionFP, messageFP)` ensures:
   its position — resilient to conversation rollbacks where
   Copilot may replay messages in a different order.
 
-## Placeholder Handling
+## Message Skipping vs Selective Backfill
 
-Some agent frameworks supply a placeholder reasoning value
-(a single character like `"."`) to satisfy API formatting
-requirements without providing real reasoning content.
+During backfill, each assistant message follows one of
+three paths:
 
-During backfill, the service applies two placeholder rules:
+1. **Already has reasoning fields (from thinking parts)**:
+   The message is skipped entirely — no cache lookup is
+   performed. Thinking parts in `translateMessages` are
+   the **primary source** and always take precedence.
 
-1. **Agent-supplied placeholder**: If the agent-provided
-   reasoning string is ≤ 1 character long, it is treated
-   as a placeholder and **replaced** with the cached value
-   (if available).
-2. **Missing reasoning fallback**: If an assistant message
-   has no reasoning fields at all (neither agent-supplied
-   nor cached), a `"."` placeholder is injected into
-   `reasoning_content`. This ensures providers that require
-   reasoning fields in the history always see a value.
+2. **No reasoning fields, but cache entry exists**:
+   Only the fields present in the cache entry are injected
+   (selective backfill). A cache entry with only
+   `reasoning_content` will not set `reasoning` or
+   `reasoning_details`.
+
+3. **No reasoning fields and no cache entry**:
+   Nothing is set — the message is sent as-is. No
+   placeholder or fallback value is injected.
 
 ## TTL and Cleanup
 
@@ -445,7 +523,7 @@ precedence over the bundled JSON:
 | --- | --- | --- |
 | `defaultReasoningEffort` | `null` | Per-model default effort level |
 | `reasoningEffortMap` | `null` | JSON-stringified effort map |
-| `preserveReasoning` | `0` | Whether reasoning preservation is enabled |
+| `preserveReasoning` | `1` | Whether reasoning preservation is enabled |
 
 ### 3. Reasoning Effort at Request Time
 
@@ -508,16 +586,13 @@ Key design decisions:
   a different index still hits the cache.
 - **Model-agnostic**: Message FP excludes the model name
   so reasoning survives mid-session model switches.
-- **Three-field normalisation**: Backfill copies the
-  longest reasoning string to all three fields for
-  cross-provider compatibility.
+- **Selective backfill**: When using cached reasoning,
+  only fields present in the cache entry are injected.
+  When using thinking parts, only fields recorded in
+  `presentFields` metadata are set.
 - **Placeholder detection**: Very short strings (≤ 1
   char) are treated as placeholders and replaced with
   cached content.
-- **Placeholder fallback**: When no cached reasoning
-  exists for an assistant message, `reasoning_content`
-  is set to `"."` so providers that require reasoning
-  fields always see a value.
 - **TTL-based eviction**: Cache entries live for 24
   hours, with periodic cleanup every 30 minutes.
 - **Upsert semantics**: If the same

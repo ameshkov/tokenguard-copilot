@@ -8,9 +8,6 @@ import { extractReasoning, type ReasoningFields } from '../../utils/index.js';
 import type { OpenAIMessage } from '../chat-handler/index.js';
 import type { Logger } from '../../logger/index.js';
 
-/** Placeholder reasoning value for cache misses. */
-const REASONING_PLACEHOLDER = '.';
-
 /**
  * Manages reasoning preservation across multi-turn
  * conversations.
@@ -43,17 +40,14 @@ export class ReasoningCacheService {
    * before sending a request.
    *
    * For each assistant message in the request history:
-   * - If the agent already provided reasoning fields,
-   *   the longest value is copied to all three fields
-   *   for cross-provider compatibility. If it is very
-   *   short (≤ 1 char), it is treated as a placeholder
-   *   and the cached value is used instead.
-   * - If no agent-supplied reasoning is present, the
-   *   cached value is injected.
-   * - If neither agent reasoning nor cached reasoning
-   *   is available, a placeholder `"."` is injected so
-   *   providers that require reasoning fields always
-   *   see a value.
+   * - If the message already has reasoning fields
+   *   populated (e.g. from thinking parts in
+   *   `translateMessages`), it is skipped entirely.
+   * - If cached reasoning exists for the message
+   *   fingerprint, only the fields present in the cache
+   *   entry are set (selective backfill).
+   * - If neither source has data, no reasoning fields
+   *   are set.
    *
    * No-op when `preserveReasoning` is `false` or no
    * assistant messages exist.
@@ -96,54 +90,42 @@ export class ReasoningCacheService {
 
       if (cached) cacheHitCount++;
 
+      // Skip messages that already have reasoning fields
+      // populated (e.g. from thinking parts in
+      // translateMessages).
       const hasAgent =
         typeof msg.reasoning_content === 'string' ||
         typeof msg.reasoning === 'string' ||
         Array.isArray(msg.reasoning_details);
 
       if (hasAgent) {
-        const longest = extractReasoning({
-          reasoning_content: msg.reasoning_content,
-          reasoning: msg.reasoning,
-          reasoning_details: msg.reasoning_details,
-        });
-        if (longest && longest.length <= 1) {
-          // Very short value (e.g. ".") — use cached
-          if (cached) {
-            msg.reasoning_content = cached.reasoning_content;
-            msg.reasoning = cached.reasoning;
-            msg.reasoning_details = cached.reasoning_details;
-            this.logger.trace(
-              'Reasoning backfill: replaced placeholder with cached value',
-              `msg_fp=${msgFp}`,
-            );
-          }
-        } else if (longest) {
-          // Copy longest to all three fields
-          msg.reasoning_content = longest;
-          msg.reasoning = longest;
-          msg.reasoning_details = cached?.reasoning_details ??
-            msg.reasoning_details ?? [{ type: 'text', text: longest }];
-          backfillCount++;
-        }
-      } else if (cached) {
-        const longest = extractReasoning(cached);
-        msg.reasoning_content = cached.reasoning_content ?? longest ?? undefined;
-        msg.reasoning = cached.reasoning ?? longest ?? undefined;
-        msg.reasoning_details =
-          cached.reasoning_details ?? (longest ? [{ type: 'text', text: longest }] : undefined);
         this.logger.trace(
-          'Reasoning backfill: injected cached reasoning',
-          `msg_fp=${msgFp}`,
-          `len=${longest?.length ?? 0}`,
+          'Reasoning backfill skipped: message already has reasoning',
+          `msg_fp=${msgFp?.slice(0, 8) ?? 'none'}`,
         );
+        continue;
+      }
+
+      if (cached) {
+        // Selective backfill: only set fields present in
+        // cache.
+        if (cached.reasoning_content != null) {
+          msg.reasoning_content = cached.reasoning_content;
+        }
+        if (cached.reasoning != null) {
+          msg.reasoning = cached.reasoning;
+        }
+        if (cached.reasoning_details != null) {
+          msg.reasoning_details = cached.reasoning_details;
+        }
+        this.logger.trace('Reasoning backfill: injected cached reasoning', `msg_fp=${msgFp}`);
         backfillCount++;
       } else {
-        // No agent reasoning and no cache hit — inject
-        // placeholder so providers that require reasoning
-        // fields always see a value.
-        msg.reasoning_content = REASONING_PLACEHOLDER;
-        this.logger.trace('Reasoning backfill: injected placeholder', `msg_fp=${msgFp ?? 'none'}`);
+        // No thinking parts and no cache — leave reasoning
+        // fields unset. The model has never returned
+        // reasoning for this message, so there is nothing
+        // to inject.
+        this.logger.trace('Reasoning backfill: no source available', `msg_fp=${msgFp ?? 'none'}`);
       }
     }
 

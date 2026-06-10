@@ -7,9 +7,11 @@ import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import {
   extractReasoning,
   extractReasoningFields,
+  reasoningToThinkingPart,
   summarizeError,
   truncate,
   buildUserAgent,
+  thinkingPartsToReasoning,
 } from '../../utils/index.js';
 import type { ReasoningFields } from '../../utils/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
@@ -289,6 +291,7 @@ export class ChatHandler {
       let textBuffer = '';
       let contentParts: OpenAIContentPartUnion[] | null = null;
       const toolCalls: OpenAIToolCall[] = [];
+      const thinkingParts: vscode.LanguageModelThinkingPart[] = [];
       const toolResults: Array<{
         callId: string;
         content: string;
@@ -360,6 +363,8 @@ export class ChatHandler {
               url: uint8ArrayToBase64(part.data, part.mimeType),
             },
           });
+        } else if (part instanceof vscode.LanguageModelThinkingPart) {
+          thinkingParts.push(part);
         }
       }
 
@@ -394,6 +399,16 @@ export class ChatHandler {
 
       if (toolCalls.length > 0) {
         openAIMsg.tool_calls = toolCalls;
+      }
+
+      // Extract reasoning from thinking parts (primary source)
+      if (thinkingParts.length > 0 && role === 'assistant') {
+        const reasoning = thinkingPartsToReasoning(thinkingParts);
+        if (reasoning) {
+          openAIMsg.reasoning_content = reasoning.reasoning_content;
+          openAIMsg.reasoning = reasoning.reasoning;
+          openAIMsg.reasoning_details = reasoning.reasoning_details;
+        }
       }
 
       result.push(openAIMsg);
@@ -684,13 +699,12 @@ export class ChatHandler {
       throw new Error('No response content');
     }
 
-    // Report reasoning content first (before main content)
-    if (reasoningContent) {
-      progress.report(
-        new vscode.LanguageModelThinkingPart(
-          reasoningContent,
-        ) as unknown as vscode.LanguageModelResponsePart,
-      );
+    // Report reasoning content first (before main content),
+    // with presentFields metadata so only the fields the
+    // server actually sent are reconstructed on the next turn.
+    const thinkingPart = reasoningToThinkingPart(message ?? {});
+    if (thinkingPart) {
+      progress.report(thinkingPart as unknown as vscode.LanguageModelResponsePart);
     }
 
     if (content) {
@@ -871,14 +885,12 @@ export class ChatHandler {
             `content_len=${(choice?.delta?.content ?? '').length}`,
           );
 
-          // Surface reasoning content as thinking parts (before main content)
-          const reasoning = extractReasoning(choice.delta ?? {});
-          if (reasoning) {
-            progress.report(
-              new vscode.LanguageModelThinkingPart(
-                reasoning,
-              ) as unknown as vscode.LanguageModelResponsePart,
-            );
+          // Surface reasoning content as thinking parts (before main content),
+          // with presentFields metadata so only the fields the server actually
+          // sent are reconstructed on the next turn.
+          const thinkingPart = reasoningToThinkingPart(choice.delta ?? {});
+          if (thinkingPart) {
+            progress.report(thinkingPart as unknown as vscode.LanguageModelResponsePart);
           }
 
           const content = choice.delta?.content;

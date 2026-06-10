@@ -418,7 +418,13 @@ describe('ChatHandler — handleStreaming', () => {
 
     // First two reports are thinking parts
     expect(reported[0]).toHaveProperty('value', 'Let me think...');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
     expect(reported[1]).toHaveProperty('value', ' step by step.');
+    expect((reported[1] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
     // Third is the content text part
     expect(reported[2]).toHaveProperty('value', 'The answer is 42.');
     expect(reported).toHaveLength(3);
@@ -468,6 +474,9 @@ describe('ChatHandler — handleStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Anthropic thinking...');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Done.');
   });
 
@@ -520,6 +529,9 @@ describe('ChatHandler — handleStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Let me explain. In summary:');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_details'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Answer.');
   });
 
@@ -572,6 +584,9 @@ describe('ChatHandler — handleStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Public reasoning.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_details'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Answer.');
   });
 
@@ -611,6 +626,9 @@ describe('ChatHandler — handleStreaming', () => {
 
     expect(reported).toHaveLength(1);
     expect(reported[0]).toHaveProperty('value', 'thinking...');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
   });
 
   it('no thinking parts when reasoning fields are absent', async () => {
@@ -710,8 +728,14 @@ describe('ChatHandler — handleStreaming', () => {
 
     expect(reported).toHaveLength(4);
     expect(reported[0]).toHaveProperty('value', 'Think 1.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Content 1.');
     expect(reported[2]).toHaveProperty('value', 'Think 2.');
+    expect((reported[2] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
     expect(reported[3]).toHaveProperty('value', ' Content 2.');
   });
 

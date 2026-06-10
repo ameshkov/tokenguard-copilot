@@ -10,12 +10,46 @@ and this project adheres to
 
 ### Changed
 
+- Use thinking parts as primary reasoning source in `translateMessages`.
+  `LanguageModelThinkingPart` objects from VS Code are now collected
+  and converted to `ReasoningFields` via `thinkingPartsToReasoning`,
+  so reasoning metadata from previous assistant messages is preserved
+  in multi-turn agentic scenarios.
+- `backfillReasoning` now skips messages that already have reasoning
+  fields populated (e.g. from thinking parts), instead of copying
+  the longest value to all three fields.
+- `backfillReasoning` now performs selective backfill from cache,
+  only setting fields that exist in the cache entry rather than
+  copying the longest value to all three fields.
+- Removed placeholder (`"."`) injection in `backfillReasoning` when
+  no reasoning source is available. Messages without reasoning now
+  simply have no reasoning fields set.
+- Enable reasoning preservation by default for all models. The
+  `preserveReasoning` database column default changed from `0` to
+  `1`, and the `toDefaults()` function now defaults the field to
+  `true` when absent from model entries. Removed explicit
+  `"preserveReasoning": true` from all 15 bundled model entries in
+  `model-defaults.json`.
 - Split `chat-handler.test.ts` into four logical test files:
   `chat-handler.test.ts` (static methods), `chat-handler-non-streaming.test.ts`,
   `chat-handler-streaming.test.ts`, and `chat-handler-orchestration.test.ts`,
   with shared helpers extracted to `test-helpers.ts`.
 - Updated pricing for `mimo-v2.5-pro-ultraspeed` model defaults: input
   $1.305/1M, output $2.61/1M, cached $0.0108/1M.
+- Expanded "Why Preserve Reasoning?" documentation to explain the
+  two-tier reasoning preservation strategy (VS Code thinking parts
+  as primary source, SQLite database cache as fallback) and why the
+  database is needed.
+
+### Fixed
+
+- Reasoning fields in API requests now only include the fields that
+  the server originally sent, instead of populating all three
+  (`reasoning_content`, `reasoning`, `reasoning_details`) from a
+  single value. Response handlers now use `reasoningToThinkingPart()`
+  which sets `presentFields` metadata on thinking parts, so
+  `translateMessages` can faithfully reconstruct only the fields
+  present in the original LLM response.
 
 ## [v1.2.5] - 2026-06-09
 

@@ -47,6 +47,11 @@ describe('models table', () => {
     expect(columns).toHaveProperty('createdAt');
     expect(columns).toHaveProperty('updatedAt');
   });
+
+  it('should default preserveReasoning to 1', () => {
+    const col = getColumns(models).preserveReasoning;
+    expect(col.default).toBe(1);
+  });
 });
 
 describe('usageRecords table', () => {

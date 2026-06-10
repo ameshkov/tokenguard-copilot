@@ -1,4 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+vi.mock('vscode', () => ({
+  LanguageModelThinkingPart: class {
+    constructor(
+      public value: string | string[],
+      public id?: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      public metadata?: { readonly [key: string]: any },
+    ) {}
+  },
+}));
+
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { SessionMappingRepository } from '../../repositories/index.js';
 import { SessionTracker } from './session-tracker.js';

@@ -301,6 +301,112 @@ describe('ChatHandler — static methods', () => {
         },
       ]);
     });
+
+    it('extracts reasoning from thinking parts with presentFields', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Here is my answer.');
+      const thinkingPart = new vscodeModule.LanguageModelThinkingPart(
+        'Internal reasoning...',
+        undefined,
+        { presentFields: ['reasoning_content'] },
+      );
+      const messages = [
+        mockMessage(2, [
+          thinkingPart as unknown as Record<string, unknown>,
+          textPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result).toEqual([
+        {
+          role: 'assistant',
+          content: 'Here is my answer.',
+          reasoning_content: 'Internal reasoning...',
+        },
+      ]);
+    });
+
+    it('extracts multiple presentFields from thinking parts', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Answer');
+      const thinkingPart = new vscodeModule.LanguageModelThinkingPart(
+        'Chain of thought',
+        undefined,
+        { presentFields: ['reasoning', 'reasoning_details'] },
+      );
+      const messages = [
+        mockMessage(2, [
+          thinkingPart as unknown as Record<string, unknown>,
+          textPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result[0].reasoning).toBe('Chain of thought');
+      expect(result[0].reasoning_details).toEqual([{ type: 'text', text: 'Chain of thought' }]);
+      expect(result[0].reasoning_content).toBeUndefined();
+    });
+
+    it('populates all three fields when no presentFields metadata', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Answer');
+      const thinkingPart = new vscodeModule.LanguageModelThinkingPart('Backward compat reasoning');
+      const messages = [
+        mockMessage(2, [
+          thinkingPart as unknown as Record<string, unknown>,
+          textPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result[0].reasoning_content).toBe('Backward compat reasoning');
+      expect(result[0].reasoning).toBe('Backward compat reasoning');
+      expect(result[0].reasoning_details).toEqual([
+        { type: 'text', text: 'Backward compat reasoning' },
+      ]);
+    });
+
+    it('no thinking parts -> no reasoning fields', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Just text');
+      const messages = [mockMessage(2, [textPart as unknown as Record<string, unknown>])];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result[0].reasoning_content).toBeUndefined();
+      expect(result[0].reasoning).toBeUndefined();
+      expect(result[0].reasoning_details).toBeUndefined();
+    });
+
+    it('mixed text + thinking parts on assistant message', async () => {
+      const vscodeModule = await import('vscode');
+      const textPart1 = new vscodeModule.LanguageModelTextPart('Part 1. ');
+      const thinkingPart = new vscodeModule.LanguageModelThinkingPart('Thinking...', undefined, {
+        presentFields: ['reasoning_content'],
+      });
+      const textPart2 = new vscodeModule.LanguageModelTextPart('Part 2.');
+      const messages = [
+        mockMessage(2, [
+          textPart1 as unknown as Record<string, unknown>,
+          thinkingPart as unknown as Record<string, unknown>,
+          textPart2 as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result[0].content).toBe('Part 1. Part 2.');
+      expect(result[0].reasoning_content).toBe('Thinking...');
+    });
+
+    it('thinking parts on non-assistant message are ignored', async () => {
+      const vscodeModule = await import('vscode');
+      const thinkingPart = new vscodeModule.LanguageModelThinkingPart('User thinking');
+      const textPart = new vscodeModule.LanguageModelTextPart('User message');
+      const messages = [
+        mockMessage(1, [
+          thinkingPart as unknown as Record<string, unknown>,
+          textPart as unknown as Record<string, unknown>,
+        ]),
+      ];
+      const result = ChatHandler.translateMessages(messages);
+      expect(result[0].role).toBe('user');
+      expect(result[0].reasoning_content).toBeUndefined();
+    });
   });
 
   // -----------------------------------------------------------------------

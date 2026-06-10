@@ -1,4 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('vscode', () => ({
+  LanguageModelThinkingPart: class {
+    constructor(
+      public value: string | string[],
+      public id?: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      public metadata?: { readonly [key: string]: any },
+    ) {}
+  },
+}));
+
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { ReasoningCacheRepository } from '../../repositories/index.js';
 import { ReasoningCacheService } from './reasoning-cache-service.js';
@@ -75,9 +87,9 @@ describe('ReasoningCacheService', () => {
     ];
     svc.backfillReasoning(t2, true);
 
-    // Placeholder injected (no cache hit), not the
-    // original 'thinking...' value.
-    expect(t2[1].reasoning_content).toBe('.');
+    // No cache hit and no thinking parts — reasoning
+    // fields remain unset.
+    expect(t2[1].reasoning_content).toBeUndefined();
   });
 
   it('cacheReasoning with null fields is a no-op', () => {
@@ -95,8 +107,9 @@ describe('ReasoningCacheService', () => {
     ];
     svc.backfillReasoning(t2, true);
 
-    // Placeholder injected (no cache hit), not a real value.
-    expect(t2[2].reasoning_content).toBe('.');
+    // No cache hit and no thinking parts — reasoning
+    // fields remain unset.
+    expect(t2[2].reasoning_content).toBeUndefined();
   });
 
   // --- Multi-turn scenarios ---
@@ -118,8 +131,9 @@ describe('ReasoningCacheService', () => {
     ];
     svc.backfillReasoning(t2, true);
 
-    // Only placeholder — no real reasoning was cached.
-    expect(t2[2].reasoning_content).toBe('.');
+    // No cache hit and no thinking parts — reasoning
+    // fields remain unset.
+    expect(t2[2].reasoning_content).toBeUndefined();
   });
 
   it('Turn 1 text -> Turn 2 backfill', () => {
@@ -142,9 +156,10 @@ describe('ReasoningCacheService', () => {
     ];
     step(svc, t2, true);
 
+    // Selective backfill: only the cached field is set.
     expect(t2[2].reasoning_content).toBe('I should greet the user.');
-    expect(t2[2].reasoning).toBe('I should greet the user.');
-    expect(t2[2].reasoning_details).toBeDefined();
+    expect(t2[2].reasoning).toBeUndefined();
+    expect(t2[2].reasoning_details).toBeUndefined();
   });
 
   it('Turn 2 second assistant -> Turn 3 backfill both', () => {
@@ -274,7 +289,7 @@ describe('ReasoningCacheService', () => {
     expect(t2[4].reasoning_content).toBe('multi prefix');
   });
 
-  it('Agent-supplied placeholder (short) replaced by cached', () => {
+  it('Agent-supplied short value is preserved (skip behavior)', () => {
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
     step(svc, t1, true, {
       content: 'Long answer',
@@ -293,7 +308,9 @@ describe('ReasoningCacheService', () => {
     ];
     step(svc, t2, true);
 
-    expect(t2[1].reasoning_content).toBe('This is the full chain of thought.');
+    // Message already has reasoning (even if short) —
+    // skip entirely. No replacement with cached value.
+    expect(t2[1].reasoning_content).toBe('.');
   });
 
   it('Agent already has full reasoning, no replacement', () => {
@@ -313,10 +330,14 @@ describe('ReasoningCacheService', () => {
     ];
     step(svc, t2, true);
 
+    // Message already has reasoning — skip entirely.
+    // No copying to other fields.
     expect(t2[1].reasoning_content).toBe('Agent-provided long reasoning.');
+    expect(t2[1].reasoning).toBeUndefined();
+    expect(t2[1].reasoning_details).toBeUndefined();
   });
 
-  it('Agent supplies one field -> copied to all three', () => {
+  it('Agent supplies one field -> skip, no copy to other fields', () => {
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
     step(svc, t1, true, {
       content: 'Answer',
@@ -336,9 +357,12 @@ describe('ReasoningCacheService', () => {
     ];
     step(svc, t2, true);
 
-    expect(t2[1].reasoning_content).toBe('Agent reasoning field');
+    // Message already has reasoning — skip entirely.
+    // The single field is preserved; other fields remain
+    // unset.
+    expect(t2[1].reasoning_content).toBeUndefined();
     expect(t2[1].reasoning).toBe('Agent reasoning field');
-    expect(t2[1].reasoning_details).toEqual([{ type: 'text', text: 'Cached detail' }]);
+    expect(t2[1].reasoning_details).toBeUndefined();
   });
 
   it('Agent supplies no reasoning fields -> cached injected', () => {
@@ -401,13 +425,14 @@ describe('ReasoningCacheService', () => {
     ];
     svc.backfillReasoning(t2, true);
 
-    // Only placeholder — null fields were not cached.
-    expect(t2[1].reasoning_content).toBe('.');
+    // No cache hit and no thinking parts — reasoning
+    // fields remain unset.
+    expect(t2[1].reasoning_content).toBeUndefined();
   });
 
   // --- Placeholder fallback ---
 
-  it('No cache and no agent reasoning -> injects placeholder', () => {
+  it('No cache and no agent reasoning -> no reasoning fields', () => {
     // Simulate Turn 2 with no prior cache entry for this
     // assistant message content.
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
@@ -426,8 +451,9 @@ describe('ReasoningCacheService', () => {
     ];
     step(svc, t2, true);
 
-    // "Answer B" has no cache hit → placeholder injected
-    expect(t2[1].reasoning_content).toBe('.');
+    // "Answer B" has no cache hit and no thinking parts
+    // — reasoning fields remain unset.
+    expect(t2[1].reasoning_content).toBeUndefined();
   });
 
   // --- Rollback resilience ---
@@ -535,9 +561,10 @@ describe('ReasoningCacheService', () => {
 
     // Reasoning should be properly preserved because both
     // turns used the same (post-content-rules) system prompt
-    // for fingerprint computation.
+    // for fingerprint computation. Selective backfill: only
+    // the cached field is set.
     expect(t2PostRules[2].reasoning_content).toBe('Simulated CoT reasoning.');
-    expect(t2PostRules[2].reasoning).toBe('Simulated CoT reasoning.');
+    expect(t2PostRules[2].reasoning).toBeUndefined();
   });
 
   it('multi-turn with system prompt added by content rules', () => {
@@ -644,7 +671,8 @@ describe('ReasoningCacheService', () => {
 
     // BUG: reasoning should be found but it's NOT because of
     // fingerprint mismatch between pre-rules and post-rules.
-    expect(t2PostRules[2].reasoning_content).toBe('.');
+    // No placeholder — reasoning fields remain unset.
+    expect(t2PostRules[2].reasoning_content).toBeUndefined();
     expect(t2PostRules[2].reasoning).toBeUndefined();
 
     // Now demonstrate the correct behavior: cache with
@@ -666,8 +694,141 @@ describe('ReasoningCacheService', () => {
     ];
     step(svc, t2Fixed, true);
 
-    // After fix: reasoning IS properly preserved
+    // After fix: reasoning IS properly preserved via
+    // selective backfill (only cached field is set).
     expect(t2Fixed[2].reasoning_content).toBe('My reasoning.');
-    expect(t2Fixed[2].reasoning).toBe('My reasoning.');
+    expect(t2Fixed[2].reasoning).toBeUndefined();
+  });
+
+  // --- Selective backfill ---
+
+  it('Cache has only reasoning_content -> only that field set', () => {
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    step(svc, t1, true, {
+      content: 'Answer',
+      fields: { reasoning_content: 'Cached RC' },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      { role: 'assistant', content: 'Answer' },
+    ];
+    step(svc, t2, true);
+
+    expect(t2[1].reasoning_content).toBe('Cached RC');
+    expect(t2[1].reasoning).toBeUndefined();
+    expect(t2[1].reasoning_details).toBeUndefined();
+  });
+
+  it('Cache has reasoning and reasoning_details -> only those set', () => {
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    step(svc, t1, true, {
+      content: 'Answer',
+      fields: {
+        reasoning: 'Cached R',
+        reasoning_details: [{ type: 'text', text: 'Cached detail' }],
+      },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      { role: 'assistant', content: 'Answer' },
+    ];
+    step(svc, t2, true);
+
+    expect(t2[1].reasoning_content).toBeUndefined();
+    expect(t2[1].reasoning).toBe('Cached R');
+    expect(t2[1].reasoning_details).toEqual([{ type: 'text', text: 'Cached detail' }]);
+  });
+
+  it('Cache has all three fields -> all three set', () => {
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    step(svc, t1, true, {
+      content: 'Answer',
+      fields: {
+        reasoning_content: 'Cached RC',
+        reasoning: 'Cached R',
+        reasoning_details: [{ type: 'text', text: 'Cached detail' }],
+      },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      { role: 'assistant', content: 'Answer' },
+    ];
+    step(svc, t2, true);
+
+    expect(t2[1].reasoning_content).toBe('Cached RC');
+    expect(t2[1].reasoning).toBe('Cached R');
+    expect(t2[1].reasoning_details).toEqual([{ type: 'text', text: 'Cached detail' }]);
+  });
+
+  it('Message with reasoning_content from thinking parts is skipped', () => {
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    step(svc, t1, true, {
+      content: 'Answer',
+      fields: { reasoning_content: 'Cached reasoning' },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      {
+        role: 'assistant',
+        content: 'Answer',
+        reasoning_content: 'From thinking parts',
+      },
+    ];
+    step(svc, t2, true);
+
+    // Already has reasoning — skip entirely.
+    expect(t2[1].reasoning_content).toBe('From thinking parts');
+    expect(t2[1].reasoning).toBeUndefined();
+    expect(t2[1].reasoning_details).toBeUndefined();
+  });
+
+  it('Message with reasoning from thinking parts is skipped', () => {
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    step(svc, t1, true, {
+      content: 'Answer',
+      fields: { reasoning: 'Cached reasoning' },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      {
+        role: 'assistant',
+        content: 'Answer',
+        reasoning: 'From thinking parts',
+      },
+    ];
+    step(svc, t2, true);
+
+    // Already has reasoning — skip entirely.
+    expect(t2[1].reasoning_content).toBeUndefined();
+    expect(t2[1].reasoning).toBe('From thinking parts');
+    expect(t2[1].reasoning_details).toBeUndefined();
+  });
+
+  it('Message with reasoning_details from thinking parts is skipped', () => {
+    const t1: OpenAIMessage[] = [{ role: 'user', content: 'Q' }];
+    step(svc, t1, true, {
+      content: 'Answer',
+      fields: { reasoning_details: [{ type: 'text', text: 'Cached' }] },
+    });
+
+    const t2: OpenAIMessage[] = [
+      { role: 'user', content: 'Q' },
+      {
+        role: 'assistant',
+        content: 'Answer',
+        reasoning_details: [{ type: 'text', text: 'From thinking parts' }],
+      },
+    ];
+    step(svc, t2, true);
+
+    // Already has reasoning — skip entirely.
+    expect(t2[1].reasoning_content).toBeUndefined();
+    expect(t2[1].reasoning).toBeUndefined();
+    expect(t2[1].reasoning_details).toEqual([{ type: 'text', text: 'From thinking parts' }]);
   });
 });

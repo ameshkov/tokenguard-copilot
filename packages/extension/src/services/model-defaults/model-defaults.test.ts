@@ -249,16 +249,16 @@ describe('getDefaults', () => {
     expect(result!.defaultReasoningEffort).toBe('high');
   });
 
-  it('should include preserveReasoning when present', () => {
+  it('should default preserveReasoning to true', () => {
     const result = getDefaults('kimi-k2.6');
     expect(result).not.toBeNull();
     expect(result!.preserveReasoning).toBe(true);
   });
 
-  it('should omit preserveReasoning for standard models', () => {
+  it('should default preserveReasoning to true for entries without the field', () => {
     const result = getDefaults('gpt-5.4');
     expect(result).not.toBeNull();
-    expect(result!.preserveReasoning).toBeUndefined();
+    expect(result!.preserveReasoning).toBe(true);
   });
 
   it('should include cacheControl for Qwen models', () => {

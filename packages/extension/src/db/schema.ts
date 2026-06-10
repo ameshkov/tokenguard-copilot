@@ -47,7 +47,7 @@ export const models = sqliteTable(
     presencePenalty: real('presence_penalty'),
     defaultReasoningEffort: text('default_reasoning_effort'),
     reasoningEffortMap: text('reasoning_effort_map'),
-    preserveReasoning: integer('preserve_reasoning').notNull().default(0),
+    preserveReasoning: integer('preserve_reasoning').notNull().default(1),
     inputCostPer1m: real('input_cost_per_1m'),
     outputCostPer1m: real('output_cost_per_1m'),
     cachedInputCostPer1m: real('cached_input_cost_per_1m'),

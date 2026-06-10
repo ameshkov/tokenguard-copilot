@@ -263,6 +263,9 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Let me think about this.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Here is the answer.');
   });
 
@@ -295,6 +298,9 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Anthropic plaintext thinking.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Answer text.');
   });
 
@@ -330,6 +336,9 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Let me analyze this. Now I understand.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_details'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Final answer.');
   });
 
@@ -366,6 +375,9 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'Public reasoning.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_details'],
+    });
     expect(reported[1]).toHaveProperty('value', 'Final answer.');
   });
 
@@ -397,6 +409,9 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     expect(reported).toHaveLength(1);
     expect(reported[0]).toHaveProperty('value', 'Thinking only, no text.');
+    expect((reported[0] as { metadata?: { presentFields?: string[] } }).metadata).toEqual({
+      presentFields: ['reasoning_content'],
+    });
   });
 
   it('no thinking part when reasoning fields are absent', async () => {

@@ -2,6 +2,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+
+vi.mock('vscode', () => ({
+  LanguageModelThinkingPart: class {
+    constructor(
+      public value: string | string[],
+      public id?: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      public metadata?: { readonly [key: string]: any },
+    ) {}
+  },
+}));
+
 import { ChatDebugLogger, type LogRequestInput } from './chat-debug-logger.js';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';

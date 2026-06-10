@@ -20,7 +20,6 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true,
     "cacheControl": {
       "enabled": true,
       "maxMarkers": 4
@@ -47,7 +46,6 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true,
     "cacheControl": {
       "enabled": true,
       "maxMarkers": 4
@@ -74,7 +72,6 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true,
     "cacheControl": {
       "enabled": true,
       "maxMarkers": 4
@@ -101,7 +98,6 @@
         "preserve_thinking": true
       }
     },
-    "preserveReasoning": true,
     "cacheControl": {
       "enabled": true,
       "maxMarkers": 4
@@ -131,8 +127,7 @@
           "keep": "all"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -158,8 +153,7 @@
           "clear_thinking": false
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -191,8 +185,7 @@
           "type": "enabled"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -224,8 +217,7 @@
           "type": "enabled"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -250,8 +242,7 @@
           "type": "enabled"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -276,8 +267,7 @@
           "type": "enabled"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -302,8 +292,7 @@
           "type": "enabled"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -777,8 +766,7 @@
           "keep": "all"
         }
       }
-    },
-    "preserveReasoning": true
+    }
   },
   {
     "match": {
@@ -863,7 +851,6 @@
     "outputCostPer1M": 1.2,
     "cachedInputCostPer1M": 0.06,
     "supportedCapabilities": ["reasoning_effort"],
-    "preserveReasoning": true,
     "reasoningEffortMap": {
       "none": {
         "reasoning_split": false
@@ -888,7 +875,6 @@
     "outputCostPer1M": 2.4,
     "cachedInputCostPer1M": 0.06,
     "supportedCapabilities": ["reasoning_effort"],
-    "preserveReasoning": true,
     "reasoningEffortMap": {
       "none": {
         "reasoning_split": false
@@ -913,7 +899,6 @@
     "outputCostPer1M": 2.4,
     "cachedInputCostPer1M": 0.12,
     "supportedCapabilities": ["vision", "reasoning_effort"],
-    "preserveReasoning": true,
     "reasoningEffortMap": {
       "none": {
         "reasoning_split": false
