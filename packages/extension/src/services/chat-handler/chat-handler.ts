@@ -11,25 +11,13 @@ import {
   summarizeError,
   truncate,
   buildUserAgent,
-  thinkingPartsToReasoning,
 } from '../../utils/index.js';
 import type { ReasoningFields } from '../../utils/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import { CacheControlService } from '../cache-control/index.js';
 import type { ContentRulesService, RuleApplicationResult } from '../content-rules/index.js';
 import type { Logger } from '../../logger/index.js';
-
-/**
- * Converts a Uint8Array to a base64-encoded data URI.
- *
- * @param data - The binary data.
- * @param mimeType - The MIME type (e.g. `'image/png'`).
- * @returns A base64 data URI string.
- */
-function uint8ArrayToBase64(data: Uint8Array, mimeType: string): string {
-  const base64 = Buffer.from(data).toString('base64');
-  return `data:${mimeType};base64,${base64}`;
-}
+import { translateMessages } from './translate-messages.js';
 
 /** Maximum length of error response body text included in error messages. */
 const MAX_ERROR_TEXT_LENGTH = 128;
@@ -56,7 +44,7 @@ export interface OpenAITool {
  * OpenAI-format tool call returned by the model in an
  * assistant message or streaming delta.
  */
-interface OpenAIToolCall {
+export interface OpenAIToolCall {
   /** Tool call ID assigned by the model. */
   id: string;
   /** Tool type — always `'function'`. */
@@ -244,177 +232,6 @@ export class ChatHandler {
   constructor(ctx: ChatContext, reasoningCacheService: ReasoningCacheService) {
     this.ctx = ctx;
     this.reasoningCacheService = reasoningCacheService;
-  }
-
-  /**
-   * Maps a VS Code chat message role to the corresponding
-   * OpenAI message role string.
-   *
-   * VS Code's `LanguageModelChatMessageRole` enum uses
-   * `User = 1`, `Assistant = 2`, and `System = 3`
-   * (proposed `languageModelSystem` API). This method
-   * converts each to the matching OpenAI role.
-   *
-   * @param role - VS Code chat message role enum value.
-   * @returns OpenAI role string.
-   */
-  static mapRole(role: vscode.LanguageModelChatMessageRole): 'system' | 'user' | 'assistant' {
-    switch (role) {
-      case vscode.LanguageModelChatMessageRole.Assistant:
-        return 'assistant';
-      case vscode.LanguageModelChatMessageRole.System:
-        return 'system';
-      default:
-        return 'user';
-    }
-  }
-
-  /**
-   * Translates VS Code chat messages into OpenAI-format
-   * messages.
-   *
-   * Extracts text content from `LanguageModelTextPart`
-   * instances, concatenates multiple text parts per message,
-   * maps VS Code roles to OpenAI roles, and converts
-   * `LanguageModelDataPart` image parts to `image_url`
-   * content parts.
-   *
-   * @param messages - VS Code chat request messages.
-   * @returns Array of OpenAI-format messages.
-   */
-  static translateMessages(
-    messages: readonly vscode.LanguageModelChatRequestMessage[],
-  ): OpenAIMessage[] {
-    const result: OpenAIMessage[] = [];
-
-    for (const msg of messages) {
-      let textBuffer = '';
-      let contentParts: OpenAIContentPartUnion[] | null = null;
-      const toolCalls: OpenAIToolCall[] = [];
-      const thinkingParts: vscode.LanguageModelThinkingPart[] = [];
-      const toolResults: Array<{
-        callId: string;
-        content: string;
-      }> = [];
-
-      for (const part of msg.content) {
-        if (part instanceof vscode.LanguageModelTextPart) {
-          if (contentParts !== null) {
-            contentParts.push({ type: 'text', text: part.value });
-          } else {
-            textBuffer += part.value;
-          }
-        } else if (part instanceof vscode.LanguageModelToolCallPart) {
-          toolCalls.push({
-            id: part.callId,
-            type: 'function',
-            function: {
-              name: part.name,
-              arguments: JSON.stringify(part.input),
-            },
-          });
-        } else if (part instanceof vscode.LanguageModelToolResultPart) {
-          let toolContent = '';
-          const toolContentParts: OpenAIContentPartUnion[] = [];
-          for (const item of part.content) {
-            if (item instanceof vscode.LanguageModelTextPart) {
-              toolContent += item.value;
-            } else if (
-              item instanceof vscode.LanguageModelDataPart &&
-              item.mimeType.startsWith('image/')
-            ) {
-              toolContentParts.push({
-                type: 'image_url',
-                image_url: {
-                  url: uint8ArrayToBase64(item.data, item.mimeType),
-                },
-              });
-            }
-          }
-          let finalToolContent: string;
-          if (toolContentParts.length > 0) {
-            const parts: OpenAIContentPartUnion[] = [];
-            if (toolContent) {
-              parts.push({ type: 'text', text: toolContent });
-            }
-            parts.push(...toolContentParts);
-            finalToolContent = JSON.stringify(parts);
-          } else {
-            finalToolContent = toolContent || JSON.stringify(part.content);
-          }
-          toolResults.push({
-            callId: part.callId,
-            content: finalToolContent,
-          });
-        } else if (
-          part instanceof vscode.LanguageModelDataPart &&
-          part.mimeType.startsWith('image/')
-        ) {
-          if (contentParts === null) {
-            contentParts = [];
-            if (textBuffer) {
-              contentParts.push({ type: 'text', text: textBuffer });
-              textBuffer = '';
-            }
-          }
-          contentParts.push({
-            type: 'image_url',
-            image_url: {
-              url: uint8ArrayToBase64(part.data, part.mimeType),
-            },
-          });
-        } else if (part instanceof vscode.LanguageModelThinkingPart) {
-          thinkingParts.push(part);
-        }
-      }
-
-      // Tool result messages get their own role
-      if (toolResults.length > 0) {
-        for (const tr of toolResults) {
-          result.push({
-            role: 'tool',
-            content: tr.content,
-            tool_call_id: tr.callId,
-          });
-        }
-        continue;
-      }
-
-      const role = ChatHandler.mapRole(msg.role);
-
-      let content: string | OpenAIContentPartUnion[] | null;
-      if (contentParts !== null) {
-        if (textBuffer) {
-          contentParts.push({ type: 'text', text: textBuffer });
-        }
-        content = contentParts;
-      } else {
-        content = textBuffer || null;
-      }
-
-      const openAIMsg: OpenAIMessage = {
-        role,
-        content,
-      };
-
-      if (toolCalls.length > 0) {
-        openAIMsg.tool_calls = toolCalls;
-      }
-
-      // Extract reasoning from thinking parts (primary source)
-      if (thinkingParts.length > 0 && role === 'assistant') {
-        const reasoning = thinkingPartsToReasoning(thinkingParts);
-        if (reasoning) {
-          openAIMsg.reasoning_content = reasoning.reasoning_content;
-          openAIMsg.reasoning = reasoning.reasoning;
-          openAIMsg.reasoning_details = reasoning.reasoning_details;
-        }
-      }
-
-      result.push(openAIMsg);
-    }
-
-    return result;
   }
 
   /**
@@ -717,7 +534,11 @@ export class ChatHandler {
         try {
           args = JSON.parse(tc.function.arguments) as Record<string, unknown>;
         } catch {
-          // TODO: Handle error, log error
+          logger?.warn(
+            'Failed to parse tool call arguments in non-streaming response',
+            `tool_name=${tc.function.name}`,
+            `arguments=${tc.function.arguments}`,
+          );
           args = {};
         }
         progress.report(new vscode.LanguageModelToolCallPart(tc.id, tc.function.name, args));
@@ -975,7 +796,7 @@ export class ChatHandler {
     token: vscode.CancellationToken,
     usageCollector?: UsageCollector,
   ): Promise<void> {
-    const translated = ChatHandler.translateMessages(messages);
+    const translated = translateMessages(messages);
 
     // Generate a unique request ID for correlation across
     // headers, runtime logs, debug Markdown files, and

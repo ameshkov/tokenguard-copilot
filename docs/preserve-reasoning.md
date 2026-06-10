@@ -167,7 +167,7 @@ ChatHandler.handle()
 
 | Layer | Responsibility |
 | --- | --- |
-| `ChatHandler.translateMessages()` | **Primary source.** Extracts reasoning from `LanguageModelThinkingPart` objects via `thinkingPartsToReasoning()`, setting fields directly on `OpenAIMessage` when thinking parts are available. |
+| `translateMessages()` | **Primary source.** Extracts reasoning from `LanguageModelThinkingPart` objects via `thinkingPartsToReasoning()`, setting fields directly on `OpenAIMessage` when thinking parts are available. |
 | `ChatHandler.backfillReasoning()` | **Fallback.** Skips messages that already have reasoning (from thinking parts). For remaining messages, looks up cached reasoning by fingerprint and injects fields from the database. |
 | `ChatHandler.cacheReasoning()` | Stores reasoning fields from the API response into the cache for future turns. |
 | `ReasoningCacheService` | Computes session and message fingerprints, orchestrates conditional backfill and cache logic. |

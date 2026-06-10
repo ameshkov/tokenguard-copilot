@@ -10,6 +10,14 @@ and this project adheres to
 
 ### Changed
 
+- Extracted `translateMessages` and `mapRole` into a separate
+  `translate-messages.ts` module with its own test file
+  (`translate-messages.test.ts`). The `ChatHandler` static methods
+  remain available via delegation to the standalone functions,
+  preserving full backward compatibility.
+- Exported `OpenAIToolCall` interface from the chat-handler barrel
+  so it can be imported independently.
+
 - Use thinking parts as primary reasoning source in `translateMessages`.
   `LanguageModelThinkingPart` objects from VS Code are now collected
   and converted to `ReasoningFields` via `thinkingPartsToReasoning`,
