@@ -1,9 +1,9 @@
 # AGENTS.md
 
-VS Code extension that provides third-party OpenAI-compatible language
-models to VS Code Copilot Chat via the `languageModelChatProvider` API.
-Registers as a chat model provider so any OpenAI-compatible endpoint can
-be used as a backend for Copilot Chat.
+VS Code extension that provides third-party OpenAI-compatible language models to
+VS Code Copilot Chat via the `languageModelChatProvider` API. Registers as a
+chat model provider so any OpenAI-compatible endpoint can be used as a backend
+for Copilot Chat.
 
 ## Table of Contents
 
@@ -22,19 +22,19 @@ be used as a backend for Copilot Chat.
 
 ## Project Overview
 
-A VS Code extension that bridges third-party OpenAI-compatible language
-model endpoints into VS Code Copilot Chat. It uses the proposed
-`languageModelChatProvider` API to register external models so they
-appear alongside built-in Copilot models.
+A VS Code extension that bridges third-party OpenAI-compatible language model
+endpoints into VS Code Copilot Chat.
+It uses the proposed `languageModelChatProvider` API to register external models
+so they appear alongside built-in Copilot models.
 
 What you get out of the box:
 
-- **Chat model provider** — registers OpenAI-compatible models as
-  VS Code language model chat providers.
-- **Copilot Chat integration** — models appear in the Copilot Chat
-  model picker and can be used by any chat participant.
-- **Code quality** — ESLint (flat config), Prettier, Markdownlint,
-  Husky pre-commit hooks.
+- **Chat model provider** — registers OpenAI-compatible models as VS Code
+  language model chat providers.
+- **Copilot Chat integration** — models appear in the Copilot Chat model picker
+  and can be used by any chat participant.
+- **Code quality** — ESLint (flat config), Prettier, Markdownlint, Husky
+  pre-commit hooks.
 
 ## Technical Context
 
@@ -53,31 +53,28 @@ What you get out of the box:
 
 The extension has two distinct runtime targets that share types:
 
-1. **Extension host** — Node.js code running in the VS Code
-   extension host (providers, models, database, chat completion).
-2. **Webview UI** — browser code (React) running inside a VS Code
-   webview panel (settings, model configuration).
+1. **Extension host** — Node.js code running in the VS Code extension host
+   (providers, models, database, chat completion).
+2. **Webview UI** — browser code (React) running inside a VS Code webview panel
+   (settings, model configuration).
 
-A pnpm monorepo lets us share TypeScript types between host and
-webview, run separate bundlers per target, and produce a single
-`.vsix`. The root `package.json` doubles as the VS Code extension
-manifest (`main`, `contributes`, `publisher`).
+A pnpm monorepo lets us share TypeScript types between host and webview, run
+separate bundlers per target, and produce a single `.vsix`. The root
+`package.json` doubles as the VS Code extension manifest (`main`, `contributes`,
+`publisher`).
 
 ### Packages
 
-- **`packages/shared`** (`@tokenguard/shared`) — shared
-  TypeScript types and message protocol definitions used by both
-  the extension host and the webview.
-- **`packages/extension`** (`@tokenguard/extension`) — extension
-  host code: activation, providers, services, database layer.
+- **`packages/shared`** (`@tokenguard/shared`) — shared TypeScript types and
+  message protocol definitions used by both the extension host and the webview.
+- **`packages/extension`** (`@tokenguard/extension`) — extension host code:
+  activation, providers, services, database layer.
   Bundled with esbuild into `out/extension.js` (CJS, Node.js).
-- **`packages/webview-ui`** (`@tokenguard/webview-ui`) — React
-  settings UI. Bundled with esbuild into `out/webview/` (IIFE,
-  browser).
-- **`packages/webview-playground`**
-  (`@tokenguard/webview-playground`) — Vite dev server with
-  `@vscode-elements/webview-playground` toolbar and mock
-  VS Code API for developing the settings page in a browser.
+- **`packages/webview-ui`** (`@tokenguard/webview-ui`) — React settings UI.
+  Bundled with esbuild into `out/webview/` (IIFE, browser).
+- **`packages/webview-playground`** (`@tokenguard/webview-playground`) — Vite
+  dev server with `@vscode-elements/webview-playground` toolbar and mock VS Code
+  API for developing the settings page in a browser.
 
 ### Directory Layout
 
@@ -199,17 +196,14 @@ tokenguard-copilot/
 ## Build and Test Commands
 
 - `pnpm install` — install dependencies
-- `pnpm run compile` — full build (extension + webview +
-  migrations + E2E)
+- `pnpm run compile` — full build (extension + webview + migrations + E2E)
 - `pnpm run typecheck` — type-check all packages (no emit)
 - `pnpm run watch` — watch extension host (esbuild)
 - `pnpm run watch:webview` — watch webview (esbuild)
-- `pnpm run dev:webview` — start Vite dev server for webview
-  playground
+- `pnpm run dev:webview` — start Vite dev server for webview playground
 - `pnpm run lint` — lint source files (ESLint + Knip)
 - `pnpm run lint:fix` — lint and auto-fix issues (ESLint)
-- `pnpm run format:check` — check formatting (Prettier and
-  Markdownlint)
+- `pnpm run format:check` — check formatting (Prettier and Markdownlint)
 - `pnpm run format:fix` — fix formatting issues
 - `pnpm run test` — run all unit tests once
 - `pnpm run test:extension` — run extension unit tests only
@@ -228,58 +222,65 @@ You MUST follow the following rules for EVERY task that you perform:
     - `pnpm run typecheck` to check for TypeScript type errors
     - `pnpm run lint` to run the linter (ESLint + Knip)
     - `pnpm run lint:fix` to fix linting issues automatically
-    - `pnpm run format:check` to check formatting (Prettier and
-      Markdownlint)
+    - `pnpm run format:check` to check formatting (Prettier and Markdownlint)
     - `pnpm run format:fix` to fix formatting issues
 
 - You MUST update the unit tests for changed code.
 
-- You MUST run tests with `pnpm run test` to verify that your
-  changes do not break existing functionality.
+- You MUST run tests with `pnpm run test` to verify that your changes do not
+  break existing functionality.
 
-- When making changes to the project structure, ensure the Project
-  Structure section in `AGENTS.md` is updated and remains valid.
+- When making changes to the project structure, ensure the Project Structure
+  section in `AGENTS.md` is updated and remains valid.
 
-- If the prompt essentially asks you to refactor or improve existing
-  code, check if you can phrase it as a code guideline. If it's
-  possible, add it to the relevant Code Guidelines section in
+- If the prompt essentially asks you to refactor or improve existing code, check
+  if you can phrase it as a code guideline.
+  If it’s possible, add it to the relevant Code Guidelines section in
   `AGENTS.md`.
 
-- After completing the task you MUST verify that the code you've
-  written follows the Code Guidelines in this file.
+- After completing the task you MUST verify that the code you’ve written follows
+  the Code Guidelines in this file.
 
 - When the coding task is finished update CHANGELOG.md file and explain changes
-  in the Unreleased section. Add entries to the appropriate subsection (Added,
-  Changed, or Fixed) if it already exists; do not create duplicate subsections.
+  in the Unreleased section.
+  Add entries to the appropriate subsection (Added, Changed, or Fixed) if it
+  already exists; do not create duplicate subsections.
 
 ## Code Guidelines
 
 ### Architecture
 
-- **Separation of Concerns** — each module handles one aspect of the
-  system (e.g. routing, business logic, data access).
-- **Single Responsibility Principle** — every file, class, or function
-  has one reason to change.
-- **Dependency Direction** — dependencies point inward / downward; never
-  from lower layers to higher ones.
-- **Explicit Boundaries** — module interfaces are intentional; external
-  code imports MUST be from barrel `index.js` files only.
-- **Explicit Exports** — only export symbols that are part of the
-  public API.
-- **Minimize Coupling, Maximize Cohesion** — modules are self-contained
-  and interact through narrow interfaces.
+- **Separation of Concerns** — each module handles one aspect of the system
+  (e.g. routing, business logic, data access).
+
+- **Single Responsibility Principle** — every file, class, or function has one
+  reason to change.
+
+- **Dependency Direction** — dependencies point inward / downward; never from
+  lower layers to higher ones.
+
+- **Explicit Boundaries** — module interfaces are intentional; external code
+  imports MUST be from barrel `index.js` files only.
+
+- **Explicit Exports** — only export symbols that are part of the public API.
+
+- **Minimize Coupling, Maximize Cohesion** — modules are self-contained and
+  interact through narrow interfaces.
+
 - **Make Invalid States Impossible** — use types and validation to prevent
-  illegal combinations at compile time (shared types in
-  `@tokenguard/shared`).
-- **Keep It Boring** — prefer well-understood patterns over clever or
-  novel solutions.
+  illegal combinations at compile time (shared types in `@tokenguard/shared`).
+
+- **Keep It Boring** — prefer well-understood patterns over clever or novel
+  solutions.
+
 - **Extension Lifecycle** — all disposables MUST be pushed to
-  `context.subscriptions` in `activate()`. Clean up resources in
-  `deactivate()`.
-- **VS Code API** — use the VS Code API directly. Do not wrap it in
-  unnecessary abstractions unless reuse is needed.
-- **Dependency Flow** — the extension follows a layered architecture
-  with manual constructor injection:
+  `context.subscriptions` in `activate()`. Clean up resources in `deactivate()`.
+
+- **VS Code API** — use the VS Code API directly.
+  Do not wrap it in unnecessary abstractions unless reuse is needed.
+
+- **Dependency Flow** — the extension follows a layered architecture with manual
+  constructor injection:
 
   ```text
   activate() / deactivate()
@@ -296,105 +297,115 @@ You MUST follow the following rules for EVERY task that you perform:
   ```
 
   Rules:
-    - `ExtensionContext` wires repositories and services. It
-      exposes only services — repositories and the database
-      connection are internal wiring details.
-    - Services receive repositories via constructor. No raw
-      database calls in services.
-    - Repositories receive the Drizzle `Database` instance via
-      constructor. They encapsulate all SQL queries. No caching
-      or business logic in repositories.
-    - No upward dependencies — lower layers never import from
-      upper layers.
+    - `ExtensionContext` wires repositories and services.
+    It exposes only services — repositories and the database connection are
+    internal wiring details.
+    - Services receive repositories via constructor.
+    No raw database calls in services.
+    - Repositories receive the Drizzle `Database` instance via constructor.
+    They encapsulate all SQL queries.
+    No caching or business logic in repositories.
+    - No upward dependencies — lower layers never import from upper layers.
     - Services never import from Providers or Commands.
     - Providers and Commands never import from each other.
-    - Providers follow the same pattern as Commands: they sit
-      at the top layer, receive service instances from
-      `ExtensionContext`, and register VS Code APIs.
-    - `activate()` creates the database connection, runs
-      migrations, builds the `ExtensionContext`, and passes it
-      to commands and handlers.
+    - Providers follow the same pattern as Commands: they sit at the top layer,
+    receive service instances from `ExtensionContext`, and register VS Code
+    APIs.
+    - `activate()` creates the database connection, runs migrations, builds the
+    `ExtensionContext`, and passes it to commands and handlers.
     - `deactivate()` closes the database connection.
 
 ### Code Quality
 
 All code MUST meet documentation and style requirements before merge:
 
-- **Public API documentation**: Exported functions, classes,
-  interfaces, and their properties MUST have JSDoc comments
-  describing purpose, arguments, return values, and thrown
-  errors (use `@throws` only for specific errors).
-- **Static analysis gates**: Every change MUST pass TypeScript
-  type checking (`pnpm run typecheck`), ESLint + Knip
-  (`pnpm run lint`), and Prettier/Markdownlint
-  (`pnpm run format:check`) before merge.
-- **Knip unused-export analysis**: The project uses Knip
-  (`knip.config.ts`) to detect unused exports. All Knip
-  findings MUST be resolved — either remove the unused export
-  or, when the export is genuinely needed but not reachable
-  through the public dependency graph, mark it with the JSDoc
-  `@internal` tag. The `@internal` tag is allowed **only**
-  when a symbol is exported solely for test files and is
-  intentionally **not** re-exported from the module barrel.
-  Every `@internal` tag MUST include a short explanation of
-  why the export is excluded (e.g., "Exported for tests only;
-  not part of the public module API"). Do NOT use `@internal`
-  to silence legitimate unused-export warnings — remove the
-  export instead.
-- **Do not modify linter or formatter configurations**: Never
-  change ESLint, Prettier, Markdownlint, Knip, or TypeScript
-  configuration files (`eslint.config.mjs`, `.prettierrc`,
-  `.prettierignore`, `.markdownlint-cli2.yaml`,
-  `knip.config.ts`, `tsconfig.json`) to work around lint or
-  formatting errors. Fix the source code instead. If the issue cannot
-  be resolved after a few attempts, ask the human for help.
-- **File naming**: Use kebab-case for all file names. TypeScript source
-  files MUST use lower-case kebab-case (e.g., `model-provider.ts`).
-  Do NOT use PascalCase or camelCase file names.
-- **No inline type imports**: Do NOT use `import('…').Type` inline
-  import expressions to reference types. Always use top-level
-  `import type { … } from '…'` declarations instead. This keeps
-  type dependencies explicit and greppable. The only exceptions:
-  `typeof import('…')` for type queries, `await import('…')` for
-  dynamic runtime imports in tests (where `vscode` is mocked), and
-  lazy-loading `import('…')` for code splitting in webview entry
+- **Public API documentation**: Exported functions, classes, interfaces, and
+  their properties MUST have JSDoc comments describing purpose, arguments,
+  return values, and thrown errors (use `@throws` only for specific errors).
+- **Static analysis gates**: Every change MUST pass TypeScript type checking
+  (`pnpm run typecheck`), ESLint + Knip (`pnpm run lint`), and
+  Prettier/Markdownlint (`pnpm run format:check`) before merge.
+- **Knip unused-export analysis**: The project uses Knip (`knip.config.ts`) to
+  detect unused exports.
+  All Knip findings MUST be resolved — either remove the unused export or, when
+  the export is genuinely needed but not reachable through the public dependency
+  graph, mark it with the JSDoc `@internal` tag.
+  The `@internal` tag is allowed **only** when a symbol is exported solely for
+  test files and is intentionally **not** re-exported from the module barrel.
+  Every `@internal` tag MUST include a short explanation of why the export is
+  excluded (e.g., “Exported for tests only; not part of the public module API”).
+  Do NOT use `@internal` to silence legitimate unused-export warnings — remove
+  the export instead.
+- **Do not modify linter or formatter configurations**: Never change ESLint,
+  Prettier, Markdownlint, Knip, or TypeScript configuration files
+  (`eslint.config.mjs`, `.prettierrc`, `.prettierignore`,
+  `.markdownlint-cli2.yaml`, `knip.config.ts`, `tsconfig.json`) to work around
+  lint or formatting errors.
+  Fix the source code instead.
+  If the issue cannot be resolved after a few attempts, ask the human for help.
+- **File size limit**: Source files SHOULD stay within 300 lines of code.
+  When approaching or exceeding this limit, refactor by extracting related logic
+  into separate modules, utility files, or dedicated service files.
+  **Do NOT** compress code, remove blank lines, or abandon consistent formatting
+  to squeeze more lines in — formatting is managed by Prettier and must remain
+  uniform across the codebase.
+  Exceptions: auto-generated files and database migration files.
+- **Function size limit**: Functions SHOULD stay within 50 lines of code.
+  When approaching or exceeding this limit, break the function into smaller,
+  named helper functions with single, clear responsibilities.
+  **Do NOT** condense logic into dense one-liners, inline multiple statements
+  on a single line, or strip whitespace to fit the limit — formatting is managed
+  by Prettier and must not be sacrificed for brevity.
+  Exceptions: auto-generated files and database migration files.
+- **File naming**: Use kebab-case for all file names.
+  TypeScript source files MUST use lower-case kebab-case (e.g.,
+  `model-provider.ts`). Do NOT use PascalCase or camelCase file names.
+- **No inline type imports**: Do NOT use `import('…').Type` inline import
+  expressions to reference types.
+  Always use top-level `import type { … } from '…'` declarations instead.
+  This keeps type dependencies explicit and greppable.
+  The only exceptions: `typeof import('…')` for type queries,
+  `await import('…')` for dynamic runtime imports in tests (where `vscode` is
+  mocked), and lazy-loading `import('…')` for code splitting in webview entry
   points.
+- **No wildcard namespace imports**: Do NOT use `import * as X from '…'`.
+  Always import the exact symbols you use — `import { Foo, type Bar } from '…'`.
+  When a namespace import would cause a naming conflict with a local symbol,
+  alias the conflicting import instead of falling back to `import *`.
 
 ### Testing
 
 Every exported function and class MUST have unit test coverage:
 
-- **Test file placement**: Every source file with exported logic
-  MUST have a corresponding `.test.ts` file in the same directory.
+- **Test file placement**: Every source file with exported logic MUST have a
+  corresponding `.test.ts` file in the same directory.
   Every exported function MUST have at least one test case.
-- **Test runner**: Use Vitest for all unit tests. Run with
-  `pnpm run test`.
-- **Mock VS Code API**: Since unit tests run outside the extension
-  host, mock `vscode` module imports as needed.
-- **Mock only external dependencies**: The only things that should
-  be mocked are true external dependencies — the `vscode` module
-  and services that make network calls outside the system (e.g.,
-  third-party APIs). Do NOT mock internal modules unless necessary.
-- **Test verification mandatory**: All changes MUST pass
-  `pnpm run test` before merge. Tests MUST NOT be deleted or
-  weakened without explicit justification.
+- **Test runner**: Use Vitest for all unit tests.
+  Run with `pnpm run test`.
+- **Mock VS Code API**: Since unit tests run outside the extension host, mock
+  `vscode` module imports as needed.
+- **Mock only external dependencies**: The only things that should be mocked are
+  true external dependencies — the `vscode` module and services that make
+  network calls outside the system (e.g., third-party APIs).
+  Do NOT mock internal modules unless necessary.
+- **Test verification mandatory**: All changes MUST pass `pnpm run test` before
+  merge. Tests MUST NOT be deleted or weakened without explicit justification.
 
 #### E2E Testing
 
-E2E tests run inside a real VS Code instance using
-`@vscode/test-cli` and `@vscode/test-electron`:
+E2E tests run inside a real VS Code instance using `@vscode/test-cli` and
+`@vscode/test-electron`:
 
-- **Test location**: E2E tests live in `test-e2e/` and use
-  Mocha as the test runner (required by `@vscode/test-cli`).
-- **Configuration**: The test runner is configured via
-  `.vscode-test.mjs` in the project root.
-- **Run E2E tests**: Use `pnpm run test:e2e`. The extension MUST
-  be compiled first (`pnpm run compile`).
-- **No mocking**: E2E tests run inside the extension host with
-  full access to the VS Code API. Do NOT mock `vscode` in E2E
-  tests.
-- **Test scope**: E2E tests verify extension activation, command
-  registration, and integration with VS Code APIs.
+- **Test location**: E2E tests live in `test-e2e/` and use Mocha as the test
+  runner (required by `@vscode/test-cli`).
+- **Configuration**: The test runner is configured via `.vscode-test.mjs` in the
+  project root.
+- **Run E2E tests**: Use `pnpm run test:e2e`. The extension MUST be compiled
+  first (`pnpm run compile`).
+- **No mocking**: E2E tests run inside the extension host with full access to
+  the VS Code API. Do NOT mock `vscode` in E2E tests.
+- **Test scope**: E2E tests verify extension activation, command registration,
+  and integration with VS Code APIs.
 
 ### Dependency Management
 
@@ -403,138 +414,122 @@ E2E tests run inside a real VS Code instance using
 
 External dependencies MUST be carefully evaluated before adoption:
 
-- **Prefer vanilla solutions**: Use Node.js built-in APIs, VS Code API,
-  and standard language features when they adequately solve the problem.
-  Only add a dependency when it provides significant value over a
-  vanilla implementation.
-- **Reputable sources only**: Dependencies MUST come from
-  well-established, actively maintained projects.
-- **Minimize dependency count**: Each new dependency increases attack
-  surface, bundle size, and maintenance burden. Justify every addition.
-- **Use the latest stable version**: When adding a new dependency,
-  explicitly check the package registry for the latest stable release
-  and use it.
+- **Prefer vanilla solutions**: Use Node.js built-in APIs, VS Code API, and
+  standard language features when they adequately solve the problem.
+  Only add a dependency when it provides significant value over a vanilla
+  implementation.
+- **Reputable sources only**: Dependencies MUST come from well-established,
+  actively maintained projects.
+- **Minimize dependency count**: Each new dependency increases attack surface,
+  bundle size, and maintenance burden.
+  Justify every addition.
+- **Use the latest stable version**: When adding a new dependency, explicitly
+  check the package registry for the latest stable release and use it.
 
 ### Configuration & Documentation
 
 Configuration and documentation MUST stay synchronized with code:
 
-- **Documentation updates required**: Changes to build process or
-  configuration MUST update `DEVELOPMENT.md`.
-- **Structure tracking**: Changes to project structure MUST update the
-  Project Structure section in `AGENTS.md`.
+- **Documentation updates required**: Changes to build process or configuration
+  MUST update `DEVELOPMENT.md`.
+- **Structure tracking**: Changes to project structure MUST update the Project
+  Structure section in `AGENTS.md`.
 
 ### Webview Theming
 
-The webview uses the
-[VSCode Elements](https://vscode-elements.github.io/) web
-component library (`@vscode-elements/elements`) for UI
-primitives. These components automatically adapt to the
-active VS Code color theme — **never hard-code color
-values or re-implement component styles in CSS.**
+The webview uses the [VSCode Elements](https://vscode-elements.github.io/) web
+component library (`@vscode-elements/elements`) for UI primitives.
+These components automatically adapt to the active VS Code color theme — **never
+hard-code color values or re-implement component styles in CSS.**
 
-- **Prefer web components**: Use `<vscode-button>`,
-  `<vscode-badge>`, `<vscode-table>`, `<vscode-form-group>`,
-  `<vscode-checkbox>`, `<vscode-collapsible>`,
-  `<vscode-divider>`, `<vscode-single-select>`, and other
-  VSCode Elements tags instead of native HTML elements with
-  custom CSS.
-- **Component registration**: All web component side-effect
-  imports live in `packages/webview-ui/src/index.tsx`. Do
-  NOT import them from individual component files.
-- **Type declarations**: JSX types for web component tags
-  are declared in
-  `packages/webview-ui/src/vscode-elements.d.ts`. Update
-  this file when adding new VSCode Elements tags.
-- **CSS custom properties**: For any remaining custom CSS,
-  use `var(--vscode-<section>-<property>)` tokens. The
-  variable name is derived from the theme color ID by
-  replacing dots with dashes and prefixing with `--vscode-`.
-  Always provide a fallback when the token may be absent,
-  e.g. `var(--vscode-input-border, transparent)`.
+- **Prefer web components**: Use `<vscode-button>`, `<vscode-badge>`,
+  `<vscode-table>`, `<vscode-form-group>`, `<vscode-checkbox>`,
+  `<vscode-collapsible>`, `<vscode-divider>`, `<vscode-single-select>`, and
+  other VSCode Elements tags instead of native HTML elements with custom CSS.
+- **Component registration**: All web component side-effect imports live in
+  `packages/webview-ui/src/index.tsx`. Do NOT import them from individual
+  component files.
+- **Type declarations**: JSX types for web component tags are declared in
+  `packages/webview-ui/src/vscode-elements.d.ts`. Update this file when adding
+  new VSCode Elements tags.
+- **CSS custom properties**: For any remaining custom CSS, use
+  `var(--vscode-<section>-<property>)` tokens.
+  The variable name is derived from the theme color ID by replacing dots with
+  dashes and prefixing with `--vscode-`. Always provide a fallback when the
+  token may be absent, e.g. `var(--vscode-input-border, transparent)`.
 - **Reference**: https://code.visualstudio.com/api/references/theme-color
-- **Test mocks**: In the jsdom test environment, lightweight
-  mock custom elements are registered via
-  `packages/webview-ui/src/test/element-mocks.ts` (called
-  from `test/setup.ts`). Update mocks when adding new web
-  component tags that need roles or form behaviour in
-  tests.
+- **Test mocks**: In the jsdom test environment, lightweight mock custom
+  elements are registered via `packages/webview-ui/src/test/element-mocks.ts`
+  (called from `test/setup.ts`). Update mocks when adding new web component tags
+  that need roles or form behaviour in tests.
 
 ### Resource Disposal
 
-All extension resources — `EventEmitter`s, event subscriptions,
-timers, file handles, and VS Code API registrations — MUST be
-explicitly disposed on deactivation. Never rely solely on
-garbage collection.
+All extension resources — `EventEmitter`s, event subscriptions, timers, file
+handles, and VS Code API registrations — MUST be explicitly disposed on
+deactivation. Never rely solely on garbage collection.
 
-- **`EventEmitter` ownership**: Every `EventEmitter` created by
-  a service MUST be disposed. Services that own emitters MUST
-  implement `vscode.Disposable` and dispose all emitters in
-  their `dispose()` method.
+- **`EventEmitter` ownership**: Every `EventEmitter` created by a service MUST
+  be disposed. Services that own emitters MUST implement `vscode.Disposable` and
+  dispose all emitters in their `dispose()` method.
 - **`ExtensionContext.dispose()` cascades**: The DI container
-  (`ExtensionContext`) MUST have a `dispose()` method that
-  calls `dispose()` on every service that implements
-  `Disposable`. This is the single teardown entry point from
-  `deactivate()`.
-- **Collect event subscription disposables**: Every call to
-  `.event()` (e.g., `onProvidersChanged()`, `onStatsChanged()`)
-  returns a `Disposable`. Store and dispose these when the
-  owning object is disposed. Do NOT use anonymous lambdas
-  without capturing the returned `Disposable`.
-- **Composite pattern for UI items**: When creating objects
-  that subscribe to events (e.g., status bar items), return a
-  single `Disposable` that disposes both the VS Code API
-  object and all event subscriptions.
-- **Deactivation-safe logger**: The `LogOutputChannel` is
-  needed during `deactivate()` for final log messages. It MUST
-  NOT be disposed before the end of `deactivate()`. VS Code
-  disposes `context.subscriptions` automatically after
-  `deactivate()` returns.
-- **Module-level nulling**: Singleton module variables
-  (`rawDb`, `extCtx`, `logger`) MUST be set to `null` at the
-  end of `deactivate()` to prevent use after deactivation.
+  (`ExtensionContext`) MUST have a `dispose()` method that calls `dispose()` on
+  every service that implements `Disposable`. This is the single teardown entry
+  point from `deactivate()`.
+- **Collect event subscription disposables**: Every call to `.event()` (e.g.,
+  `onProvidersChanged()`, `onStatsChanged()`) returns a `Disposable`. Store and
+  dispose these when the owning object is disposed.
+  Do NOT use anonymous lambdas without capturing the returned `Disposable`.
+- **Composite pattern for UI items**: When creating objects that subscribe to
+  events (e.g., status bar items), return a single `Disposable` that disposes
+  both the VS Code API object and all event subscriptions.
+- **Deactivation-safe logger**: The `LogOutputChannel` is needed during
+  `deactivate()` for final log messages.
+  It MUST NOT be disposed before the end of `deactivate()`. VS Code disposes
+  `context.subscriptions` automatically after `deactivate()` returns.
+- **Module-level nulling**: Singleton module variables (`rawDb`, `extCtx`,
+  `logger`) MUST be set to `null` at the end of `deactivate()` to prevent use
+  after deactivation.
 
 ### Logging
 
-The extension uses a centralized `Logger` interface backed
-by VS Code's `LogOutputChannel`. All runtime diagnostic
-logging MUST go through this interface.
+The extension uses a centralized `Logger` interface backed by VS Code’s
+`LogOutputChannel`. All runtime diagnostic logging MUST go through this
+interface.
 
-- **`Logger` interface**: Defined in
-  `packages/extension/src/logger/logger.ts`. Provides
-  `trace`, `debug`, `info`, `warn`, and `error` methods.
+- **`Logger` interface**: Defined in `packages/extension/src/logger/logger.ts`.
+  Provides `trace`, `debug`, `info`, `warn`, and `error` methods.
   Services depend on the interface, not `vscode` directly.
-- **DI pattern**: The logger is created once in
-  `activate()` and injected into services via the
-  `ExtensionContext` constructor. Services receive it as a
-  constructor parameter.
+- **DI pattern**: The logger is created once in `activate()` and injected into
+  services via the `ExtensionContext` constructor.
+  Services receive it as a constructor parameter.
 - **Mock logger in tests**: Use `createMockLogger()` from
-  `packages/extension/src/test/mock-logger.ts` in unit
-  tests. This returns a `Logger` with all `vi.fn()`
-  no-ops.
-- **Log levels**: Use `trace` for SSE events, `debug` for
-  request lifecycle, `info` for service initialization,
-  `warn` for recoverable errors, `error` for failures.
-- **Security rules**: NEVER log API keys, auth tokens,
-  `Authorization` headers, secrets, user file contents,
-  or personal data. OK to log model IDs, provider names,
-  status codes, error messages, and request duration.
+  `packages/extension/src/test/mock-logger.ts` in unit tests.
+  This returns a `Logger` with all `vi.fn()` no-ops.
+- **Log levels**: Use `trace` for SSE events, `debug` for request lifecycle,
+  `info` for service initialization, `warn` for recoverable errors, `error` for
+  failures.
+- **Security rules**: NEVER log API keys, auth tokens, `Authorization` headers,
+  secrets, user file contents, or personal data.
+  OK to log model IDs, provider names, status codes, error messages, and request
+  duration.
 
 ### Markdown Formatting
 
 All Markdown files MUST follow these formatting rules:
 
-- **Line length**: Keep lines at most 80 characters. This is not a
-  hard lint gate, but SHOULD be followed for readability. Lines inside
-  fenced code blocks are exempt from this limit.
-- **Unordered lists**: Use dashes (`-`) for bullet points. Indent
-  nested list items by 4 spaces.
-- **Emphasis**: Use asterisks (`*`) for emphasis (`*italic*`,
-  `**bold**`). Do NOT use underscores.
+- **Line length**: Keep lines at most 80 characters.
+  This is not a hard lint gate, but SHOULD be followed for readability.
+  Lines inside fenced code blocks are exempt from this limit.
+- **Unordered lists**: Use dashes (`-`) for bullet points.
+  Indent nested list items by 4 spaces.
+- **Emphasis**: Use asterisks (`*`) for emphasis (`*italic*`, `**bold**`). Do
+  NOT use underscores.
 - **Trailing spaces**: Do NOT leave trailing whitespace on any line.
   Do NOT use two-space line breaks — use a blank line instead.
-- **Bare URLs**: Bare URLs are permitted and do not need to be wrapped
-  in angle brackets.
-- **Table formatting**: Align table columns with padding when the
-  table fits within 80 characters. If the table exceeds 80 characters,
-  switch to a compact format using single spaces only.
+- **Bare URLs**: Bare URLs are permitted and do not need to be wrapped in angle
+  brackets.
+- **Table formatting**: Align table columns with padding when the table fits
+  within 80 characters.
+  If the table exceeds 80 characters, switch to a compact format using single
+  spaces only.

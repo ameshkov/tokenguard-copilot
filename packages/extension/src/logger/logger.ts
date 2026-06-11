@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { type LogOutputChannel, window } from 'vscode';
 
 /**
  * Thin logging interface matching `LogOutputChannel`'s
@@ -66,9 +66,9 @@ const CHANNEL_NAME = 'TokenGuard Copilot';
  */
 export function createLogger(): {
   logger: Logger;
-  channel: vscode.LogOutputChannel;
+  channel: LogOutputChannel;
 } {
-  const channel = vscode.window.createOutputChannel(CHANNEL_NAME, { log: true });
+  const channel = window.createOutputChannel(CHANNEL_NAME, { log: true });
 
   return { logger: channel, channel };
 }

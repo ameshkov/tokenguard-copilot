@@ -1,7 +1,7 @@
 /// <reference types="mocha" />
 
 import * as assert from 'node:assert';
-import * as vscode from 'vscode';
+import { commands, extensions, type Extension } from 'vscode';
 
 /** The extension identifier used for lookups. */
 const EXTENSION_ID = 'adguard.tokenguard-copilot';
@@ -12,8 +12,8 @@ const EXTENSION_ID = 'adguard.tokenguard-copilot';
  *
  * @returns The activated extension instance.
  */
-export async function getExtension(): Promise<vscode.Extension<unknown>> {
-  const extension = vscode.extensions.getExtension(EXTENSION_ID);
+export async function getExtension(): Promise<Extension<unknown>> {
+  const extension = extensions.getExtension(EXTENSION_ID);
   assert.ok(extension, `Extension ${EXTENSION_ID} should be available`);
 
   if (!extension.isActive) {
@@ -67,7 +67,7 @@ export async function executeCommand<T = unknown>(
   ...args: unknown[]
 ): Promise<T | undefined> {
   try {
-    return await vscode.commands.executeCommand<T>(id, ...args);
+    return await commands.executeCommand<T>(id, ...args);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Command "${id}" failed: ${message}`);

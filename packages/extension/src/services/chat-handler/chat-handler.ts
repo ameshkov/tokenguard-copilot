@@ -1,4 +1,14 @@
-import * as vscode from 'vscode';
+import {
+  LanguageModelDataPart,
+  LanguageModelTextPart,
+  LanguageModelToolCallPart,
+} from 'vscode';
+import type {
+  CancellationToken,
+  LanguageModelChatRequestMessage,
+  LanguageModelResponsePart,
+  Progress,
+} from 'vscode';
 import { randomUUID } from 'node:crypto';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import type { CacheControlConfig, CustomField } from '@tokenguard/shared';
@@ -427,7 +437,7 @@ export class ChatHandler {
    */
   static async handleNonStreaming(
     response: Response,
-    progress: vscode.Progress<vscode.LanguageModelResponsePart>,
+    progress: Progress<LanguageModelResponsePart>,
     reasoningOut?: ReasoningCollector,
     usageOut?: UsageCollector,
     logger?: Logger,
@@ -483,7 +493,7 @@ export class ChatHandler {
         },
       };
       progress.report(
-        new vscode.LanguageModelDataPart(
+        new LanguageModelDataPart(
           new TextEncoder().encode(JSON.stringify(usageData)),
           USAGE_DATA_PART_MIME,
         ),
@@ -521,11 +531,11 @@ export class ChatHandler {
     // server actually sent are reconstructed on the next turn.
     const thinkingPart = reasoningToThinkingPart(message ?? {});
     if (thinkingPart) {
-      progress.report(thinkingPart as unknown as vscode.LanguageModelResponsePart);
+      progress.report(thinkingPart as unknown as LanguageModelResponsePart);
     }
 
     if (content) {
-      progress.report(new vscode.LanguageModelTextPart(content));
+      progress.report(new LanguageModelTextPart(content));
     }
 
     if (toolCalls) {
@@ -541,7 +551,7 @@ export class ChatHandler {
           );
           args = {};
         }
-        progress.report(new vscode.LanguageModelToolCallPart(tc.id, tc.function.name, args));
+        progress.report(new LanguageModelToolCallPart(tc.id, tc.function.name, args));
       }
     }
   }
@@ -563,8 +573,8 @@ export class ChatHandler {
    */
   static async handleStreaming(
     response: Response,
-    progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    token: vscode.CancellationToken,
+    progress: Progress<LanguageModelResponsePart>,
+    token: CancellationToken,
     reasoningOut?: ReasoningCollector,
     usageOut?: UsageCollector,
     logger?: Logger,
@@ -598,7 +608,7 @@ export class ChatHandler {
         } catch {
           args = {};
         }
-        progress.report(new vscode.LanguageModelToolCallPart(tc.id, tc.function.name, args));
+        progress.report(new LanguageModelToolCallPart(tc.id, tc.function.name, args));
       }
       pendingToolCalls.clear();
     };
@@ -672,7 +682,7 @@ export class ChatHandler {
                 },
               };
               progress.report(
-                new vscode.LanguageModelDataPart(
+                new LanguageModelDataPart(
                   new TextEncoder().encode(JSON.stringify(usageData)),
                   USAGE_DATA_PART_MIME,
                 ),
@@ -711,12 +721,12 @@ export class ChatHandler {
           // sent are reconstructed on the next turn.
           const thinkingPart = reasoningToThinkingPart(choice.delta ?? {});
           if (thinkingPart) {
-            progress.report(thinkingPart as unknown as vscode.LanguageModelResponsePart);
+            progress.report(thinkingPart as unknown as LanguageModelResponsePart);
           }
 
           const content = choice.delta?.content;
           if (content) {
-            progress.report(new vscode.LanguageModelTextPart(content));
+            progress.report(new LanguageModelTextPart(content));
           }
 
           // Accumulate reasoning fields from deltas
@@ -791,9 +801,9 @@ export class ChatHandler {
    * @throws Error if the request fails or is cancelled.
    */
   async handle(
-    messages: readonly vscode.LanguageModelChatRequestMessage[],
-    progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    token: vscode.CancellationToken,
+    messages: readonly LanguageModelChatRequestMessage[],
+    progress: Progress<LanguageModelResponsePart>,
+    token: CancellationToken,
     usageCollector?: UsageCollector,
   ): Promise<void> {
     const translated = translateMessages(messages);
@@ -856,9 +866,9 @@ export class ChatHandler {
     const capturingProgress: typeof progress = {
       report(part) {
         progress.report(part);
-        if (part instanceof vscode.LanguageModelTextPart) {
+        if (part instanceof LanguageModelTextPart) {
           responseContent += part.value;
-        } else if (part instanceof vscode.LanguageModelToolCallPart) {
+        } else if (part instanceof LanguageModelToolCallPart) {
           responseToolCalls.push({
             id: part.callId,
             name: part.name,

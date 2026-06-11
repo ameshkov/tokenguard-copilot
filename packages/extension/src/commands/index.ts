@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { type ExtensionContext, commands, window } from 'vscode';
 import type { ExtensionContext as AppContext } from '../context.js';
 import type { Logger } from '../logger/index.js';
 import { SettingsPanel } from '../ui/panels/index.js';
@@ -16,7 +16,7 @@ import type { ChatDebugTreeViewProvider } from '../ui/tree-views/index.js';
  *   output.
  */
 export function registerCommands(
-  context: vscode.ExtensionContext,
+  context: ExtensionContext,
   appCtx: AppContext,
   treeViewProvider: ChatDebugTreeViewProvider,
   logger: Logger,
@@ -24,17 +24,17 @@ export function registerCommands(
   logger.debug('Registering extension commands');
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.openSettings', () => {
+    commands.registerCommand('tokenguard-copilot.openSettings', () => {
       SettingsPanel.createOrShow(context.extensionUri, appCtx);
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(
+    commands.registerCommand(
       'tokenguard-copilot.enableDebuggingLogging',
       async (options?: { skipConfirmation?: boolean }) => {
         if (!options?.skipConfirmation) {
-          const answer = await vscode.window.showInformationMessage(
+          const answer = await window.showInformationMessage(
             'Enable debug logging? This will record request and response data for debugging.',
             { modal: true },
             'Enable',
@@ -46,40 +46,32 @@ export function registerCommands(
         appCtx.chatDebugSettings.updateSettings({
           enabled: true,
         });
-        void vscode.commands.executeCommand(
-          'setContext',
-          'tokenguard-copilot.chatDebugEnabled',
-          true,
-        );
+        void commands.executeCommand('setContext', 'tokenguard-copilot.chatDebugEnabled', true);
       },
     ),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.disableDebuggingLogging', () => {
+    commands.registerCommand('tokenguard-copilot.disableDebuggingLogging', () => {
       appCtx.chatDebugSettings.updateSettings({
         enabled: false,
       });
-      void vscode.commands.executeCommand(
-        'setContext',
-        'tokenguard-copilot.chatDebugEnabled',
-        false,
-      );
+      void commands.executeCommand('setContext', 'tokenguard-copilot.chatDebugEnabled', false);
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('tokenguard-copilot.refreshDebuggingLogs', () => {
+    commands.registerCommand('tokenguard-copilot.refreshDebuggingLogs', () => {
       treeViewProvider.refresh();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(
+    commands.registerCommand(
       'tokenguard-copilot.clearDebuggingLogs',
       async (options?: { skipConfirmation?: boolean }) => {
         if (!options?.skipConfirmation) {
-          const answer = await vscode.window.showWarningMessage(
+          const answer = await window.showWarningMessage(
             'This will permanently delete all debug logs. This action cannot be undone.',
             { modal: true },
             'Clear Logs',

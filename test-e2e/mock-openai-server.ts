@@ -15,6 +15,128 @@ export interface MockOpenAIServer {
   close(): Promise<void>;
 }
 
+/** Shape of a parsed chat completion request body. */
+interface ChatCompletionRequest {
+  stream?: boolean;
+  model?: string;
+}
+
+/** Type for the headers-capture callback used by handleChatCompletions. */
+type HeadersCallback = (headers: Record<string, string | string[] | undefined>) => void;
+
+/**
+ * Writes a `GET /models` response returning a single `mock-model`.
+ */
+function handleGetModels(res: http.ServerResponse): void {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(
+    JSON.stringify({
+      object: 'list',
+      data: [
+        {
+          id: 'mock-model',
+          object: 'model',
+          created: Date.now(),
+          owned_by: 'mock',
+        },
+      ],
+    }),
+  );
+}
+
+/**
+ * Writes a 404 JSON error response.
+ */
+function handleNotFound(res: http.ServerResponse): void {
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found' }));
+}
+
+/**
+ * Writes SSE streaming response chunks for a chat completion.
+ */
+function writeStreamResponse(res: http.ServerResponse, modelId: string): void {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+
+  const now = Math.floor(Date.now() / 1000);
+
+  const chunk = {
+    id: 'chatcmpl-mock-1',
+    object: 'chat.completion.chunk',
+    created: now,
+    model: modelId,
+    choices: [{ index: 0, delta: { content: 'Hello from mock server!' }, finish_reason: null }],
+  };
+
+  const doneChunk = {
+    id: 'chatcmpl-mock-1',
+    object: 'chat.completion.chunk',
+    created: now,
+    model: modelId,
+    choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+    usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+  };
+
+  res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+  res.write(`data: ${JSON.stringify(doneChunk)}\n\n`);
+  res.write('data: [DONE]\n\n');
+  res.end();
+}
+
+/**
+ * Writes a non-streaming JSON response for a chat completion.
+ */
+function writeNonStreamResponse(res: http.ServerResponse, modelId: string): void {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(
+    JSON.stringify({
+      id: 'chatcmpl-mock-1',
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: modelId,
+      choices: [
+        {
+          index: 0,
+          message: { role: 'assistant', content: 'Hello from mock server!' },
+          finish_reason: 'stop',
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    }),
+  );
+}
+
+/**
+ * Reads the request body, parses it as a chat completion request,
+ * and dispatches to either the streaming or non-streaming response helper.
+ */
+function handleChatCompletions(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  onHeaders: HeadersCallback,
+): void {
+  onHeaders(req.headers);
+
+  let body = '';
+  req.on('data', (chunk: Buffer) => {
+    body += chunk.toString();
+  });
+  req.on('end', () => {
+    const request = JSON.parse(body) as ChatCompletionRequest;
+    const modelId = request.model ?? 'mock-model';
+
+    if (request.stream) {
+      writeStreamResponse(res, modelId);
+    } else {
+      writeNonStreamResponse(res, modelId);
+    }
+  });
+}
+
 /**
  * Starts a mock OpenAI-compatible HTTP server on a random
  * available port. The server responds to:
@@ -31,124 +153,25 @@ export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
     let lastRequestHeaders: Record<string, string | string[] | undefined> | null = null;
 
     const server = http.createServer((req, res) => {
-      // Parse URL path
       const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
 
       if (req.method === 'GET' && url.pathname === '/models') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(
-          JSON.stringify({
-            object: 'list',
-            data: [
-              {
-                id: 'mock-model',
-                object: 'model',
-                created: Date.now(),
-                owned_by: 'mock',
-              },
-            ],
-          }),
-        );
+        handleGetModels(res);
         return;
       }
 
       if (req.method === 'POST' && url.pathname === '/chat/completions') {
-        // Capture request headers for assertion by tests
-        lastRequestHeaders = req.headers;
-        let body = '';
-        req.on('data', (chunk: Buffer) => {
-          body += chunk.toString();
-        });
-        req.on('end', () => {
-          const request = JSON.parse(body) as {
-            stream?: boolean;
-            model?: string;
-          };
-
-          if (request.stream) {
-            // Streaming response (SSE)
-            res.writeHead(200, {
-              'Content-Type': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              Connection: 'keep-alive',
-            });
-
-            const chunk = {
-              id: 'chatcmpl-mock-1',
-              object: 'chat.completion.chunk',
-              created: Math.floor(Date.now() / 1000),
-              model: request.model ?? 'mock-model',
-              choices: [
-                {
-                  index: 0,
-                  delta: { content: 'Hello from mock server!' },
-                  finish_reason: null,
-                },
-              ],
-            };
-
-            const doneChunk = {
-              id: 'chatcmpl-mock-1',
-              object: 'chat.completion.chunk',
-              created: Math.floor(Date.now() / 1000),
-              model: request.model ?? 'mock-model',
-              choices: [
-                {
-                  index: 0,
-                  delta: {},
-                  finish_reason: 'stop',
-                },
-              ],
-              usage: {
-                prompt_tokens: 10,
-                completion_tokens: 5,
-                total_tokens: 15,
-              },
-            };
-
-            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-            res.write(`data: ${JSON.stringify(doneChunk)}\n\n`);
-            res.write('data: [DONE]\n\n');
-            res.end();
-          } else {
-            // Non-streaming response
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(
-              JSON.stringify({
-                id: 'chatcmpl-mock-1',
-                object: 'chat.completion',
-                created: Math.floor(Date.now() / 1000),
-                model: request.model ?? 'mock-model',
-                choices: [
-                  {
-                    index: 0,
-                    message: {
-                      role: 'assistant',
-                      content: 'Hello from mock server!',
-                    },
-                    finish_reason: 'stop',
-                  },
-                ],
-                usage: {
-                  prompt_tokens: 10,
-                  completion_tokens: 5,
-                  total_tokens: 15,
-                },
-              }),
-            );
-          }
+        handleChatCompletions(req, res, (headers) => {
+          lastRequestHeaders = headers;
         });
         return;
       }
 
-      // Unknown endpoint
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not found' }));
+      handleNotFound(res);
     });
 
     server.on('error', reject);
 
-    // Listen on a random port on localhost
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address();
       if (!addr || typeof addr === 'string') {

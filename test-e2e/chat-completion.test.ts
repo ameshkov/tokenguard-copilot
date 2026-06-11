@@ -1,7 +1,7 @@
 /// <reference types="mocha" />
 
 import * as assert from 'node:assert';
-import * as vscode from 'vscode';
+import { LanguageModelChatMessage, LanguageModelTextPart, lm } from 'vscode';
 import { getExtension, waitForCondition } from './helpers.js';
 import { startMockOpenAIServer, type MockOpenAIServer } from './mock-openai-server.js';
 
@@ -91,7 +91,7 @@ suite('Chat Completion E2E', () => {
     // Step 3: Wait for the model to appear in the language
     // model registry.
     const chatModel = await waitForCondition(async () => {
-      const models = await vscode.lm.selectChatModels({
+      const models = await lm.selectChatModels({
         vendor: 'tokenguard-copilot',
       });
 
@@ -101,12 +101,12 @@ suite('Chat Completion E2E', () => {
     assert.ok(chatModel, 'Mock model should be selectable');
 
     // Step 4: Send a chat message and collect the response.
-    const messages = [vscode.LanguageModelChatMessage.User('Say hello')];
+    const messages = [LanguageModelChatMessage.User('Say hello')];
     const response = await chatModel.sendRequest(messages, {});
 
     let fullText = '';
     for await (const part of response.stream) {
-      if (part instanceof vscode.LanguageModelTextPart) {
+      if (part instanceof LanguageModelTextPart) {
         fullText += part.value;
       }
     }
@@ -153,7 +153,7 @@ suite('Chat Completion E2E', () => {
     });
 
     const chatModel = await waitForCondition(async () => {
-      const models = await vscode.lm.selectChatModels({
+      const models = await lm.selectChatModels({
         vendor: 'tokenguard-copilot',
       });
 
@@ -162,12 +162,12 @@ suite('Chat Completion E2E', () => {
 
     assert.ok(chatModel, 'Streaming mock model should be selectable');
 
-    const messages = [vscode.LanguageModelChatMessage.User('Say hello')];
+    const messages = [LanguageModelChatMessage.User('Say hello')];
     const response = await chatModel.sendRequest(messages, {});
 
     let fullText = '';
     for await (const part of response.stream) {
-      if (part instanceof vscode.LanguageModelTextPart) {
+      if (part instanceof LanguageModelTextPart) {
         fullText += part.value;
       }
     }

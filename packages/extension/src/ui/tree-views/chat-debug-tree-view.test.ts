@@ -78,12 +78,12 @@ vi.mock('vscode', () => {
   };
 });
 
-import * as vscode from 'vscode';
+import { FileType, TreeItem, TreeItemCollapsibleState, Uri, workspace } from 'vscode';
 import { ChatDebugTreeViewProvider, parseSessionDirName } from './chat-debug-tree-view.js';
 
 describe('ChatDebugTreeViewProvider', () => {
   let provider: ChatDebugTreeViewProvider;
-  let globalStorageUri: vscode.Uri;
+  let globalStorageUri: Uri;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,10 +91,10 @@ describe('ChatDebugTreeViewProvider', () => {
       path: '/mock/storage',
       fsPath: '/mock/storage',
       scheme: 'file',
-    } as unknown as vscode.Uri;
+    } as unknown as Uri;
 
     // Default: one workspace folder
-    Object.defineProperty(vscode.workspace, 'workspaceFolders', {
+    Object.defineProperty(workspace, 'workspaceFolders', {
       value: [
         {
           uri: {
@@ -113,28 +113,28 @@ describe('ChatDebugTreeViewProvider', () => {
 
   describe('getChildren (root) with filesystem', () => {
     it('returns session nodes at the top level', async () => {
-      const readDir = vi.mocked(vscode.workspace.fs.readDirectory);
-      const stat = vi.mocked(vscode.workspace.fs.stat);
+      const readDir = vi.mocked(workspace.fs.readDirectory);
+      const stat = vi.mocked(workspace.fs.stat);
 
       readDir.mockResolvedValueOnce([
-        ['openai-gpt-4o--sess-aaa', vscode.FileType.Directory],
-        ['anthropic-claude-3--sess-bbb', vscode.FileType.Directory],
+        ['openai-gpt-4o--sess-aaa', FileType.Directory],
+        ['anthropic-claude-3--sess-bbb', FileType.Directory],
       ]);
       readDir.mockResolvedValueOnce([
-        ['20260521-100000-000-req1.md', vscode.FileType.File],
-        ['20260521-100100-000-req2.md', vscode.FileType.File],
+        ['20260521-100000-000-req1.md', FileType.File],
+        ['20260521-100100-000-req2.md', FileType.File],
       ]);
-      readDir.mockResolvedValueOnce([['20260521-090000-000-req1.md', vscode.FileType.File]]);
+      readDir.mockResolvedValueOnce([['20260521-090000-000-req1.md', FileType.File]]);
       stat.mockResolvedValueOnce({
         mtime: 2000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
       stat.mockResolvedValueOnce({
         mtime: 1000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
 
@@ -143,14 +143,14 @@ describe('ChatDebugTreeViewProvider', () => {
       expect(children).toHaveLength(2);
       expect(children[0].label).toBe('openai-gpt-4o - sess-aaa');
       expect(children[0].description).toBe('2 turn(s)');
-      expect(children[0].collapsibleState).toBe(vscode.TreeItemCollapsibleState.Collapsed);
+      expect(children[0].collapsibleState).toBe(TreeItemCollapsibleState.Collapsed);
       expect(children[0].contextValue).toBe('chatDebugSession');
       expect(children[1].label).toBe('anthropic-claude-3 - sess-bbb');
       expect(children[1].description).toBe('1 turn(s)');
     });
 
     it('returns placeholder when no sessions exist', async () => {
-      vi.mocked(vscode.workspace.fs.readDirectory).mockResolvedValueOnce([]);
+      vi.mocked(workspace.fs.readDirectory).mockResolvedValueOnce([]);
 
       const children = await provider.getChildren();
 
@@ -159,9 +159,9 @@ describe('ChatDebugTreeViewProvider', () => {
     });
 
     it('skips session directories with no log files', async () => {
-      const readDir = vi.mocked(vscode.workspace.fs.readDirectory);
+      const readDir = vi.mocked(workspace.fs.readDirectory);
 
-      readDir.mockResolvedValueOnce([['openai-gpt-4o--empty-session', vscode.FileType.Directory]]);
+      readDir.mockResolvedValueOnce([['openai-gpt-4o--empty-session', FileType.Directory]]);
       readDir.mockResolvedValueOnce([]);
 
       const children = await provider.getChildren();
@@ -171,18 +171,18 @@ describe('ChatDebugTreeViewProvider', () => {
     });
 
     it('filters out non-.md files', async () => {
-      const readDir = vi.mocked(vscode.workspace.fs.readDirectory);
-      const stat = vi.mocked(vscode.workspace.fs.stat);
+      const readDir = vi.mocked(workspace.fs.readDirectory);
+      const stat = vi.mocked(workspace.fs.stat);
 
-      readDir.mockResolvedValueOnce([['test-model--sess-xyz', vscode.FileType.Directory]]);
+      readDir.mockResolvedValueOnce([['test-model--sess-xyz', FileType.Directory]]);
       readDir.mockResolvedValueOnce([
-        ['20260521-100000-000-req1.md.tmp', vscode.FileType.File],
-        ['20260521-100000-000-req1.md', vscode.FileType.File],
+        ['20260521-100000-000-req1.md.tmp', FileType.File],
+        ['20260521-100000-000-req1.md', FileType.File],
       ]);
       stat.mockResolvedValueOnce({
         mtime: 1000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
 
@@ -195,18 +195,18 @@ describe('ChatDebugTreeViewProvider', () => {
 
   describe('getChildren (session)', () => {
     it('returns log nodes sorted by timestamp ascending', async () => {
-      const readDir = vi.mocked(vscode.workspace.fs.readDirectory);
-      const stat = vi.mocked(vscode.workspace.fs.stat);
+      const readDir = vi.mocked(workspace.fs.readDirectory);
+      const stat = vi.mocked(workspace.fs.stat);
 
-      readDir.mockResolvedValueOnce([['openai-gpt-4o--sess-aaa', vscode.FileType.Directory]]);
+      readDir.mockResolvedValueOnce([['openai-gpt-4o--sess-aaa', FileType.Directory]]);
       readDir.mockResolvedValueOnce([
-        ['20260521-100100-000-req2.md', vscode.FileType.File],
-        ['20260521-100000-000-req1.md', vscode.FileType.File],
+        ['20260521-100100-000-req2.md', FileType.File],
+        ['20260521-100000-000-req1.md', FileType.File],
       ]);
       stat.mockResolvedValueOnce({
         mtime: 2000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
 
@@ -214,8 +214,8 @@ describe('ChatDebugTreeViewProvider', () => {
       const sessionItem = rootChildren[0];
 
       readDir.mockResolvedValueOnce([
-        ['20260521-100100-000-req2.md', vscode.FileType.File],
-        ['20260521-100000-000-req1.md', vscode.FileType.File],
+        ['20260521-100100-000-req2.md', FileType.File],
+        ['20260521-100000-000-req1.md', FileType.File],
       ]);
 
       const logChildren = await provider.getChildren(sessionItem);
@@ -228,27 +228,27 @@ describe('ChatDebugTreeViewProvider', () => {
     });
 
     it('log nodes have correct properties', async () => {
-      const readDir = vi.mocked(vscode.workspace.fs.readDirectory);
-      const stat = vi.mocked(vscode.workspace.fs.stat);
+      const readDir = vi.mocked(workspace.fs.readDirectory);
+      const stat = vi.mocked(workspace.fs.stat);
 
-      readDir.mockResolvedValueOnce([['openai-gpt-4o--sess-aaa', vscode.FileType.Directory]]);
-      readDir.mockResolvedValueOnce([['20260521-100000-000-req1.md', vscode.FileType.File]]);
+      readDir.mockResolvedValueOnce([['openai-gpt-4o--sess-aaa', FileType.Directory]]);
+      readDir.mockResolvedValueOnce([['20260521-100000-000-req1.md', FileType.File]]);
       stat.mockResolvedValueOnce({
         mtime: 2000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
 
       const rootChildren = await provider.getChildren();
       const sessionItem = rootChildren[0];
 
-      readDir.mockResolvedValueOnce([['20260521-100000-000-req1.md', vscode.FileType.File]]);
+      readDir.mockResolvedValueOnce([['20260521-100000-000-req1.md', FileType.File]]);
 
       const logChildren = await provider.getChildren(sessionItem);
       const logItem = logChildren[0];
 
-      expect(logItem.collapsibleState).toBe(vscode.TreeItemCollapsibleState.None);
+      expect(logItem.collapsibleState).toBe(TreeItemCollapsibleState.None);
       expect(logItem.contextValue).toBe('chatDebugLog');
       expect(logItem.description).toBe('req1');
       expect(logItem.command).toBeDefined();
@@ -257,7 +257,7 @@ describe('ChatDebugTreeViewProvider', () => {
     });
 
     it('returns empty array for unknown session element', async () => {
-      const unknownItem = new vscode.TreeItem('unknown');
+      const unknownItem = new TreeItem('unknown');
       unknownItem.id = 'session-nonexistent';
 
       const children = await provider.getChildren(unknownItem);
@@ -268,7 +268,7 @@ describe('ChatDebugTreeViewProvider', () => {
 
   describe('getTreeItem', () => {
     it('returns the element unchanged', () => {
-      const item = new vscode.TreeItem('test');
+      const item = new TreeItem('test');
 
       expect(provider.getTreeItem(item)).toBe(item);
     });
@@ -276,15 +276,15 @@ describe('ChatDebugTreeViewProvider', () => {
 
   describe('refresh', () => {
     it('clears session cache and fires change event', async () => {
-      const readDir = vi.mocked(vscode.workspace.fs.readDirectory);
-      const stat = vi.mocked(vscode.workspace.fs.stat);
+      const readDir = vi.mocked(workspace.fs.readDirectory);
+      const stat = vi.mocked(workspace.fs.stat);
 
-      readDir.mockResolvedValueOnce([['openai-gpt-4o--sess-aaa', vscode.FileType.Directory]]);
-      readDir.mockResolvedValueOnce([['20260521-100000-000-req1.md', vscode.FileType.File]]);
+      readDir.mockResolvedValueOnce([['openai-gpt-4o--sess-aaa', FileType.Directory]]);
+      readDir.mockResolvedValueOnce([['20260521-100000-000-req1.md', FileType.File]]);
       stat.mockResolvedValueOnce({
         mtime: 1000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
 
@@ -292,12 +292,12 @@ describe('ChatDebugTreeViewProvider', () => {
 
       provider.refresh();
 
-      readDir.mockResolvedValueOnce([['anthropic-claude--sess-bbb', vscode.FileType.Directory]]);
-      readDir.mockResolvedValueOnce([['20260521-110000-000-req1.md', vscode.FileType.File]]);
+      readDir.mockResolvedValueOnce([['anthropic-claude--sess-bbb', FileType.Directory]]);
+      readDir.mockResolvedValueOnce([['20260521-110000-000-req1.md', FileType.File]]);
       stat.mockResolvedValueOnce({
         mtime: 2000,
         size: 0,
-        type: vscode.FileType.File,
+        type: FileType.File,
         ctime: 0,
       });
 

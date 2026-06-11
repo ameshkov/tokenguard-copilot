@@ -1,4 +1,11 @@
-import * as vscode from 'vscode';
+import {
+  LanguageModelDataPart,
+  LanguageModelTextPart,
+  LanguageModelToolCallPart,
+  LanguageModelToolResultPart,
+  Uri,
+} from 'vscode';
+import type { LanguageModelChatRequestMessage } from 'vscode';
 import {
   createTokenizer,
   getRegexByEncoder,
@@ -148,22 +155,22 @@ export class TokenCounter {
    * @param message - The chat message to count tokens for.
    * @returns Estimated token count.
    */
-  async countMessageTokens(message: vscode.LanguageModelChatRequestMessage): Promise<number> {
+  async countMessageTokens(message: LanguageModelChatRequestMessage): Promise<number> {
     let total = BASE_TOKENS_PER_MESSAGE + BASE_TOKENS_PER_NAME;
 
     for (const part of message.content) {
-      if (part instanceof vscode.LanguageModelTextPart) {
+      if (part instanceof LanguageModelTextPart) {
         total += await this.countTokens(part.value);
-      } else if (part instanceof vscode.LanguageModelDataPart) {
+      } else if (part instanceof LanguageModelDataPart) {
         if (part.mimeType.startsWith('image/')) {
           total += this.calculateImageTokens(part.data, part.mimeType);
         } else {
           total += this.calculateBinaryTokens(part.data.byteLength);
         }
-      } else if (part instanceof vscode.LanguageModelToolCallPart) {
+      } else if (part instanceof LanguageModelToolCallPart) {
         total += BASE_TOKENS_PER_NAME;
         total += await this.countTokens(JSON.stringify(part.input));
-      } else if (part instanceof vscode.LanguageModelToolResultPart) {
+      } else if (part instanceof LanguageModelToolResultPart) {
         total += await this.countTokens(JSON.stringify(part.content));
       }
     }
@@ -242,8 +249,8 @@ export class TokenCounter {
   private async loadTokenizer(): Promise<{
     encode(text: string): number[];
   }> {
-    const modelPath = vscode.Uri.joinPath(
-      vscode.Uri.file(this.extensionPath),
+    const modelPath = Uri.joinPath(
+      Uri.file(this.extensionPath),
       TOKENIZER_MODEL_PATH,
     ).fsPath;
 

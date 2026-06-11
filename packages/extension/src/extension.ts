@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import * as vscode from 'vscode';
+import { type ExtensionContext as VSCodeExtensionContext, commands, window } from 'vscode';
 import { registerCommands } from './commands/index.js';
 import { ExtensionContext } from './context.js';
 import { createLogger, type Logger } from './logger/index.js';
@@ -33,9 +33,7 @@ let rawDb: DatabaseSync | null = null;
 let extCtx: ExtensionContext | null = null;
 let logger: Logger | null = null;
 
-export async function activate(
-  context: vscode.ExtensionContext,
-): Promise<ExtensionApi | undefined> {
+export async function activate(context: VSCodeExtensionContext): Promise<ExtensionApi | undefined> {
   const { logger: log, channel } = createLogger();
   logger = log;
   context.subscriptions.push(channel);
@@ -98,9 +96,7 @@ export async function activate(
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     log.error('Database initialization failed', message);
-    vscode.window.showErrorMessage(
-      `TokenGuard Copilot: database initialization failed — ${message}`,
-    );
+    window.showErrorMessage(`TokenGuard Copilot: database initialization failed — ${message}`);
     return;
   }
 
@@ -109,14 +105,10 @@ export async function activate(
 
   // Set context key so the tree view is visible only when logging is enabled.
   const initialEnabled = localCtx.chatDebugSettings.getSettings().enabled;
-  void vscode.commands.executeCommand(
-    'setContext',
-    'tokenguard-copilot.chatDebugEnabled',
-    initialEnabled,
-  );
+  void commands.executeCommand('setContext', 'tokenguard-copilot.chatDebugEnabled', initialEnabled);
 
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('tokenguardCopilotChatDebugLogs', treeViewProvider),
+    window.registerTreeDataProvider('tokenguardCopilotChatDebugLogs', treeViewProvider),
   );
   context.subscriptions.push(treeViewProvider);
 

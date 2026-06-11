@@ -1,4 +1,5 @@
-import * as vscode from 'vscode';
+import { EventEmitter } from 'vscode';
+import type { SecretStorage } from 'vscode';
 import type { ProviderInfo } from '@tokenguard/shared';
 import type { ProviderRepository } from '../../repositories/index.js';
 import type { Provider } from '../../db/index.js';
@@ -17,7 +18,7 @@ export type ResetCallback = () => Promise<void>;
  * verification, persistence, and change notification.
  */
 export class ProviderManager {
-  private readonly emitter = new vscode.EventEmitter<void>();
+  private readonly emitter = new EventEmitter<void>();
 
   /** Fires after providers are added or modified. */
   readonly onProvidersChanged = this.emitter.event;
@@ -34,7 +35,7 @@ export class ProviderManager {
    */
   constructor(
     private readonly providerRepo: ProviderRepository,
-    private readonly secrets: vscode.SecretStorage,
+    private readonly secrets: SecretStorage,
     private readonly resetCallback: ResetCallback,
     private readonly modelRegistry: ModelRegistry,
     private readonly logger: Logger,

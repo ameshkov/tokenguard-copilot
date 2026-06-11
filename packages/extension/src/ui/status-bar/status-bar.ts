@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { type Disposable, type Event, StatusBarAlignment, window } from 'vscode';
 import type { ProviderInfo } from '@tokenguard/shared';
 import type { UsageRecord } from '../../db/index.js';
 
@@ -10,7 +10,7 @@ export interface StatusBarProviderSource {
   /** Returns all non-removed providers. */
   getProviders(): ProviderInfo[];
   /** Fires when providers are added, edited, or removed. */
-  onProvidersChanged: vscode.Event<void>;
+  onProvidersChanged: Event<void>;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface UsageStatsSource {
     dateTo?: string;
   }): UsageRecord[];
   /** Fires when usage stats change. */
-  onStatsChanged: vscode.Event<void>;
+  onStatsChanged: Event<void>;
 }
 
 /**
@@ -139,8 +139,8 @@ function formatCost(cost: number): string {
 export function createStatusBarItem(
   providerSource: StatusBarProviderSource,
   usageSource?: UsageStatsSource,
-): vscode.Disposable {
-  const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+): Disposable {
+  const item = window.createStatusBarItem(StatusBarAlignment.Right, 100);
   item.text = '$(chat-sparkle) TokenGuard';
   item.command = 'tokenguard-copilot.openSettings';
 

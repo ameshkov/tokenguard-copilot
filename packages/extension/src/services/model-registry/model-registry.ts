@@ -1,4 +1,5 @@
-import * as vscode from 'vscode';
+import { EventEmitter } from 'vscode';
+import type { Disposable, LanguageModelChatInformation, SecretStorage } from 'vscode';
 import type { ModelInfo, FetchedModel, ModelConfig, CacheControlConfig } from '@tokenguard/shared';
 import type { ModelRepository, ProviderRepository } from '../../repositories/index.js';
 import type { Model, Provider } from '../../db/index.js';
@@ -17,13 +18,13 @@ import { buildUserAgent } from '../../utils/index.js';
  * via {@link ChatModelProvider}.
  */
 export class ModelRegistry {
-  private readonly emitter = new vscode.EventEmitter<void>();
+  private readonly emitter = new EventEmitter<void>();
 
   /** Fires after models are added, modified, or removed. */
   readonly onModelsChanged = this.emitter.event;
 
   /** Disposable for the single registered chat model provider. */
-  private registration: vscode.Disposable | null = null;
+  private registration: Disposable | null = null;
 
   /**
    * Emitter for `onDidChangeLanguageModelChatInformation`.
@@ -31,7 +32,7 @@ export class ModelRegistry {
    * through the non-cached path, correctly picking up
    * `configurationSchema` and other extended properties.
    */
-  private readonly chatInfoEmitter = new vscode.EventEmitter<void>();
+  private readonly chatInfoEmitter = new EventEmitter<void>();
 
   /**
    * Creates a new ModelRegistry.
@@ -51,7 +52,7 @@ export class ModelRegistry {
   constructor(
     private readonly modelRepo: ModelRepository,
     private readonly providerRepo: ProviderRepository,
-    private readonly secrets: vscode.SecretStorage,
+    private readonly secrets: SecretStorage,
     private readonly chatDebugLogger: ChatDebugLogger,
     private readonly tokenCounter: TokenCounter,
     private readonly reasoningCacheService: ReasoningCacheService,
@@ -379,7 +380,7 @@ export class ModelRegistry {
     // Build a lookup map for dispatching chat responses.
     const modelMap = new Map<string, { model: Model; provider: Provider }>();
 
-    const chatInfos: vscode.LanguageModelChatInformation[] = [];
+    const chatInfos: LanguageModelChatInformation[] = [];
 
     for (const model of activeModels) {
       const provider = this.providerRepo.findById(model.providerId);
@@ -456,7 +457,7 @@ export class ModelRegistry {
           imageInput: !!model.vision,
         },
         ...(configurationSchema ? { configurationSchema } : {}),
-      } as vscode.LanguageModelChatInformation);
+      } as LanguageModelChatInformation);
     }
 
     this.registration = ChatModelProvider.register({

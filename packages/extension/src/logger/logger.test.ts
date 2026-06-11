@@ -15,7 +15,7 @@ vi.mock('vscode', () => ({
   },
 }));
 
-import * as vscode from 'vscode';
+import { window } from 'vscode';
 import { createLogger } from './logger.js';
 
 describe('createLogger', () => {
@@ -26,7 +26,7 @@ describe('createLogger', () => {
   it('calls createOutputChannel with correct name and log option', () => {
     createLogger();
 
-    expect(vscode.window.createOutputChannel).toHaveBeenCalledWith('TokenGuard Copilot', {
+    expect(window.createOutputChannel).toHaveBeenCalledWith('TokenGuard Copilot', {
       log: true,
     });
   });

@@ -1,4 +1,14 @@
-import * as vscode from 'vscode';
+import {
+  type Disposable,
+  EventEmitter,
+  FileType,
+  ThemeIcon,
+  TreeItem,
+  TreeItemCollapsibleState,
+  type TreeDataProvider,
+  Uri,
+  workspace,
+} from 'vscode';
 import { ChatDebugLogger } from '../../services/chat-debug-logger/index.js';
 
 /**
@@ -71,7 +81,7 @@ interface SessionEntry {
   /** Number of log files in the session directory. */
   logCount: number;
   /** URI to the session directory. */
-  sessionUri: vscode.Uri;
+  sessionUri: Uri;
 }
 
 /**
@@ -82,12 +92,8 @@ interface SessionEntry {
  * sorted by most recent modification time descending. Log
  * files within each session are sorted by timestamp ascending.
  */
-export class ChatDebugTreeViewProvider
-  implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable
-{
-  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
-    vscode.TreeItem | undefined | void
-  >();
+export class ChatDebugTreeViewProvider implements TreeDataProvider<TreeItem>, Disposable {
+  private readonly _onDidChangeTreeData = new EventEmitter<TreeItem | undefined | void>();
 
   /** Event that fires when the tree data changes. */
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -99,18 +105,18 @@ export class ChatDebugTreeViewProvider
   private readonly workspaceId: string | undefined;
 
   /** URI to the workspace's log directory. */
-  private readonly workspaceLogsUri: vscode.Uri | undefined;
+  private readonly workspaceLogsUri: Uri | undefined;
 
   /**
    * Creates a new ChatDebugTreeViewProvider.
    *
    * @param globalStorageUri - Extension global storage URI.
    */
-  constructor(private readonly globalStorageUri: vscode.Uri) {
-    const folders = vscode.workspace.workspaceFolders;
+  constructor(private readonly globalStorageUri: Uri) {
+    const folders = workspace.workspaceFolders;
     if (folders && folders.length > 0) {
       this.workspaceId = ChatDebugLogger.computeWorkspaceId(folders[0].uri.toString());
-      this.workspaceLogsUri = vscode.Uri.joinPath(globalStorageUri, 'logs', this.workspaceId);
+      this.workspaceLogsUri = Uri.joinPath(globalStorageUri, 'logs', this.workspaceId);
     }
   }
 
@@ -124,7 +130,7 @@ export class ChatDebugTreeViewProvider
   }
 
   /** Returns the tree item for the given element. */
-  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+  getTreeItem(element: TreeItem): TreeItem {
     return element;
   }
 
@@ -134,7 +140,7 @@ export class ChatDebugTreeViewProvider
    * @param element - Parent element, or undefined for root.
    * @returns Session nodes at root, log nodes under a session.
    */
-  async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+  async getChildren(element?: TreeItem): Promise<TreeItem[]> {
     if (!this.workspaceLogsUri) {
       return [this.createPlaceholder('Open a workspace to see debug logs')];
     }
@@ -156,7 +162,7 @@ export class ChatDebugTreeViewProvider
    * tree items sorted by most recent modification time
    * descending.
    */
-  private async getRootChildren(): Promise<vscode.TreeItem[]> {
+  private async getRootChildren(): Promise<TreeItem[]> {
     if (this.sessions.length === 0) {
       this.sessions = await this.scanSessions();
     }
@@ -175,37 +181,37 @@ export class ChatDebugTreeViewProvider
   private async scanSessions(): Promise<SessionEntry[]> {
     if (!this.workspaceLogsUri) return [];
 
-    let entries: [string, vscode.FileType][];
+    let entries: [string, FileType][];
     try {
-      entries = await vscode.workspace.fs.readDirectory(this.workspaceLogsUri);
+      entries = await workspace.fs.readDirectory(this.workspaceLogsUri);
     } catch {
       return [];
     }
 
-    const sessionDirs = entries.filter(([, type]) => type === vscode.FileType.Directory);
+    const sessionDirs = entries.filter(([, type]) => type === FileType.Directory);
     const sessions: SessionEntry[] = [];
 
     for (const [dirName] of sessionDirs) {
-      const sessionUri = vscode.Uri.joinPath(this.workspaceLogsUri!, dirName);
+      const sessionUri = Uri.joinPath(this.workspaceLogsUri!, dirName);
 
-      let logEntries: [string, vscode.FileType][];
+      let logEntries: [string, FileType][];
       try {
-        logEntries = await vscode.workspace.fs.readDirectory(sessionUri);
+        logEntries = await workspace.fs.readDirectory(sessionUri);
       } catch {
         continue;
       }
 
       const logFiles = logEntries
-        .filter(([name, type]) => type === vscode.FileType.File && name.endsWith('.md'))
+        .filter(([name, type]) => type === FileType.File && name.endsWith('.md'))
         .sort(([a], [b]) => a.localeCompare(b));
 
       if (logFiles.length === 0) continue;
 
       // Get mtime from the most recent log file
-      const mostRecentLogUri = vscode.Uri.joinPath(sessionUri, logFiles[logFiles.length - 1][0]);
+      const mostRecentLogUri = Uri.joinPath(sessionUri, logFiles[logFiles.length - 1][0]);
       let mtime: number;
       try {
-        const stat = await vscode.workspace.fs.stat(mostRecentLogUri);
+        const stat = await workspace.fs.stat(mostRecentLogUri);
         mtime = stat.mtime;
       } catch {
         mtime = 0;
@@ -231,20 +237,20 @@ export class ChatDebugTreeViewProvider
   /**
    * Creates a tree item for a session node.
    */
-  private createSessionItem(session: SessionEntry): vscode.TreeItem {
-    const item = new vscode.TreeItem(session.label, vscode.TreeItemCollapsibleState.Collapsed);
+  private createSessionItem(session: SessionEntry): TreeItem {
+    const item = new TreeItem(session.label, TreeItemCollapsibleState.Collapsed);
     item.id = `session-${session.id}`;
     item.contextValue = CONTEXT_SESSION;
     item.description = `${session.logCount} turn(s)`;
-    item.iconPath = new vscode.ThemeIcon('comment-discussion');
+    item.iconPath = new ThemeIcon('comment-discussion');
     return item;
   }
 
   /**
    * Creates a placeholder tree item with a message.
    */
-  private createPlaceholder(message: string): vscode.TreeItem {
-    const item = new vscode.TreeItem(message);
+  private createPlaceholder(message: string): TreeItem {
+    const item = new TreeItem(message);
     item.contextValue = 'chatDebugPlaceholder';
     return item;
   }
@@ -253,21 +259,21 @@ export class ChatDebugTreeViewProvider
    * Returns log file tree items for a session, sorted by
    * timestamp ascending.
    */
-  private async getSessionChildren(element: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+  private async getSessionChildren(element: TreeItem): Promise<TreeItem[]> {
     const dirName = element.id?.replace('session-', '');
     if (!dirName || !this.workspaceLogsUri) return [];
 
-    const sessionUri = vscode.Uri.joinPath(this.workspaceLogsUri, dirName);
+    const sessionUri = Uri.joinPath(this.workspaceLogsUri, dirName);
 
-    let entries: [string, vscode.FileType][];
+    let entries: [string, FileType][];
     try {
-      entries = await vscode.workspace.fs.readDirectory(sessionUri);
+      entries = await workspace.fs.readDirectory(sessionUri);
     } catch {
       return [];
     }
 
     const logFiles = entries
-      .filter(([name, type]) => type === vscode.FileType.File && name.endsWith('.md'))
+      .filter(([name, type]) => type === FileType.File && name.endsWith('.md'))
       .sort(([a], [b]) => a.localeCompare(b));
 
     return logFiles.map(([fileName], index) => this.createLogItem(sessionUri, fileName, index));
@@ -281,20 +287,17 @@ export class ChatDebugTreeViewProvider
    * @param index - Zero-based index for ordering.
    * @returns A tree item with formatted label and request ID description.
    */
-  private createLogItem(sessionUri: vscode.Uri, fileName: string, index: number): vscode.TreeItem {
-    const uri = vscode.Uri.joinPath(sessionUri, fileName);
+  private createLogItem(sessionUri: Uri, fileName: string, index: number): TreeItem {
+    const uri = Uri.joinPath(sessionUri, fileName);
     // Extract timestamp portion (first 19 chars: YYYYMMDD-HHmmss-SSS)
     const timestamp = fileName.slice(0, 19);
     const formattedDate = formatTimestampForDisplay(timestamp);
     const requestId = extractRequestId(fileName);
-    const item = new vscode.TreeItem(
-      `${index + 1}. ${formattedDate}`,
-      vscode.TreeItemCollapsibleState.None,
-    );
+    const item = new TreeItem(`${index + 1}. ${formattedDate}`, TreeItemCollapsibleState.None);
     item.id = `log-${fileName}`;
     item.contextValue = CONTEXT_LOG;
     item.description = requestId;
-    item.iconPath = new vscode.ThemeIcon('file');
+    item.iconPath = new ThemeIcon('file');
     item.resourceUri = uri;
     item.command = {
       command: 'vscode.open',

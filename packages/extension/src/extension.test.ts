@@ -142,14 +142,14 @@ vi.mock('./context.js', () => ({
   ExtensionContext: mockExtensionContext,
 }));
 
-import * as vscode from 'vscode';
+import { type ExtensionContext as VSCodeExtensionContext, window } from 'vscode';
 import { DatabaseSync } from 'node:sqlite';
 import { runMigrations } from './db/index.js';
 import { ExtensionContext } from './context.js';
 import { activate, deactivate } from './extension.js';
 
 describe('activate', () => {
-  let context: vscode.ExtensionContext;
+  let context: VSCodeExtensionContext;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -167,7 +167,7 @@ describe('activate', () => {
         get: vi.fn(),
         delete: vi.fn(),
       },
-    } as unknown as vscode.ExtensionContext;
+    } as unknown as VSCodeExtensionContext;
   });
 
   it('should call registerCommands', async () => {
@@ -252,7 +252,7 @@ describe('activate', () => {
 
     await activate(context);
 
-    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+    expect(window.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('migration failed'),
     );
     // No commands registered
@@ -292,7 +292,7 @@ describe('activate', () => {
 });
 
 describe('deactivate', () => {
-  let context: vscode.ExtensionContext;
+  let context: VSCodeExtensionContext;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -310,7 +310,7 @@ describe('deactivate', () => {
         get: vi.fn(),
         delete: vi.fn(),
       },
-    } as unknown as vscode.ExtensionContext;
+    } as unknown as VSCodeExtensionContext;
   });
 
   it('should close the raw database connection', async () => {
@@ -385,7 +385,7 @@ describe('deactivate', () => {
 });
 
 describe('activate resetCallback', () => {
-  let context: vscode.ExtensionContext;
+  let context: VSCodeExtensionContext;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -403,7 +403,7 @@ describe('activate resetCallback', () => {
         get: vi.fn(),
         delete: vi.fn(),
       },
-    } as unknown as vscode.ExtensionContext;
+    } as unknown as VSCodeExtensionContext;
   });
 
   it('should delete all rows from all 6 tables', async () => {

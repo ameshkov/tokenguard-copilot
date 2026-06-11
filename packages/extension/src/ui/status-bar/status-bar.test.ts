@@ -1,43 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('vscode', () => {
-  const mockItem = {
-    text: '',
-    tooltip: '',
-    command: '',
-    show: vi.fn(),
-    dispose: vi.fn(),
-  };
+const mockItem = vi.hoisted(() => ({
+  text: '',
+  tooltip: '',
+  command: '',
+  show: vi.fn(),
+  dispose: vi.fn(),
+}));
 
-  return {
-    window: {
-      createStatusBarItem: vi.fn(() => mockItem),
-    },
-    StatusBarAlignment: { Left: 1, Right: 2 },
-    EventEmitter: vi.fn(function () {
-      return {
-        event: vi.fn(() => ({ dispose: vi.fn() })),
-        fire: vi.fn(),
-      };
-    }),
-    _mockItem: mockItem,
-  };
-});
+vi.mock('vscode', () => ({
+  window: {
+    createStatusBarItem: vi.fn(() => mockItem),
+  },
+  StatusBarAlignment: { Left: 1, Right: 2 },
+  EventEmitter: vi.fn(function () {
+    return {
+      event: vi.fn(() => ({ dispose: vi.fn() })),
+      fire: vi.fn(),
+    };
+  }),
+}));
 
-import * as vscode from 'vscode';
+import { StatusBarAlignment, window } from 'vscode';
 import { createStatusBarItem } from './status-bar.js';
 import type { UsageStatsSource } from './status-bar.js';
 import type { ProviderInfo } from '@tokenguard/shared';
-
-const mockVscode = vscode as unknown as {
-  _mockItem: {
-    text: string;
-    tooltip: string;
-    command: string;
-    show: ReturnType<typeof vi.fn>;
-    dispose: ReturnType<typeof vi.fn>;
-  };
-};
 
 function makeProviderManager(providers: ProviderInfo[]) {
   return {
@@ -82,28 +69,25 @@ describe('createStatusBarItem', () => {
   it('should create a status bar item aligned to the right', () => {
     createStatusBarItem(makeProviderManager([]));
 
-    expect(vscode.window.createStatusBarItem).toHaveBeenCalledWith(
-      vscode.StatusBarAlignment.Right,
-      100,
-    );
+    expect(window.createStatusBarItem).toHaveBeenCalledWith(StatusBarAlignment.Right, 100);
   });
 
   it('should set text with sparkle icon', () => {
     createStatusBarItem(makeProviderManager([]));
 
-    expect(mockVscode._mockItem.text).toBe('$(chat-sparkle) TokenGuard');
+    expect(mockItem.text).toBe('$(chat-sparkle) TokenGuard');
   });
 
   it('should set command to openSettings', () => {
     createStatusBarItem(makeProviderManager([]));
 
-    expect(mockVscode._mockItem.command).toBe('tokenguard-copilot.openSettings');
+    expect(mockItem.command).toBe('tokenguard-copilot.openSettings');
   });
 
   it('should show "No providers configured" when no providers exist', () => {
     createStatusBarItem(makeProviderManager([]));
 
-    expect(mockVscode._mockItem.tooltip).toContain('No providers configured');
+    expect(mockItem.tooltip).toContain('No providers configured');
   });
 
   it('should show provider summary when providers exist', () => {
@@ -113,7 +97,7 @@ describe('createStatusBarItem', () => {
     ]);
     createStatusBarItem(pm);
 
-    expect(mockVscode._mockItem.tooltip).toContain('2 provider(s) configured: OpenAI, DeepSeek');
+    expect(mockItem.tooltip).toContain('2 provider(s) configured: OpenAI, DeepSeek');
   });
 
   it('should show singular "provider" when one provider exists', () => {
@@ -122,13 +106,13 @@ describe('createStatusBarItem', () => {
     ]);
     createStatusBarItem(pm);
 
-    expect(mockVscode._mockItem.tooltip).toContain('1 provider configured: OpenAI');
+    expect(mockItem.tooltip).toContain('1 provider configured: OpenAI');
   });
 
   it('should call show on the item', () => {
     createStatusBarItem(makeProviderManager([]));
 
-    expect(mockVscode._mockItem.show).toHaveBeenCalled();
+    expect(mockItem.show).toHaveBeenCalled();
   });
 
   it('should return a disposable that disposes the item and subscriptions', () => {
@@ -139,7 +123,7 @@ describe('createStatusBarItem', () => {
 
     result.dispose();
 
-    expect(mockVscode._mockItem.dispose).toHaveBeenCalled();
+    expect(mockItem.dispose).toHaveBeenCalled();
   });
 
   it('should subscribe to onProvidersChanged', () => {
@@ -160,20 +144,20 @@ describe('createStatusBarItem', () => {
     }) as unknown as typeof pm.onProvidersChanged;
 
     createStatusBarItem(pm);
-    expect(mockVscode._mockItem.tooltip).toContain('No providers configured');
+    expect(mockItem.tooltip).toContain('No providers configured');
 
     // Simulate provider added
     pm.getProviders = vi.fn(() => [
       { id: '1', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
     ]);
     capturedListener?.();
-    expect(mockVscode._mockItem.tooltip).toContain('1 provider configured: OpenAI');
+    expect(mockItem.tooltip).toContain('1 provider configured: OpenAI');
   });
 
   it('should show "No usage data yet" when no stats exist', () => {
     createStatusBarItem(makeProviderManager([]), makeUsageSource([]));
 
-    expect(mockVscode._mockItem.tooltip).toContain('No usage data yet');
+    expect(mockItem.tooltip).toContain('No usage data yet');
   });
 
   it('should show token and cost summary when stats exist', () => {
@@ -189,9 +173,9 @@ describe('createStatusBarItem', () => {
     ]);
     createStatusBarItem(makeProviderManager([]), usage);
 
-    expect(mockVscode._mockItem.tooltip).toContain('Tokens: 1K in / 500 out');
-    expect(mockVscode._mockItem.tooltip).toContain('Requests: 5');
-    expect(mockVscode._mockItem.tooltip).toContain('Cost: $0.01');
+    expect(mockItem.tooltip).toContain('Tokens: 1K in / 500 out');
+    expect(mockItem.tooltip).toContain('Requests: 5');
+    expect(mockItem.tooltip).toContain('Cost: $0.01');
   });
 
   it('should show cached percentage when cached tokens exist', () => {
@@ -208,7 +192,7 @@ describe('createStatusBarItem', () => {
     ]);
     createStatusBarItem(makeProviderManager([]), usage);
 
-    expect(mockVscode._mockItem.tooltip).toContain('Tokens: 1K in (80% cached) / 500 out');
+    expect(mockItem.tooltip).toContain('Tokens: 1K in (80% cached) / 500 out');
   });
 
   it('should subscribe to onStatsChanged', () => {
@@ -228,7 +212,7 @@ describe('createStatusBarItem', () => {
     }) as unknown as typeof usage.onStatsChanged;
 
     createStatusBarItem(makeProviderManager([]), usage);
-    expect(mockVscode._mockItem.tooltip).toContain('No usage data yet');
+    expect(mockItem.tooltip).toContain('No usage data yet');
 
     // Simulate stats change
     (usage.getStats as ReturnType<typeof vi.fn>).mockReturnValue([
@@ -249,8 +233,8 @@ describe('createStatusBarItem', () => {
       },
     ]);
     listener?.();
-    expect(mockVscode._mockItem.tooltip).toContain('Tokens: 100 in / 50 out');
-    expect(mockVscode._mockItem.tooltip).toContain('Cost: $0.005');
+    expect(mockItem.tooltip).toContain('Tokens: 100 in / 50 out');
+    expect(mockItem.tooltip).toContain('Cost: $0.005');
   });
 
   it('should show $0 when cost is zero', () => {
@@ -266,6 +250,6 @@ describe('createStatusBarItem', () => {
     ]);
     createStatusBarItem(makeProviderManager([]), usage);
 
-    expect(mockVscode._mockItem.tooltip).toContain('Cost: $0');
+    expect(mockItem.tooltip).toContain('Cost: $0');
   });
 });

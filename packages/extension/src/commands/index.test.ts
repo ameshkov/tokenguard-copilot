@@ -13,7 +13,6 @@ vi.mock('vscode', () => {
       showInformationMessage: vi.fn(),
       showWarningMessage: vi.fn(),
     },
-    _mockDisposable: disposable,
   };
 });
 
@@ -23,14 +22,14 @@ vi.mock('../ui/panels/settings-panel.js', () => ({
   },
 }));
 
-import * as vscode from 'vscode';
+import { type ExtensionContext, commands, window } from 'vscode';
 import { registerCommands } from './index.js';
 import type { ChatDebugTreeViewProvider } from '../ui/tree-views/index.js';
 import { createMockLogger } from '../test/mock-logger.js';
 import type { Logger } from '../logger/index.js';
 
 describe('registerCommands', () => {
-  let context: vscode.ExtensionContext;
+  let context: ExtensionContext;
   let appCtx: AppContext;
   let treeViewProvider: ChatDebugTreeViewProvider;
   let logger: Logger;
@@ -40,7 +39,7 @@ describe('registerCommands', () => {
     context = {
       subscriptions: [],
       extensionUri: '/test/extension',
-    } as unknown as vscode.ExtensionContext;
+    } as unknown as ExtensionContext;
     appCtx = {
       providerManager: {},
       chatDebugSettings: {
@@ -67,7 +66,7 @@ describe('registerCommands', () => {
    * @returns The registered callback function.
    */
   function findCallback(commandId: string): (...args: unknown[]) => unknown {
-    const calls = vi.mocked(vscode.commands.registerCommand).mock.calls;
+    const calls = vi.mocked(commands.registerCommand).mock.calls;
     const call = calls.find((c) => c[0] === commandId);
     if (!call) {
       throw new Error(`Command "${commandId}" not registered`);
@@ -78,7 +77,7 @@ describe('registerCommands', () => {
   it('should register the openSettings command', () => {
     registerCommands(context, appCtx, treeViewProvider, logger);
 
-    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
+    expect(commands.registerCommand).toHaveBeenCalledWith(
       'tokenguard-copilot.openSettings',
       expect.any(Function),
     );
@@ -101,19 +100,19 @@ describe('registerCommands', () => {
   });
 
   it('enableDebuggingLogging shows modal and updates settings on confirm', async () => {
-    vi.mocked(vscode.window.showInformationMessage).mockResolvedValue('Enable' as never);
+    vi.mocked(window.showInformationMessage).mockResolvedValue('Enable' as never);
     registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.enableDebuggingLogging');
     await callback();
 
-    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+    expect(window.showInformationMessage).toHaveBeenCalledWith(
       'Enable debug logging? This will record request and response data for debugging.',
       { modal: true },
       'Enable',
     );
     expect(appCtx.chatDebugSettings.updateSettings).toHaveBeenCalledWith({ enabled: true });
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+    expect(commands.executeCommand).toHaveBeenCalledWith(
       'setContext',
       'tokenguard-copilot.chatDebugEnabled',
       true,
@@ -121,7 +120,7 @@ describe('registerCommands', () => {
   });
 
   it('enableDebuggingLogging does nothing when user cancels', async () => {
-    vi.mocked(vscode.window.showInformationMessage).mockResolvedValue(undefined as never);
+    vi.mocked(window.showInformationMessage).mockResolvedValue(undefined as never);
     registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.enableDebuggingLogging');
@@ -136,9 +135,9 @@ describe('registerCommands', () => {
     const callback = findCallback('tokenguard-copilot.enableDebuggingLogging');
     await callback({ skipConfirmation: true });
 
-    expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    expect(window.showInformationMessage).not.toHaveBeenCalled();
     expect(appCtx.chatDebugSettings.updateSettings).toHaveBeenCalledWith({ enabled: true });
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+    expect(commands.executeCommand).toHaveBeenCalledWith(
       'setContext',
       'tokenguard-copilot.chatDebugEnabled',
       true,
@@ -152,7 +151,7 @@ describe('registerCommands', () => {
     callback();
 
     expect(appCtx.chatDebugSettings.updateSettings).toHaveBeenCalledWith({ enabled: false });
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+    expect(commands.executeCommand).toHaveBeenCalledWith(
       'setContext',
       'tokenguard-copilot.chatDebugEnabled',
       false,
@@ -169,13 +168,13 @@ describe('registerCommands', () => {
   });
 
   it('clearDebuggingLogs shows modal and clears on confirm', async () => {
-    vi.mocked(vscode.window.showWarningMessage).mockResolvedValue('Clear Logs' as never);
+    vi.mocked(window.showWarningMessage).mockResolvedValue('Clear Logs' as never);
     registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.clearDebuggingLogs');
     await callback();
 
-    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+    expect(window.showWarningMessage).toHaveBeenCalledWith(
       'This will permanently delete all debug logs. This action cannot be undone.',
       { modal: true },
       'Clear Logs',
@@ -184,7 +183,7 @@ describe('registerCommands', () => {
   });
 
   it('clearDebuggingLogs does nothing when user cancels', async () => {
-    vi.mocked(vscode.window.showWarningMessage).mockResolvedValue(undefined as never);
+    vi.mocked(window.showWarningMessage).mockResolvedValue(undefined as never);
     registerCommands(context, appCtx, treeViewProvider, logger);
 
     const callback = findCallback('tokenguard-copilot.clearDebuggingLogs');
@@ -199,7 +198,7 @@ describe('registerCommands', () => {
     const callback = findCallback('tokenguard-copilot.clearDebuggingLogs');
     await callback({ skipConfirmation: true });
 
-    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    expect(window.showWarningMessage).not.toHaveBeenCalled();
     expect(appCtx.chatDebugCleanup.clearAll).toHaveBeenCalledOnce();
   });
 });

@@ -7,18 +7,21 @@ import type {
   ModelDefaultsResult,
   ContentRuleInfo,
   GetProvidersResponse,
-  AddProviderResponse,
-  EditProviderResponse,
-  RemoveProviderResponse,
   GetModelsResponse,
-  FetchAvailableModelsResponse,
-  GetModelDefaultsResponse,
-  AddModelResponse,
-  EditModelResponse,
-  RemoveModelResponse,
 } from '@tokenguard/shared';
 import type { ModelConfig } from '@tokenguard/shared';
 import { sendRequest } from './vscode-api.js';
+import {
+  selectProvider,
+  navigateToSettings,
+  addProvider,
+  editProvider,
+  removeProvider,
+  selectModel,
+  addModel,
+  editModel,
+  removeModel,
+} from './settings-handlers.js';
 import {
   ProviderForm,
   ProviderList,
@@ -56,6 +59,57 @@ export type Page =
   | { type: 'editModel'; model: ModelInfo }
   | { type: 'contentRules' }
   | { type: 'editContentRule'; rule: ContentRuleInfo };
+
+/**
+ * Props for {@link SettingsPageRouter}.
+ *
+ * Flattened props extracted from {@link SettingsApp} to keep the render
+ * switch under the max-lines-per-function lint limit.
+ */
+interface SettingsPageRouterProps {
+  /** Current page state (discriminated union router). */
+  page: Page;
+  /** Navigate to a different page. */
+  setPage: (page: Page) => void;
+  /** All registered providers. */
+  providers: ProviderInfo[];
+  /** All registered models. */
+  models: ModelInfo[];
+  /** Incremented to force UsageStatsSection re-fetch. */
+  statsRefreshKey: number;
+  /** Increment the stats refresh key. */
+  setStatsRefreshKey: React.Dispatch<React.SetStateAction<number>>;
+  /** Loading state for provider add/edit form. */
+  providerLoading: boolean;
+  /** Error state for provider add/edit form. */
+  providerError: string | null;
+  /** Loading state for model config form. */
+  modelConfigLoading: boolean;
+  /** Error state for model config form. */
+  modelConfigError: string | null;
+  /** Navigate back to the main settings page. */
+  goSettings: () => void;
+  /** Submit handler: add a new provider. */
+  handleAddProvider: (name: string, baseUrl: string, apiKey: string) => Promise<void>;
+  /** Submit handler: edit an existing provider. */
+  handleEditProvider: (name: string, baseUrl: string, apiKey: string) => Promise<void>;
+  /** Remove a provider by ID. */
+  handleRemoveProvider: (id: string) => Promise<void>;
+  /** Fetch available models from a provider (step 1 of add-model wizard). */
+  handleSelectProvider: (providerId: string) => void;
+  /** Select a fetched model and navigate to configure (step 2). */
+  handleSelectModel: (model: FetchedModel) => Promise<void>;
+  /** Submit handler: add a new model with config. */
+  handleAddModel: (config: ModelConfig) => Promise<void>;
+  /** Submit handler: edit an existing model's config. */
+  handleEditModel: (config: ModelConfig) => Promise<void>;
+  /** Remove a model by provider + model ID. */
+  handleRemoveModel: (providerId: string, modelId: string) => Promise<void>;
+  /** Re-fetch providers from the extension host. */
+  fetchProviders: () => Promise<void>;
+  /** Re-fetch models from the extension host. */
+  fetchModels: () => Promise<void>;
+}
 
 /**
  * Root settings application component.
@@ -103,196 +157,175 @@ export function SettingsApp(): React.JSX.Element {
 
   // ── Navigation helpers ──────────────────────────────────
 
-  const goSettings = () => {
-    setPage({ type: 'settings' });
-    setProviderLoading(false);
-    setProviderError(null);
-    setModelConfigLoading(false);
-    setModelConfigError(null);
-  };
+  const goSettings = useCallback(() => {
+    navigateToSettings(
+      setPage,
+      setProviderLoading,
+      setProviderError,
+      setModelConfigLoading,
+      setModelConfigError,
+    );
+  }, [setPage, setProviderLoading, setProviderError, setModelConfigLoading, setModelConfigError]);
 
   // ── Provider handlers ───────────────────────────────────
 
-  const handleAddProvider = async (name: string, baseUrl: string, apiKey: string) => {
-    setProviderLoading(true);
-    setProviderError(null);
+  const handleAddProvider = useCallback(
+    async (name: string, baseUrl: string, apiKey: string) => {
+      await addProvider(
+        name,
+        baseUrl,
+        apiKey,
+        setProviderLoading,
+        setProviderError,
+        goSettings,
+        fetchProviders,
+      );
+    },
+    [setProviderLoading, setProviderError, goSettings, fetchProviders],
+  );
 
-    const response = await sendRequest<AddProviderResponse>({
-      type: 'addProvider',
-      name,
-      baseUrl,
-      apiKey,
-    });
+  const handleEditProvider = useCallback(
+    async (name: string, baseUrl: string, apiKey: string) => {
+      if (page.type !== 'editProvider') return;
+      await editProvider(
+        name,
+        baseUrl,
+        apiKey,
+        page.provider.id,
+        setProviderLoading,
+        setProviderError,
+        goSettings,
+        fetchProviders,
+      );
+    },
+    [page, setProviderLoading, setProviderError, goSettings, fetchProviders],
+  );
 
-    setProviderLoading(false);
-    if (!response.success) {
-      setProviderError(response.error ?? 'Unknown error');
-    } else {
-      goSettings();
-      await fetchProviders();
-    }
-  };
-
-  const handleEditProvider = async (name: string, baseUrl: string, apiKey: string) => {
-    if (page.type !== 'editProvider') return;
-    setProviderLoading(true);
-    setProviderError(null);
-
-    const response = await sendRequest<EditProviderResponse>({
-      type: 'editProvider',
-      id: page.provider.id,
-      name,
-      baseUrl,
-      apiKey,
-    });
-
-    setProviderLoading(false);
-    if (!response.success) {
-      setProviderError(response.error ?? 'Unknown error');
-    } else {
-      goSettings();
-      await fetchProviders();
-    }
-  };
-
-  const handleRemoveProvider = async (id: string) => {
-    const response = await sendRequest<RemoveProviderResponse>({
-      type: 'removeProvider',
-      id,
-    });
-    if (response.success) {
-      await Promise.all([fetchProviders(), fetchModels()]);
-    }
-  };
+  const handleRemoveProvider = useCallback(
+    async (id: string) => {
+      await removeProvider(id, fetchProviders, fetchModels);
+    },
+    [fetchProviders, fetchModels],
+  );
 
   // ── Model flow handlers ─────────────────────────────────
 
-  const handleSelectProvider = async (providerId: string) => {
-    setPage({
-      type: 'selectModel',
-      providerId,
-      models: [],
-      loading: true,
-      error: null,
-    });
+  const handleSelectProvider = useCallback(
+    (providerId: string) => {
+      void selectProvider(providerId, setPage);
+    },
+    [setPage],
+  );
 
-    try {
-      const response = await sendRequest<FetchAvailableModelsResponse>({
-        type: 'fetchAvailableModels',
-        providerId,
-      });
-      if (!response.success) {
-        setPage((prev) =>
-          prev.type === 'selectModel'
-            ? {
-                ...prev,
-                loading: false,
-                error: response.error ?? 'Unknown error',
-              }
-            : prev,
-        );
-        return;
-      }
-      setPage((prev) =>
-        prev.type === 'selectModel'
-          ? {
-              ...prev,
-              models: response.models ?? [],
-              loading: false,
-            }
-          : prev,
-      );
-    } catch (err: unknown) {
-      setPage((prev) =>
-        prev.type === 'selectModel'
-          ? {
-              ...prev,
-              loading: false,
-              error: err instanceof Error ? err.message : String(err),
-            }
-          : prev,
-      );
-    }
-  };
+  const handleSelectModel = useCallback(
+    async (model: FetchedModel) => {
+      if (page.type !== 'selectModel') return;
+      await selectModel(model, page.providerId, setPage);
+    },
+    [page, setPage],
+  );
 
-  const handleSelectModel = async (model: FetchedModel) => {
-    if (page.type !== 'selectModel') return;
-    let defaults: ModelDefaultsResult | null = null;
-    try {
-      const resp = await sendRequest<GetModelDefaultsResponse>({
-        type: 'getModelDefaults',
-        modelId: model.id,
-      });
-      defaults = resp.defaults;
-    } catch {
-      // Defaults are optional.
-    }
-    setPage({
-      type: 'configureModel',
-      providerId: page.providerId,
-      fetchedModel: model,
-      defaults,
-    });
-  };
-
-  const handleAddModel = async (config: ModelConfig) => {
-    if (page.type !== 'configureModel') return;
-    setModelConfigLoading(true);
-    setModelConfigError(null);
-    try {
-      const response = await sendRequest<AddModelResponse>({
-        type: 'addModel',
-        providerId: page.providerId,
-        modelId: page.fetchedModel.id,
+  const handleAddModel = useCallback(
+    async (config: ModelConfig) => {
+      if (page.type !== 'configureModel') return;
+      await addModel(
         config,
-      });
-      if (!response.success) {
-        throw new Error(response.error ?? 'Unknown error');
-      }
-      await fetchModels();
-      goSettings();
-    } catch (err: unknown) {
-      setModelConfigError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setModelConfigLoading(false);
-    }
-  };
+        page.providerId,
+        page.fetchedModel.id,
+        setModelConfigLoading,
+        setModelConfigError,
+        fetchModels,
+        goSettings,
+      );
+    },
+    [page, setModelConfigLoading, setModelConfigError, fetchModels, goSettings],
+  );
 
-  const handleEditModel = async (config: ModelConfig) => {
-    if (page.type !== 'editModel') return;
-    setModelConfigLoading(true);
-    setModelConfigError(null);
-    try {
-      const response = await sendRequest<EditModelResponse>({
-        type: 'editModel',
-        providerId: page.model.providerId,
-        modelId: page.model.id,
+  const handleEditModel = useCallback(
+    async (config: ModelConfig) => {
+      if (page.type !== 'editModel') return;
+      await editModel(
         config,
-      });
-      if (!response.success) {
-        throw new Error(response.error ?? 'Unknown error');
-      }
-      await fetchModels();
-      goSettings();
-    } catch (err: unknown) {
-      setModelConfigError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setModelConfigLoading(false);
-    }
-  };
+        page.model.providerId,
+        page.model.id,
+        setModelConfigLoading,
+        setModelConfigError,
+        fetchModels,
+        goSettings,
+      );
+    },
+    [page, setModelConfigLoading, setModelConfigError, fetchModels, goSettings],
+  );
 
-  const handleRemoveModel = async (providerId: string, modelId: string) => {
-    const response = await sendRequest<RemoveModelResponse>({
-      type: 'removeModel',
-      providerId,
-      modelId,
-    });
-    if (response.success) {
-      await fetchModels();
-    }
-  };
+  const handleRemoveModel = useCallback(
+    async (providerId: string, modelId: string) => {
+      await removeModel(providerId, modelId, fetchModels);
+    },
+    [fetchModels],
+  );
 
   // ── Render ──────────────────────────────────────────────
+
+  return (
+    <SettingsPageRouter
+      page={page}
+      setPage={setPage}
+      providers={providers}
+      models={models}
+      statsRefreshKey={statsRefreshKey}
+      setStatsRefreshKey={setStatsRefreshKey}
+      providerLoading={providerLoading}
+      providerError={providerError}
+      modelConfigLoading={modelConfigLoading}
+      modelConfigError={modelConfigError}
+      goSettings={goSettings}
+      handleAddProvider={handleAddProvider}
+      handleEditProvider={handleEditProvider}
+      handleRemoveProvider={handleRemoveProvider}
+      handleSelectProvider={handleSelectProvider}
+      handleSelectModel={handleSelectModel}
+      handleAddModel={handleAddModel}
+      handleEditModel={handleEditModel}
+      handleRemoveModel={handleRemoveModel}
+      fetchProviders={fetchProviders}
+      fetchModels={fetchModels}
+    />
+  );
+}
+
+/**
+ * Renders the current page based on the {@link Page} discriminated union.
+ *
+ * Extracted from {@link SettingsApp} to keep function length under the
+ * max-lines-per-function lint limit.
+ *
+ * @param props - All state and handlers from the parent component.
+ * @returns The page element for the current route.
+ */
+function SettingsPageRouter(props: SettingsPageRouterProps): React.JSX.Element {
+  const {
+    page,
+    setPage,
+    providers,
+    models,
+    statsRefreshKey,
+    setStatsRefreshKey,
+    providerLoading,
+    providerError,
+    modelConfigLoading,
+    modelConfigError,
+    goSettings,
+    handleAddProvider,
+    handleEditProvider,
+    handleRemoveProvider,
+    handleSelectProvider,
+    handleSelectModel,
+    handleAddModel,
+    handleEditModel,
+    handleRemoveModel,
+    fetchProviders,
+    fetchModels,
+  } = props;
 
   switch (page.type) {
     case 'addProvider':

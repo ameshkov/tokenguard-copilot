@@ -174,7 +174,6 @@ export class ChatDebugLogger {
     const duration = input.endTime.getTime() - input.startTime.getTime();
     const toolCount = input.tools?.length ?? 0;
     const messageCount = input.messages.length;
-
     const safeOptions = sanitizeOptions(input.modelOptions);
 
     const sections: string[] = [];
@@ -186,16 +185,65 @@ export class ChatDebugLogger {
     // Table of contents
     sections.push('- [Metadata](#metadata)');
     sections.push('- [Messages](#messages)');
-    for (let i = 0; i < messageCount; i++) {
-      const msg = input.messages[i];
-      const label = formatRoleLabel(msg);
-      const anchor = `message-${i + 1}-${label.toLowerCase().replace(/\s+/g, '-')}`;
-      sections.push(`    - [Message ${i + 1} (${label})](#${anchor})`);
-    }
+    ChatDebugLogger.buildTableOfContents(input.messages, sections);
     sections.push('- [Response](#response)');
     sections.push('');
 
     // Metadata
+    ChatDebugLogger.buildMetadataBlock(
+      input,
+      requestId,
+      duration,
+      toolCount,
+      messageCount,
+      safeOptions,
+      sections,
+    );
+
+    // Messages
+    ChatDebugLogger.buildMessagesBlock(input.messages, sections);
+
+    // Response
+    ChatDebugLogger.buildResponseBlock(input, sections);
+
+    return sections.join('\n');
+  }
+
+  /**
+   * Appends the table of contents entries for each message.
+   *
+   * @param messages - The chat messages.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildTableOfContents(messages: OpenAIMessage[], sections: string[]): void {
+    for (let i = 0; i < messages.length; i++) {
+      const label = formatRoleLabel(messages[i]);
+      const anchor = `message-${i + 1}-${label.toLowerCase().replace(/\s+/g, '-')}`;
+      sections.push(`    - [Message ${i + 1} (${label})](#${anchor})`);
+    }
+  }
+
+  /**
+   * Appends the full Metadata section (header, inline meta lines,
+   * and collapsible sub-sections for tools, content rules, usage).
+   *
+   * @param input - The request-response data.
+   * @param requestId - Unique request identifier.
+   * @param duration - Computed request duration in ms.
+   * @param toolCount - Number of tool definitions.
+   * @param messageCount - Number of chat messages.
+   * @param safeOptions - Sanitized model options.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildMetadataBlock(
+    input: LogRequestInput,
+    requestId: string,
+    duration: number,
+    toolCount: number,
+    messageCount: number,
+    safeOptions: Record<string, unknown>,
+    sections: string[],
+  ): void {
     sections.push('## Metadata');
     sections.push('');
     sections.push('<pre><code>');
@@ -219,122 +267,180 @@ export class ChatDebugLogger {
 
     sections.push(metaLines.join('\n'));
 
-    // Tools details
-    if (input.tools && input.tools.length > 0) {
-      const toolNames = input.tools.map((t) => t.function.name).join(', ');
-      const toolJson = input.tools.map((t) => ({
-        name: t.function.name,
-        description: t.function.description ?? '',
-        parameters: t.function.parameters ?? {},
-      }));
-      sections.push('<details>');
-      sections.push(`<summary>tools (${toolCount}): ${toolNames}</summary>`);
-      sections.push('');
-      sections.push('```json');
-      sections.push(JSON.stringify(toolJson, null, 2));
-      sections.push('```');
-      sections.push('');
-      sections.push('</details>');
-    }
-
-    // Content rules
-    if (input.contentRules !== undefined) {
-      sections.push('<details>');
-      const ruleCount = input.contentRules.length;
-      const matchedCount = input.contentRules.filter((r) => r.matched).length;
-      const appliedCount = input.contentRules.filter((r) => r.applied).length;
-      sections.push(
-        `<summary>contentRules (${ruleCount}): ${matchedCount} matched, ${appliedCount} applied</summary>`,
-      );
-      sections.push('');
-      sections.push('```json');
-      sections.push(JSON.stringify(input.contentRules, null, 2));
-      sections.push('```');
-      sections.push('');
-      sections.push('</details>');
-    }
-
-    // Usage details (always last in metadata)
-    if (input.usage) {
-      const u = input.usage;
-      const total = u.promptTokens + u.completionTokens;
-      let summary = `usage: prompt ${u.promptTokens} | completion ${u.completionTokens} | total ${total}`;
-      if (u.cachedTokens > 0) summary += ` | cached ${u.cachedTokens}`;
-      if (u.reasoningTokens > 0) summary += ` | reasoning ${u.reasoningTokens}`;
-      sections.push('<details>');
-      sections.push(`<summary>${summary}</summary>`);
-      sections.push('');
-      sections.push('```json');
-      sections.push(
-        JSON.stringify(
-          {
-            promptTokens: u.promptTokens,
-            completionTokens: u.completionTokens,
-            totalTokens: total,
-            cachedTokens: u.cachedTokens,
-            reasoningTokens: u.reasoningTokens,
-          },
-          null,
-          2,
-        ),
-      );
-      sections.push('```');
-      sections.push('');
-      sections.push('</details>');
-    }
+    ChatDebugLogger.buildToolsBlock(input.tools, toolCount, sections);
+    ChatDebugLogger.buildContentRulesBlock(input.contentRules, sections);
+    ChatDebugLogger.buildUsageBlock(input.usage, sections);
 
     sections.push('</code></pre>');
     sections.push('');
+  }
 
-    // Messages
+  /**
+   * Appends the tools collapsible details block.
+   *
+   * @param tools - Tool definitions, if any.
+   * @param toolCount - Number of tools.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildToolsBlock(
+    tools: OpenAITool[] | undefined,
+    toolCount: number,
+    sections: string[],
+  ): void {
+    if (!tools || tools.length === 0) return;
+
+    const toolNames = tools.map((t) => t.function.name).join(', ');
+    const toolJson = tools.map((t) => ({
+      name: t.function.name,
+      description: t.function.description ?? '',
+      parameters: t.function.parameters ?? {},
+    }));
+    sections.push('<details>');
+    sections.push(`<summary>tools (${toolCount}): ${toolNames}</summary>`);
+    sections.push('');
+    sections.push('```json');
+    sections.push(JSON.stringify(toolJson, null, 2));
+    sections.push('```');
+    sections.push('');
+    sections.push('</details>');
+  }
+
+  /**
+   * Appends the content rules collapsible details block.
+   *
+   * @param contentRules - Per-rule application results, or undefined.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildContentRulesBlock(
+    contentRules: RuleApplicationResult[] | undefined,
+    sections: string[],
+  ): void {
+    if (contentRules === undefined) return;
+
+    const ruleCount = contentRules.length;
+    const matchedCount = contentRules.filter((r) => r.matched).length;
+    const appliedCount = contentRules.filter((r) => r.applied).length;
+    sections.push('<details>');
+    sections.push(
+      `<summary>contentRules (${ruleCount}): ${matchedCount} matched, ${appliedCount} applied</summary>`,
+    );
+    sections.push('');
+    sections.push('```json');
+    sections.push(JSON.stringify(contentRules, null, 2));
+    sections.push('```');
+    sections.push('');
+    sections.push('</details>');
+  }
+
+  /**
+   * Appends the token usage collapsible details block.
+   *
+   * @param usage - Token usage info, or null/undefined.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildUsageBlock(usage: ChatUsage | null | undefined, sections: string[]): void {
+    if (!usage) return;
+
+    const u = usage;
+    const total = u.promptTokens + u.completionTokens;
+    let summary = `usage: prompt ${u.promptTokens} | completion ${u.completionTokens} | total ${total}`;
+    if (u.cachedTokens > 0) summary += ` | cached ${u.cachedTokens}`;
+    if (u.reasoningTokens > 0) summary += ` | reasoning ${u.reasoningTokens}`;
+    sections.push('<details>');
+    sections.push(`<summary>${summary}</summary>`);
+    sections.push('');
+    sections.push('```json');
+    sections.push(
+      JSON.stringify(
+        {
+          promptTokens: u.promptTokens,
+          completionTokens: u.completionTokens,
+          totalTokens: total,
+          cachedTokens: u.cachedTokens,
+          reasoningTokens: u.reasoningTokens,
+        },
+        null,
+        2,
+      ),
+    );
+    sections.push('```');
+    sections.push('');
+    sections.push('</details>');
+  }
+
+  /**
+   * Appends the Messages section with each message formatted.
+   *
+   * @param messages - The chat messages.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildMessagesBlock(messages: OpenAIMessage[], sections: string[]): void {
     sections.push('## Messages');
     sections.push('');
 
-    for (let i = 0; i < messageCount; i++) {
-      const msg = input.messages[i];
-      const label = formatRoleLabel(msg);
-      sections.push(`### Message ${i + 1} (${label})`);
-      sections.push('');
+    for (let i = 0; i < messages.length; i++) {
+      ChatDebugLogger.buildSingleMessage(messages[i], i, sections);
+    }
+  }
 
-      // Reasoning block (first, if present)
-      const msgReasoning = extractReasoning(msg);
-      if (msgReasoning) {
-        sections.push('~~~md');
-        sections.push('🧠 Reasoning');
-        sections.push(msgReasoning);
-        sections.push('~~~');
-        sections.push('');
-      }
+  /**
+   * Appends a single chat message as a Markdown sub-section.
+   *
+   * @param msg - The message to format.
+   * @param index - Zero-based message index.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildSingleMessage(msg: OpenAIMessage, index: number, sections: string[]): void {
+    const label = formatRoleLabel(msg);
+    sections.push(`### Message ${index + 1} (${label})`);
+    sections.push('');
 
-      // Content + tool calls block
+    // Reasoning block (first, if present)
+    const msgReasoning = extractReasoning(msg);
+    if (msgReasoning) {
       sections.push('~~~md');
-      const textContent = extractTextContent(msg.content);
-      if (textContent) {
-        sections.push(textContent);
-      }
-
-      // Image parts
-      const imageParts = extractImageParts(msg.content);
-      for (const img of imageParts) {
-        if (img.mimeType !== 'unknown') {
-          const sizeKb = (img.sizeBytes / 1024).toFixed(1);
-          sections.push(`🖼️ Image (${img.mimeType}, ${sizeKb} KB)`);
-        } else {
-          sections.push(`🖼️ Image (external URL)`);
-        }
-      }
-
-      if (msg.tool_calls) {
-        for (const tc of msg.tool_calls) {
-          sections.push('');
-          sections.push(`🛠️ ${tc.function.name} ${tc.function.arguments}`);
-        }
-      }
+      sections.push('🧠 Reasoning');
+      sections.push(msgReasoning);
       sections.push('~~~');
       sections.push('');
     }
 
-    // Response
+    // Content + tool calls block
+    sections.push('~~~md');
+    const textContent = extractTextContent(msg.content);
+    if (textContent) {
+      sections.push(textContent);
+    }
+
+    // Image parts
+    const imageParts = extractImageParts(msg.content);
+    for (const img of imageParts) {
+      if (img.mimeType !== 'unknown') {
+        const sizeKb = (img.sizeBytes / 1024).toFixed(1);
+        sections.push(`🖼️ Image (${img.mimeType}, ${sizeKb} KB)`);
+      } else {
+        sections.push(`🖼️ Image (external URL)`);
+      }
+    }
+
+    if (msg.tool_calls) {
+      for (const tc of msg.tool_calls) {
+        sections.push('');
+        sections.push(`🛠️ ${tc.function.name} ${tc.function.arguments}`);
+      }
+    }
+    sections.push('~~~');
+    sections.push('');
+  }
+
+  /**
+   * Appends the Response section with error, cancellation,
+   * or success content.
+   *
+   * @param input - The request-response data.
+   * @param sections - The output sections array to append to.
+   */
+  private static buildResponseBlock(input: LogRequestInput, sections: string[]): void {
     sections.push('## Response');
     sections.push('');
 
@@ -377,8 +483,6 @@ export class ChatDebugLogger {
       sections.push('~~~');
     }
     sections.push('');
-
-    return sections.join('\n');
   }
 
   /**

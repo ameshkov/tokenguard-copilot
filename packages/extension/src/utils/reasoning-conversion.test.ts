@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { reasoningToThinkingPart, thinkingPartsToReasoning } from './reasoning-conversion.js';
-import * as vscode from 'vscode';
+import { LanguageModelThinkingPart } from 'vscode';
 
 vi.mock('vscode', () => ({
   LanguageModelThinkingPart: class {
@@ -17,7 +17,7 @@ describe('reasoningToThinkingPart', () => {
     const part = reasoningToThinkingPart({
       reasoning_content: 'DeepSeek thinking...',
     });
-    expect(part).toBeInstanceOf(vscode.LanguageModelThinkingPart);
+    expect(part).toBeInstanceOf(LanguageModelThinkingPart);
     expect(part!.value).toBe('DeepSeek thinking...');
     expect(part!.metadata?.presentFields).toEqual(['reasoning_content']);
   });
@@ -27,7 +27,7 @@ describe('reasoningToThinkingPart', () => {
       reasoning: 'plaintext reasoning',
       reasoning_details: [{ type: 'text', text: 'structured detail' }],
     });
-    expect(part).toBeInstanceOf(vscode.LanguageModelThinkingPart);
+    expect(part).toBeInstanceOf(LanguageModelThinkingPart);
     expect(part!.value).toBe('plaintext reasoning');
     expect(part!.metadata?.presentFields).toEqual(['reasoning', 'reasoning_details']);
   });
@@ -59,7 +59,7 @@ describe('thinkingPartsToReasoning', () => {
 
   it('reconstructs reasoning_content from thinking parts', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('DeepSeek thinking...', undefined, {
+      new LanguageModelThinkingPart('DeepSeek thinking...', undefined, {
         presentFields: ['reasoning_content'],
       }),
     ]);
@@ -71,7 +71,7 @@ describe('thinkingPartsToReasoning', () => {
 
   it('populates all fields when metadata is absent', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('raw thinking text'),
+      new LanguageModelThinkingPart('raw thinking text'),
     ]);
     expect(result).not.toBeNull();
     expect(result!.reasoning_content).toBe('raw thinking text');
@@ -104,10 +104,10 @@ describe('thinkingPartsToReasoning', () => {
 
   it('skips empty-string thinking parts', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('', undefined, {
+      new LanguageModelThinkingPart('', undefined, {
         presentFields: ['reasoning_content'],
       }),
-      new vscode.LanguageModelThinkingPart('actual content', undefined, {
+      new LanguageModelThinkingPart('actual content', undefined, {
         presentFields: ['reasoning_content'],
       }),
     ]);
@@ -117,10 +117,10 @@ describe('thinkingPartsToReasoning', () => {
 
   it('returns null when all parts are empty strings', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('', undefined, {
+      new LanguageModelThinkingPart('', undefined, {
         presentFields: ['reasoning_content'],
       }),
-      new vscode.LanguageModelThinkingPart('', undefined, {
+      new LanguageModelThinkingPart('', undefined, {
         presentFields: ['reasoning'],
       }),
     ]);
@@ -129,10 +129,10 @@ describe('thinkingPartsToReasoning', () => {
 
   it('returns null when all parts are whitespace-only', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('   ', undefined, {
+      new LanguageModelThinkingPart('   ', undefined, {
         presentFields: ['reasoning_content'],
       }),
-      new vscode.LanguageModelThinkingPart('  \n  ', undefined, {
+      new LanguageModelThinkingPart('  \n  ', undefined, {
         presentFields: ['reasoning'],
       }),
     ]);
@@ -141,10 +141,10 @@ describe('thinkingPartsToReasoning', () => {
 
   it('concatenates multiple streaming deltas for same field', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('Hello ', undefined, {
+      new LanguageModelThinkingPart('Hello ', undefined, {
         presentFields: ['reasoning_content'],
       }),
-      new vscode.LanguageModelThinkingPart('world', undefined, {
+      new LanguageModelThinkingPart('world', undefined, {
         presentFields: ['reasoning_content'],
       }),
     ]);
@@ -154,10 +154,10 @@ describe('thinkingPartsToReasoning', () => {
 
   it('handles deltas from different fields independently', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('content delta', undefined, {
+      new LanguageModelThinkingPart('content delta', undefined, {
         presentFields: ['reasoning_content'],
       }),
-      new vscode.LanguageModelThinkingPart('plain delta', undefined, {
+      new LanguageModelThinkingPart('plain delta', undefined, {
         presentFields: ['reasoning'],
       }),
     ]);
@@ -169,7 +169,7 @@ describe('thinkingPartsToReasoning', () => {
 
   it('wraps reasoning_details values as structured array', () => {
     const result = thinkingPartsToReasoning([
-      new vscode.LanguageModelThinkingPart('detail text', undefined, {
+      new LanguageModelThinkingPart('detail text', undefined, {
         presentFields: ['reasoning_details'],
       }),
     ]);

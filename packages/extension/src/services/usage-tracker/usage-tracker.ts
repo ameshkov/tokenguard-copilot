@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import { EventEmitter } from 'vscode';
 import type { UsageRecordRepository, ModelRepository } from '../../repositories/index.js';
 import type { UsageRecord } from '../../db/index.js';
 import type { Logger } from '../../logger/index.js';
@@ -120,7 +120,7 @@ export function computeCost(
  * whenever usage data is modified.
  */
 export class UsageTracker {
-  private readonly emitter = new vscode.EventEmitter<void>();
+  private readonly emitter = new EventEmitter<void>();
 
   /** Fires after usage data is recorded or reset. */
   readonly onStatsChanged = this.emitter.event;

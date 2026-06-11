@@ -1,7 +1,7 @@
 /// <reference types="mocha" />
 
 import * as assert from 'node:assert';
-import * as vscode from 'vscode';
+import { commands, window } from 'vscode';
 import { executeCommand, getExtension, waitForCondition } from './helpers.js';
 
 suite('Settings Panel', () => {
@@ -10,14 +10,14 @@ suite('Settings Panel', () => {
   });
 
   teardown(async () => {
-    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await commands.executeCommand('workbench.action.closeAllEditors');
   });
 
   test('opening settings creates a webview panel', async () => {
     await executeCommand('tokenguard-copilot.openSettings');
 
     const tab = await waitForCondition(() => {
-      for (const group of vscode.window.tabGroups.all) {
+      for (const group of window.tabGroups.all) {
         for (const t of group.tabs) {
           if (t.label.includes('TokenGuard Copilot Settings')) {
             return t;
@@ -33,7 +33,7 @@ suite('Settings Panel', () => {
   test('opening settings twice reuses the panel', async () => {
     await executeCommand('tokenguard-copilot.openSettings');
     await waitForCondition(() => {
-      for (const group of vscode.window.tabGroups.all) {
+      for (const group of window.tabGroups.all) {
         for (const t of group.tabs) {
           if (t.label.includes('TokenGuard Copilot Settings')) {
             return t;
@@ -50,7 +50,7 @@ suite('Settings Panel', () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     let count = 0;
-    for (const group of vscode.window.tabGroups.all) {
+    for (const group of window.tabGroups.all) {
       for (const t of group.tabs) {
         if (t.label.includes('TokenGuard Copilot Settings')) {
           count++;

@@ -1,7 +1,7 @@
 /// <reference types="mocha" />
 
 import * as assert from 'node:assert';
-import * as vscode from 'vscode';
+import { commands } from 'vscode';
 import { getExtension } from './helpers.js';
 
 /** All command IDs registered by the extension. */
@@ -20,8 +20,8 @@ suite('Commands', () => {
 
   for (const commandId of COMMAND_IDS) {
     test(`command "${commandId}" should be registered`, async () => {
-      const commands = await vscode.commands.getCommands(true);
-      assert.ok(commands.includes(commandId), `Command "${commandId}" should be registered`);
+      const allCommands = await commands.getCommands(true);
+      assert.ok(allCommands.includes(commandId), `Command "${commandId}" should be registered`);
     });
   }
 });
