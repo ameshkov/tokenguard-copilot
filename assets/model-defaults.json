@@ -110,9 +110,35 @@
     },
     "contextSize": 262000,
     "maxTokens": 65500,
-    "inputCostPer1M": 0.74,
-    "outputCostPer1M": 3.5,
-    "cachedInputCostPer1M": 0.15,
+    "inputCostPer1M": 0.95,
+    "outputCostPer1M": 4.0,
+    "cachedInputCostPer1M": 0.16,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "high": {
+        "thinking": {
+          "type": "enabled",
+          "keep": "all"
+        }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)kimi-k2.7-code$"
+    },
+    "contextSize": 262000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.95,
+    "outputCostPer1M": 4.0,
+    "cachedInputCostPer1M": 0.19,
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {

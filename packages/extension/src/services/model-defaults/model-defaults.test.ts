@@ -200,7 +200,7 @@ describe('getDefaults', () => {
     // "^kimi-k2" regex. Exact should win.
     const result = getDefaults('kimi-k2.6');
     expect(result).not.toBeNull();
-    expect(result!.cachedInputCostPer1M).toBe(0.15);
+    expect(result!.cachedInputCostPer1M).toBe(0.16);
   });
 
   it('should match the first regex when multiple regexes match', () => {
