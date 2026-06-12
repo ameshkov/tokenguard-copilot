@@ -8,8 +8,11 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.2.7] - 2026-06-12
+
 ### Changed
 
+- Added `kimi-k2.7-code` to model defaults, fixed prices to match Moonshot API
 - Reafactored code after introducing max-lines limits to the linter config
 
 ## [v1.2.6] - 2026-06-10
@@ -185,7 +188,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.6...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.7...HEAD
+[v1.2.7]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.7
 [v1.2.6]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.6
 [v1.2.5]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.5
 [v1.2.4]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.4
