@@ -96,7 +96,7 @@ export function ProviderForm(props: ProviderFormProps): React.JSX.Element | null
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (validate()) {
       onSubmit(name, baseUrl, apiKey);

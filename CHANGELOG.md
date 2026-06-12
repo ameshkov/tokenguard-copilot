@@ -8,38 +8,9 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
-### Added
-
-- Added unit tests for `webview-html.ts`, `usage-helpers.ts`, and
-  `content-rule-helpers.ts`.
-
 ### Changed
 
-- Replaced all `import * as vscode from 'vscode'` with explicit named
-  imports across the extension, unit tests, and E2E tests.
-- Refactored `translateMessages` into smaller helper functions
-  (`collectParts`, `buildOpenAIMessages`) to comply with the
-  100-line lint limit.
-- Refactored `ChatDebugLogger.formatLogMarkdown` into smaller private
-  static helper methods to comply with the 100-line lint limit.
-- Extracted `ChatModelProvider.register`'s chat response handling into
-  `handleChatResponse` and `buildChatContext` private static methods
-  to comply with the 100-line lint limit.
-- Refactored `startMockOpenAIServer` into smaller helper functions
-  (`handleGetModels`, `handleNotFound`, `writeStreamResponse`,
-  `writeNonStreamResponse`, `handleChatCompletions`) to comply with the
-  100-line lint limit.
-- Extracted render routing and all handler logic from `SettingsApp` into
-  `SettingsPageRouter` and `settings-handlers.ts` to comply with the
-  200-line lint limit.
-- Refactored `SettingsPanel` by extracting webview HTML generation into
-  `webview-html.ts`, usage stats computation into `usage-helpers.ts`,
-  content rule helpers into `content-rule-helpers.ts`, and message
-  handlers into `message-handler-core.ts` and
-  `message-handler-extras.ts` to comply with the 500-line file and
-  100-line function lint limits.
-- Added unit tests for `settings-handlers.ts` and `SettingsApp`
-  component.
+- Reafactored code after introducing max-lines limits to the linter config
 
 ## [v1.2.6] - 2026-06-10
 

@@ -8,7 +8,7 @@ import {
   LanguageModelDataPart,
 } from 'vscode';
 import { thinkingPartsToReasoning } from '../../utils/index.js';
-import type { OpenAIMessage, OpenAIContentPartUnion, OpenAIToolCall } from './chat-handler.js';
+import type { OpenAIMessage, OpenAIContentPartUnion, OpenAIToolCall } from './chat-types.js';
 
 /**
  * Converts a Uint8Array to a base64-encoded data URI.

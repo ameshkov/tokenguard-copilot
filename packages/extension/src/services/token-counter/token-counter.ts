@@ -249,10 +249,7 @@ export class TokenCounter {
   private async loadTokenizer(): Promise<{
     encode(text: string): number[];
   }> {
-    const modelPath = Uri.joinPath(
-      Uri.file(this.extensionPath),
-      TOKENIZER_MODEL_PATH,
-    ).fsPath;
+    const modelPath = Uri.joinPath(Uri.file(this.extensionPath), TOKENIZER_MODEL_PATH).fsPath;
 
     return createTokenizer(
       modelPath,

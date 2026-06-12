@@ -23,6 +23,98 @@ export interface ContentRulesSectionProps {
 }
 
 /**
+ * Parameters for {@link buildColumns}.
+ */
+interface BuildColumnsParams {
+  rules: ContentRuleInfo[];
+  deleting: boolean;
+  reordering: boolean;
+  onToggle: (rule: ContentRuleInfo) => void;
+  onReorder: (ruleId: string, direction: 'up' | 'down') => void;
+  onEdit: (rule: ContentRuleInfo) => void;
+  onDelete: (ruleId: string) => void;
+}
+
+/**
+ * Builds the table column definitions for the content rules list.
+ *
+ * @param params - The data and callbacks needed to render columns.
+ * @returns An array of {@link TableColumn} definitions.
+ */
+function buildColumns(params: BuildColumnsParams): TableColumn<ContentRuleInfo>[] {
+  const { rules, deleting, reordering, onToggle, onReorder, onEdit, onDelete } = params;
+  return [
+    {
+      header: 'Enabled',
+      render: (rule) => (
+        <vscode-checkbox
+          checked={rule.enabled}
+          label=""
+          aria-label={rule.enabled ? `Disable ${rule.name}` : `Enable ${rule.name}`}
+          onClick={() => void onToggle(rule)}
+        />
+      ),
+    },
+    {
+      header: 'Name',
+      render: (rule) => (
+        <span className={rule.enabled ? '' : 'content-rules-section__disabled'}>{rule.name}</span>
+      ),
+    },
+    {
+      header: 'Actions',
+      render: (rule) => (
+        <span className="content-rules-section__actions">
+          <Button
+            variant="secondary"
+            onClick={() => onEdit(rule)}
+            disabled={deleting || reordering}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => onDelete(rule.id)}
+            disabled={deleting || reordering}
+          >
+            Remove
+          </Button>
+        </span>
+      ),
+    },
+    {
+      header: 'Order',
+      render: (rule) => {
+        const sorted = [...rules].sort((a, b) => a.sortOrder - b.sortOrder);
+        const index = sorted.findIndex((r) => r.id === rule.id);
+        const isFirst = index === 0;
+        const isLast = index === sorted.length - 1;
+        return (
+          <span className="content-rules-section__reorder">
+            <Button
+              variant="secondary"
+              disabled={isFirst || reordering}
+              aria-label="Move up"
+              onClick={() => void onReorder(rule.id, 'up')}
+            >
+              ↑
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={isLast || reordering}
+              aria-label="Move down"
+              onClick={() => void onReorder(rule.id, 'down')}
+            >
+              ↓
+            </Button>
+          </span>
+        );
+      },
+    },
+  ];
+}
+
+/**
  * Displays a table of content rules with toggle, reorder, edit,
  * and remove actions.
  *
@@ -152,75 +244,15 @@ export function ContentRulesSection(props: ContentRulesSectionProps): React.JSX.
     );
   }
 
-  const columns: TableColumn<ContentRuleInfo>[] = [
-    {
-      header: 'Enabled',
-      render: (rule) => (
-        <vscode-checkbox
-          checked={rule.enabled}
-          label=""
-          aria-label={rule.enabled ? `Disable ${rule.name}` : `Enable ${rule.name}`}
-          onClick={() => void handleToggle(rule)}
-        />
-      ),
-    },
-    {
-      header: 'Name',
-      render: (rule) => (
-        <span className={rule.enabled ? '' : 'content-rules-section__disabled'}>{rule.name}</span>
-      ),
-    },
-    {
-      header: 'Actions',
-      render: (rule) => (
-        <span className="content-rules-section__actions">
-          <Button
-            variant="secondary"
-            onClick={() => onEdit(rule)}
-            disabled={deleting || reordering}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setConfirmDeleteId(rule.id)}
-            disabled={deleting || reordering}
-          >
-            Remove
-          </Button>
-        </span>
-      ),
-    },
-    {
-      header: 'Order',
-      render: (rule) => {
-        const sorted = [...rules].sort((a, b) => a.sortOrder - b.sortOrder);
-        const index = sorted.findIndex((r) => r.id === rule.id);
-        const isFirst = index === 0;
-        const isLast = index === sorted.length - 1;
-        return (
-          <span className="content-rules-section__reorder">
-            <Button
-              variant="secondary"
-              disabled={isFirst || reordering}
-              aria-label="Move up"
-              onClick={() => void handleReorder(rule.id, 'up')}
-            >
-              ↑
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={isLast || reordering}
-              aria-label="Move down"
-              onClick={() => void handleReorder(rule.id, 'down')}
-            >
-              ↓
-            </Button>
-          </span>
-        );
-      },
-    },
-  ];
+  const columns = buildColumns({
+    rules,
+    deleting,
+    reordering,
+    onToggle: (rule) => void handleToggle(rule),
+    onReorder: (ruleId, direction) => void handleReorder(ruleId, direction),
+    onEdit,
+    onDelete: setConfirmDeleteId,
+  });
 
   return (
     <div className="content-rules-section">

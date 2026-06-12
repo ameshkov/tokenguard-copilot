@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import type * as vscode from 'vscode';
 import { mockProgress } from '../../test/chat-handler-test-helpers.js';
-import { ChatHandler } from './chat-handler.js';
+import { handleNonStreaming } from './handle-non-streaming.js';
 import { createMockLogger } from '../../test/mock-logger.js';
 
-describe('ChatHandler — handleNonStreaming', () => {
+describe('handleNonStreaming', () => {
   it('extracts content from response', async () => {
     const response = {
       ok: true,
@@ -24,7 +24,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: { value: string }) => parts.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -44,7 +44,7 @@ describe('ChatHandler — handleNonStreaming', () => {
     const logger = createMockLogger();
 
     await expect(
-      ChatHandler.handleNonStreaming(
+      handleNonStreaming(
         response as unknown as Response,
         progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
         undefined,
@@ -73,7 +73,7 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     // The error message should be truncated, not contain the full HTML
     await expect(
-      ChatHandler.handleNonStreaming(
+      handleNonStreaming(
         response as unknown as Response,
         progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
         undefined,
@@ -97,7 +97,7 @@ describe('ChatHandler — handleNonStreaming', () => {
     const progress = { report: vi.fn() };
 
     await expect(
-      ChatHandler.handleNonStreaming(
+      handleNonStreaming(
         response as unknown as Response,
         progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       ),
@@ -136,7 +136,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -182,7 +182,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -222,7 +222,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -256,7 +256,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -291,7 +291,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -329,7 +329,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -368,7 +368,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -402,7 +402,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -435,7 +435,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -468,7 +468,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -511,7 +511,7 @@ describe('ChatHandler — handleNonStreaming', () => {
       report: (part: unknown) => reported.push(part),
     };
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );
@@ -541,7 +541,7 @@ describe('ChatHandler — handleNonStreaming', () => {
 
     const { parts, progress } = mockProgress();
 
-    await ChatHandler.handleNonStreaming(
+    await handleNonStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
     );

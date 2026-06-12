@@ -70,9 +70,7 @@ describe('thinkingPartsToReasoning', () => {
   });
 
   it('populates all fields when metadata is absent', () => {
-    const result = thinkingPartsToReasoning([
-      new LanguageModelThinkingPart('raw thinking text'),
-    ]);
+    const result = thinkingPartsToReasoning([new LanguageModelThinkingPart('raw thinking text')]);
     expect(result).not.toBeNull();
     expect(result!.reasoning_content).toBe('raw thinking text');
     expect(result!.reasoning).toBe('raw thinking text');

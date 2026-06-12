@@ -177,7 +177,8 @@ tokenguard-copilot/
 │   │       ├── pages/           # Full-page views (routed by Page union)
 │   │       │   └── index.ts     # Barrel exports
 │   │       ├── sections/        # Settings page sections
-│   │       │   └── index.ts     # Barrel exports
+│   │       │   ├── index.ts     # Barrel exports
+│   │       │   └── model-config-dialog/  # Model config dialog + sub-components
 │   │       └── test/            # Test helpers (not tests)
 │   └── webview-playground/      # Vite dev server + mocks
 │       ├── package.json         # @tokenguard/webview-playground

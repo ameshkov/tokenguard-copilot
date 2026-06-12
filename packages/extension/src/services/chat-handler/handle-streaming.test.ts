@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type * as vscode from 'vscode';
 // Import test-helpers first to activate the vi.mock('vscode', ...) before chat-handler imports vscode
 import '../../test/chat-handler-test-helpers.js';
-import { ChatHandler } from './chat-handler.js';
+import { handleStreaming } from './handle-streaming.js';
 
 /**
  * Creates a ReadableStream from an array of SSE-formatted lines.
@@ -21,7 +21,7 @@ function createSSEStream(lines: string[]): ReadableStream {
   });
 }
 
-describe('ChatHandler — handleStreaming', () => {
+describe('handleStreaming', () => {
   it('processes SSE stream content chunks', async () => {
     const stream = createSSEStream([
       JSON.stringify({
@@ -50,7 +50,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -76,7 +76,7 @@ describe('ChatHandler — handleStreaming', () => {
     };
 
     await expect(
-      ChatHandler.handleStreaming(
+      handleStreaming(
         response as unknown as Response,
         progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
         token as unknown as vscode.CancellationToken,
@@ -113,7 +113,7 @@ describe('ChatHandler — handleStreaming', () => {
     };
 
     // Should stop processing when cancelled
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -151,7 +151,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -232,7 +232,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -296,7 +296,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -350,7 +350,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -410,7 +410,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -466,7 +466,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -521,7 +521,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -576,7 +576,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -618,7 +618,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -660,7 +660,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -720,7 +720,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -789,7 +789,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -834,7 +834,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,
@@ -888,7 +888,7 @@ describe('ChatHandler — handleStreaming', () => {
       onCancellationRequested: vi.fn(),
     };
 
-    await ChatHandler.handleStreaming(
+    await handleStreaming(
       response as unknown as Response,
       progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
       token as unknown as vscode.CancellationToken,

@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { GetUsageStatsResponse, ProviderInfo, ModelInfo } from '@tokenguard/shared';
+import type {
+  GetUsageStatsResponse,
+  ProviderInfo,
+  ModelInfo,
+  UsageStatsSummary,
+} from '@tokenguard/shared';
 import {
   Chart as ChartJS,
   BarElement,
@@ -180,6 +185,261 @@ function buildChartOptions(
   };
 }
 
+/** Props for {@link FilterControls}. */
+interface FilterControlsProps {
+  period: Period;
+  setPeriod: (p: Period) => void;
+  selectedProviderIds: string[];
+  setSelectedProviderIds: (ids: string[]) => void;
+  selectedModelIds: string[];
+  setSelectedModelIds: (ids: string[]) => void;
+  filterProviders: { id: string; name: string }[];
+  availableModels: { key: string; modelId: string; name: string }[];
+}
+
+/**
+ * Period, provider, and model filter dropdowns.
+ *
+ * Extracted from {@link UsageStatsSection} to keep function length under the
+ * max-lines-per-function lint limit.
+ *
+ * @param props - Filter state, setters, and option lists.
+ * @returns The filter bar element.
+ */
+function FilterControls(props: FilterControlsProps): React.JSX.Element {
+  const {
+    period,
+    setPeriod,
+    selectedProviderIds,
+    setSelectedProviderIds,
+    selectedModelIds,
+    setSelectedModelIds,
+    filterProviders,
+    availableModels,
+  } = props;
+
+  return (
+    <div className="usage-stats-filters">
+      <vscode-single-select
+        aria-label="Period"
+        value={period}
+        onchange={(e: Event) =>
+          setPeriod(((e.target as HTMLSelectElement).value as Period) ?? 'last7d')
+        }
+      >
+        {PERIOD_OPTIONS.map((opt) => (
+          <vscode-option key={opt.value} value={opt.value}>
+            {opt.label}
+          </vscode-option>
+        ))}
+      </vscode-single-select>
+
+      <vscode-single-select
+        aria-label="Providers"
+        value={selectedProviderIds.length === 0 ? '__all__' : selectedProviderIds[0]}
+        onchange={(e: Event) => {
+          const val = (e.target as HTMLSelectElement).value;
+          setSelectedProviderIds(val === '__all__' ? [] : [val]);
+          setSelectedModelIds([]);
+        }}
+      >
+        <vscode-option value="__all__">All Providers</vscode-option>
+        {filterProviders.map((p) => (
+          <vscode-option key={p.id} value={p.id}>
+            {p.name}
+          </vscode-option>
+        ))}
+      </vscode-single-select>
+
+      <vscode-single-select
+        aria-label="Models"
+        value={selectedModelIds.length === 0 ? '__all__' : selectedModelIds[0]}
+        onchange={(e: Event) => {
+          const val = (e.target as HTMLSelectElement).value;
+          setSelectedModelIds(val === '__all__' ? [] : [val]);
+        }}
+      >
+        <vscode-option value="__all__">All Models</vscode-option>
+        {availableModels.map((m) => (
+          <vscode-option key={m.key} value={m.modelId}>
+            {m.name}
+          </vscode-option>
+        ))}
+      </vscode-single-select>
+    </div>
+  );
+}
+
+/** Props for {@link ChartArea}. */
+interface ChartAreaProps {
+  loading: boolean;
+  error: string | null;
+  chartData: ChartDataPoint[];
+  chartKey: string;
+  chartOptions: ChartOptions<'bar'>;
+}
+
+/**
+ * Bar chart area with loading, error, and empty states.
+ *
+ * Extracted from {@link UsageStatsSection} to keep function length under the
+ * max-lines-per-function lint limit.
+ *
+ * @param props - Chart data and display state.
+ * @returns The chart area element.
+ */
+function ChartArea(props: ChartAreaProps): React.JSX.Element {
+  const { loading, error, chartData, chartKey, chartOptions } = props;
+
+  if (loading) {
+    return (
+      <div className="usage-stats-loading">
+        <vscode-progress-ring />
+      </div>
+    );
+  }
+  if (error) {
+    return <div className="error-banner">{error}</div>;
+  }
+  if (chartData.length === 0) {
+    return (
+      <div className="usage-stats-chart-placeholder">
+        <p>No usage data</p>
+      </div>
+    );
+  }
+  return (
+    <div style={{ height: 220 }}>
+      <Bar
+        key={chartKey}
+        data={{
+          labels: chartData.map((d) => d.date),
+          datasets: [
+            {
+              label: 'Input',
+              data: chartData.map((d) => d.input),
+              backgroundColor: cssVar('--vscode-charts-blue', '#4fc1ff'),
+              stack: 'tokens',
+            },
+            {
+              label: 'Cached input',
+              data: chartData.map((d) => d.cached),
+              backgroundColor: cssVar('--vscode-charts-purple', '#ab47bc'),
+              stack: 'tokens',
+            },
+            {
+              label: 'Output',
+              data: chartData.map((d) => d.output),
+              backgroundColor: cssVar('--vscode-charts-green', '#4caf50'),
+              stack: 'tokens',
+            },
+            {
+              label: 'Reasoning',
+              data: chartData.map((d) => d.reasoning),
+              backgroundColor: cssVar('--vscode-charts-orange', '#ff9800'),
+              stack: 'tokens',
+            },
+          ],
+        }}
+        options={chartOptions}
+      />
+    </div>
+  );
+}
+
+/** Props for {@link SummaryPanel}. */
+interface SummaryPanelProps {
+  summary: UsageStatsSummary;
+}
+
+/**
+ * Summary grid and per-model cost breakdown table.
+ *
+ * Extracted from {@link UsageStatsSection} to keep function length under the
+ * max-lines-per-function lint limit.
+ *
+ * @param props - The summary data from the stats response.
+ * @returns The summary panel element.
+ */
+function SummaryPanel(props: SummaryPanelProps): React.JSX.Element {
+  const { summary } = props;
+
+  return (
+    <div className="usage-stats-summary">
+      <h3>Summary</h3>
+      <div className="usage-stats-summary__grid">
+        <div className="usage-stats-summary__item">
+          <span className="usage-stats-summary__label">Requests</span>
+          <span className="usage-stats-summary__value">{fmt(summary.totalRequestCount)}</span>
+        </div>
+        <div className="usage-stats-summary__item">
+          <span className="usage-stats-summary__label">Input tokens</span>
+          <span className="usage-stats-summary__value">
+            {fmt(summary.totalPromptTokens)}
+            {summary.totalCachedTokens > 0 && (
+              <span className="usage-stats-summary__detail">
+                {' '}
+                ({fmt(summary.totalCachedTokens)} cached)
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="usage-stats-summary__item">
+          <span className="usage-stats-summary__label">Output tokens</span>
+          <span className="usage-stats-summary__value">
+            {fmt(summary.totalCompletionTokens)}
+            {summary.totalReasoningTokens > 0 && (
+              <span className="usage-stats-summary__detail">
+                {' '}
+                ({fmt(summary.totalReasoningTokens)} reasoning)
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="usage-stats-summary__item">
+          <span className="usage-stats-summary__label">Estimated cost</span>
+          <span className="usage-stats-summary__value">{fmtCost(summary.totalEstimatedCost)}</span>
+        </div>
+      </div>
+
+      {/* Per-model cost breakdown */}
+      {summary.perModelBreakdown.length > 1 && (
+        <div className="usage-stats-breakdown">
+          <h4>Cost Breakdown</h4>
+          <table className="usage-stats-breakdown__table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Input Rate</th>
+                <th>Cached Read Rate</th>
+                <th>Output Rate</th>
+                <th>Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.perModelBreakdown.map((pm) => (
+                <tr key={`${pm.providerId}:${pm.modelId}`}>
+                  <td>{pm.displayName}</td>
+                  <td>{pm.inputCostPer1m !== null ? `${fmtCost(pm.inputCostPer1m)}/1M` : '—'}</td>
+                  <td>
+                    {pm.cachedInputCostPer1m !== null
+                      ? `${fmtCost(pm.cachedInputCostPer1m)}/1M`
+                      : '—'}
+                  </td>
+                  <td>{pm.outputCostPer1m !== null ? `${fmtCost(pm.outputCostPer1m)}/1M` : '—'}</td>
+                  <td>
+                    {fmtCost(pm.promptTokensCost + pm.completionTokensCost + pm.cachedTokensCost)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Usage stats visualization section: bar chart,
  * period/provider/model filters, and cost summary.
@@ -333,187 +593,28 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
       </div>
 
       {/* Filters */}
-      <div className="usage-stats-filters">
-        <vscode-single-select
-          aria-label="Period"
-          value={period}
-          onchange={(e: Event) =>
-            setPeriod(((e.target as HTMLSelectElement).value as Period) ?? 'last7d')
-          }
-        >
-          {PERIOD_OPTIONS.map((opt) => (
-            <vscode-option key={opt.value} value={opt.value}>
-              {opt.label}
-            </vscode-option>
-          ))}
-        </vscode-single-select>
-
-        <vscode-single-select
-          aria-label="Providers"
-          value={selectedProviderIds.length === 0 ? '__all__' : selectedProviderIds[0]}
-          onchange={(e: Event) => {
-            const val = (e.target as HTMLSelectElement).value;
-            setSelectedProviderIds(val === '__all__' ? [] : [val]);
-            setSelectedModelIds([]);
-          }}
-        >
-          <vscode-option value="__all__">All Providers</vscode-option>
-          {filterProviders.map((p) => (
-            <vscode-option key={p.id} value={p.id}>
-              {p.name}
-            </vscode-option>
-          ))}
-        </vscode-single-select>
-
-        <vscode-single-select
-          aria-label="Models"
-          value={selectedModelIds.length === 0 ? '__all__' : selectedModelIds[0]}
-          onchange={(e: Event) => {
-            const val = (e.target as HTMLSelectElement).value;
-            setSelectedModelIds(val === '__all__' ? [] : [val]);
-          }}
-        >
-          <vscode-option value="__all__">All Models</vscode-option>
-          {availableModels.map((m) => (
-            <vscode-option key={m.key} value={m.modelId}>
-              {m.name}
-            </vscode-option>
-          ))}
-        </vscode-single-select>
-      </div>
+      <FilterControls
+        period={period}
+        setPeriod={setPeriod}
+        selectedProviderIds={selectedProviderIds}
+        setSelectedProviderIds={setSelectedProviderIds}
+        selectedModelIds={selectedModelIds}
+        setSelectedModelIds={setSelectedModelIds}
+        filterProviders={filterProviders}
+        availableModels={availableModels}
+      />
 
       {/* Chart */}
-      {loading ? (
-        <div className="usage-stats-loading">
-          <vscode-progress-ring />
-        </div>
-      ) : error ? (
-        <div className="error-banner">{error}</div>
-      ) : chartData.length === 0 ? (
-        <div className="usage-stats-chart-placeholder">
-          <p>No usage data</p>
-        </div>
-      ) : (
-        <div style={{ height: 220 }}>
-          <Bar
-            key={chartKey}
-            data={{
-              labels: chartData.map((d) => d.date),
-              datasets: [
-                {
-                  label: 'Input',
-                  data: chartData.map((d) => d.input),
-                  backgroundColor: cssVar('--vscode-charts-blue', '#4fc1ff'),
-                  stack: 'tokens',
-                },
-                {
-                  label: 'Cached input',
-                  data: chartData.map((d) => d.cached),
-                  backgroundColor: cssVar('--vscode-charts-purple', '#ab47bc'),
-                  stack: 'tokens',
-                },
-                {
-                  label: 'Output',
-                  data: chartData.map((d) => d.output),
-                  backgroundColor: cssVar('--vscode-charts-green', '#4caf50'),
-                  stack: 'tokens',
-                },
-                {
-                  label: 'Reasoning',
-                  data: chartData.map((d) => d.reasoning),
-                  backgroundColor: cssVar('--vscode-charts-orange', '#ff9800'),
-                  stack: 'tokens',
-                },
-              ],
-            }}
-            options={chartOptions}
-          />
-        </div>
-      )}
+      <ChartArea
+        loading={loading}
+        error={error}
+        chartData={chartData}
+        chartKey={chartKey}
+        chartOptions={chartOptions}
+      />
 
       {/* Summary */}
-      {summary && !loading && (
-        <div className="usage-stats-summary">
-          <h3>Summary</h3>
-          <div className="usage-stats-summary__grid">
-            <div className="usage-stats-summary__item">
-              <span className="usage-stats-summary__label">Requests</span>
-              <span className="usage-stats-summary__value">{fmt(summary.totalRequestCount)}</span>
-            </div>
-            <div className="usage-stats-summary__item">
-              <span className="usage-stats-summary__label">Input tokens</span>
-              <span className="usage-stats-summary__value">
-                {fmt(summary.totalPromptTokens)}
-                {summary.totalCachedTokens > 0 && (
-                  <span className="usage-stats-summary__detail">
-                    {' '}
-                    ({fmt(summary.totalCachedTokens)} cached)
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="usage-stats-summary__item">
-              <span className="usage-stats-summary__label">Output tokens</span>
-              <span className="usage-stats-summary__value">
-                {fmt(summary.totalCompletionTokens)}
-                {summary.totalReasoningTokens > 0 && (
-                  <span className="usage-stats-summary__detail">
-                    {' '}
-                    ({fmt(summary.totalReasoningTokens)} reasoning)
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="usage-stats-summary__item">
-              <span className="usage-stats-summary__label">Estimated cost</span>
-              <span className="usage-stats-summary__value">
-                {fmtCost(summary.totalEstimatedCost)}
-              </span>
-            </div>
-          </div>
-
-          {/* Per-model cost breakdown */}
-          {summary.perModelBreakdown.length > 1 && (
-            <div className="usage-stats-breakdown">
-              <h4>Cost Breakdown</h4>
-              <table className="usage-stats-breakdown__table">
-                <thead>
-                  <tr>
-                    <th>Model</th>
-                    <th>Input Rate</th>
-                    <th>Cached Read Rate</th>
-                    <th>Output Rate</th>
-                    <th>Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.perModelBreakdown.map((pm) => (
-                    <tr key={`${pm.providerId}:${pm.modelId}`}>
-                      <td>{pm.displayName}</td>
-                      <td>
-                        {pm.inputCostPer1m !== null ? `${fmtCost(pm.inputCostPer1m)}/1M` : '—'}
-                      </td>
-                      <td>
-                        {pm.cachedInputCostPer1m !== null
-                          ? `${fmtCost(pm.cachedInputCostPer1m)}/1M`
-                          : '—'}
-                      </td>
-                      <td>
-                        {pm.outputCostPer1m !== null ? `${fmtCost(pm.outputCostPer1m)}/1M` : '—'}
-                      </td>
-                      <td>
-                        {fmtCost(
-                          pm.promptTokensCost + pm.completionTokensCost + pm.cachedTokensCost,
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+      {summary && !loading && <SummaryPanel summary={summary} />}
     </div>
   );
 }
