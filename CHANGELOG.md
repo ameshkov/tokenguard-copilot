@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Changed
+
+- Added `qwen3.7-plus` to model defaults
+
 ## [v1.2.7] - 2026-06-12
 
 ### Changed

@@ -54,6 +54,32 @@
   {
     "match": {
       "type": "regex",
+      "value": "(^|/)qwen3.7-plus$"
+    },
+    "contextSize": 262144,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.9,
+    "outputCostPer1M": 1.6,
+    "cachedInputCostPer1M": 0.08,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "enable_thinking": false
+      },
+      "high": {
+        "enable_thinking": true,
+        "preserve_thinking": true
+      }
+    },
+    "cacheControl": {
+      "enabled": true,
+      "maxMarkers": 4
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
       "value": "(^|/)qwen3.6-27b$"
     },
     "contextSize": 262000,
