@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+## [v1.2.8] - 2026-06-16
+
 ### Changed
 
 - Added `qwen3.7-plus` to model defaults
@@ -193,7 +195,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.7...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.8...HEAD
+[v1.2.8]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.8
 [v1.2.7]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.7
 [v1.2.6]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.6
 [v1.2.5]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.5
