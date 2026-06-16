@@ -295,6 +295,11 @@ export function useModelConfigPreFill(
     }
     if (defaults) {
       filled = prefillFromDefaults(defaults, filled, setters);
+    } else {
+      // No bundled default exists for this model. Default preserve
+      // reasoning to enabled, matching known models that omit the
+      // field (see ModelDefaults.toDefaults).
+      setters.setPreserveReasoning(true);
     }
 
     setters.setPrefilledFields(filled);

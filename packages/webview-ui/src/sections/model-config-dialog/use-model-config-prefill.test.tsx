@@ -9,6 +9,7 @@ function TestWrapper(props: {
   fetchedModel?: FetchedModel;
   defaults?: ModelDefaultsResult | null;
   onFieldsSet?: (prefilled: Record<string, string>) => void;
+  settersRef?: { current: ModelConfigPrefillSetters | null };
 }) {
   const setters: ModelConfigPrefillSetters = {
     setDisplayName: vi.fn(),
@@ -34,6 +35,9 @@ function TestWrapper(props: {
       props.onFieldsSet?.(v);
     },
   };
+  if (props.settersRef) {
+    props.settersRef.current = setters;
+  }
 
   useModelConfigPreFill(props.editingModel, props.fetchedModel, props.defaults, setters);
 
@@ -174,5 +178,24 @@ describe('useModelConfigPreFill', () => {
     );
     const callArgs = onFieldsSet.mock.calls[0][0] as Record<string, string>;
     expect(callArgs.reasoningEffortMap).toBe('defaults');
+  });
+
+  it('enables preserve reasoning when no model default is found', () => {
+    const settersRef: { current: ModelConfigPrefillSetters | null } = { current: null };
+    render(<TestWrapper settersRef={settersRef} />);
+
+    expect(settersRef.current?.setPreserveReasoning).toHaveBeenCalledWith(true);
+  });
+
+  it('enables preserve reasoning for a fetched model without defaults', () => {
+    const settersRef: { current: ModelConfigPrefillSetters | null } = { current: null };
+    render(
+      <TestWrapper
+        fetchedModel={makeFetchedModel({ name: 'Custom Model' })}
+        settersRef={settersRef}
+      />,
+    );
+
+    expect(settersRef.current?.setPreserveReasoning).toHaveBeenCalledWith(true);
   });
 });

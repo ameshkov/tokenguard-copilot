@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased][unreleased]
 
+### Changed
+
+- The "Preserve Reasoning" checkbox is now checked by default when
+  adding a new model for which no bundled model default is found,
+  matching the behaviour of known models that omit the field.
+
 ## [v1.2.8] - 2026-06-16
 
 ### Changed
