@@ -11,6 +11,7 @@ and this project adheres to
 ### Changed
 
 - Added `qwen3.7-plus` to model defaults
+- Added `glm-5.2` to model defaults
 
 ## [v1.2.7] - 2026-06-12
 

@@ -188,9 +188,9 @@
     },
     "contextSize": 203000,
     "maxTokens": 65500,
-    "inputCostPer1M": 1.05,
-    "outputCostPer1M": 3.5,
-    "cachedInputCostPer1M": 0.525,
+    "inputCostPer1M": 1.4,
+    "outputCostPer1M": 4.0,
+    "cachedInputCostPer1M": 0.26,
     "supportedCapabilities": ["reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
@@ -210,9 +210,44 @@
   {
     "match": {
       "type": "regex",
+      "value": "(^|/)glm-5.2$"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 1.4,
+    "outputCostPer1M": 4.0,
+    "cachedInputCostPer1M": 0.26,
+    "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": "none",
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "thinking": {
+          "type": "enabled",
+          "clear_thinking": false
+        }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "thinking": {
+          "type": "enabled",
+          "clear_thinking": false
+        }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
       "value": "(^|/)deepseek-v4-pro$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 0.435,
     "outputCostPer1M": 0.87,
@@ -244,7 +279,7 @@
       "type": "regex",
       "value": "(^|/)deepseek-v4-flash$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 0.14,
     "outputCostPer1M": 0.28,
@@ -276,7 +311,7 @@
       "type": "regex",
       "value": "(^|/)mimo-v2.5-pro$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 0.435,
     "outputCostPer1M": 0.87,
@@ -301,7 +336,7 @@
       "type": "regex",
       "value": "(^|/)mimo-v2.5-pro-ultraspeed$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 1.305,
     "outputCostPer1M": 2.61,
@@ -326,7 +361,7 @@
       "type": "regex",
       "value": "(^|/)mimo-v2.5$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 0.435,
     "outputCostPer1M": 0.87,
@@ -351,7 +386,7 @@
       "type": "regex",
       "value": "(^|/|-)gpt-5.5-pro$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 30,
     "outputCostPer1M": 180,
@@ -419,7 +454,7 @@
       "type": "regex",
       "value": "(^|/|-)gpt-5.4-pro$"
     },
-    "contextSize": 1050000,
+    "contextSize": 1000000,
     "maxTokens": 65500,
     "inputCostPer1M": 30,
     "outputCostPer1M": 180,
