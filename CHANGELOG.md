@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased][unreleased]
+## [Unreleased]
+
+## [v1.2.9] - 2026-06-17
 
 ### Changed
 
@@ -201,7 +203,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.8...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.9...HEAD
+[v1.2.9]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.9
 [v1.2.8]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.8
 [v1.2.7]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.7
 [v1.2.6]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.6
