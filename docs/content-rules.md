@@ -133,7 +133,7 @@ system prompt.
 ```text
 Name:           Strip redundant built-in skills
 Match role:     system
-Regex pattern:  <skill>[\s\S]*?<name>(project-setup-info-local|get-search-view-results|agent-customization)<\/name>[\s\S]*?<\/skill>
+Regex pattern:  <skill>[\s]*?<name>(project-setup-info-local|get-search-view-results|agent-customization)<\/name>[\s\S]*?<\/skill>
 Substitution:   (empty)
 ```
 
