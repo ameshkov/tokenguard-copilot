@@ -20,7 +20,8 @@ import {
 } from './handle-helpers.js';
 import type { ChatContext, OpenAIMessage, UsageCollector } from './chat-types.js';
 import type { RuleApplicationResult } from '../content-rules/index.js';
-import type { Logger } from '../../logger/index.js';
+import { retryableFetch } from './retryable-fetch.js';
+import { DEFAULT_RETRY_POLICY } from './retry-policy.js';
 
 export type { ChatContext, OpenAIMessage, UsageCollector } from './chat-types.js';
 
@@ -86,9 +87,9 @@ export class ChatHandler {
     let error: string | undefined;
 
     try {
-      const response = await ChatHandler.fetchWithRetry(
+      const response = await retryableFetch({
         url,
-        {
+        init: {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -99,9 +100,10 @@ export class ChatHandler {
           body: JSON.stringify(body),
           signal: abortController.signal,
         },
-        this.ctx.logger,
+        policy: DEFAULT_RETRY_POLICY,
+        logger: this.ctx.logger,
         requestId,
-      );
+      });
 
       if (this.ctx.model.streaming === 1) {
         await handleStreaming(
@@ -227,56 +229,5 @@ export class ChatHandler {
     );
 
     return { body, finalMessages, processedMessages, ruleResults, url };
-  }
-
-  /**
-   * Sends a request via `fetch` and retries it once if the
-   * first attempt throws. This is a targeted mitigation for
-   * Node's undici keep-alive pool handing out a half-dead
-   * connection — a second attempt usually succeeds because
-   * the bad connection has been removed from the pool.
-   *
-   * Only thrown errors (network-level failures) trigger the
-   * retry — successful HTTP responses (including 4xx/5xx
-   * statuses) are returned as-is. The first failure is
-   * logged at `warn` level; a second failure is re-thrown
-   * for the caller's existing error handling. User
-   * cancellation (`init.signal.aborted`) is NOT retried so
-   * the cancellation flow in `handle()` is preserved.
-   *
-   * @param url - Request URL to fetch.
-   * @param init - Fetch request init options (must include
-   *   a `signal` for cancellation support).
-   * @param logger - Optional logger for the warning on
-   *   first failure.
-   * @param requestId - Per-request correlation ID for log
-   *   lines.
-   * @returns The fetch Response — either from the first
-   *   attempt or the retry.
-   */
-  private static async fetchWithRetry(
-    url: string,
-    init: RequestInit,
-    logger: Logger | undefined,
-    requestId: string,
-  ): Promise<Response> {
-    try {
-      return await fetch(url, init);
-    } catch (e) {
-      // Do not retry user-initiated cancellation — let it
-      // propagate so handle() can distinguish cancellation
-      // from network failures.
-      if (init.signal?.aborted) {
-        throw e;
-      }
-
-      logger?.warn(
-        'Chat completion fetch failed, retrying once',
-        `requestId=${requestId}`,
-        `error=${e instanceof Error ? e.message : String(e)}`,
-      );
-
-      return await fetch(url, init);
-    }
   }
 }

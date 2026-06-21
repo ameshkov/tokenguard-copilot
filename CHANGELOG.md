@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the single-shot `fetchWithRetry` helper in `ChatHandler` with a
+  generalised retryable-fetch module that retries transient network-level
+  failures using exponential backoff with jitter, a 60s total deadline, and
+  cancellation honoured at every stage.
+
 ## [v1.2.9] - 2026-06-17
 
 ### Changed
