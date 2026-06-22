@@ -16,6 +16,11 @@ and this project adheres to
   cancellation honoured at every stage.
 - Refactored the code to have smaller files, functions, etc, enforced with
   ESLint.
+- Split the oversized `handle-streaming.test.ts` and
+  `content-rules-service.test.ts` files to comply with the ESLint `max-lines`
+  rule, extracting the shared `createSSEStream` helper into
+  `chat-handler-test-helpers` and moving reasoning/thinking and content-rule
+  substitution test suites into dedicated files.
 
 ## [v1.2.9] - 2026-06-17
 

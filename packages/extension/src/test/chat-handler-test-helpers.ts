@@ -220,3 +220,30 @@ export function baseChatContext(overrides: Partial<ChatContext> = {}): ChatConte
     ...overrides,
   };
 }
+
+// ---------------------------------------------------------------------------
+// SSE stream factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a ReadableStream from an array of SSE-formatted lines.
+ *
+ * Each input string is wrapped in a `data:` Server-Sent-Events line and the
+ * resulting chunks are encoded as UTF-8, mimicking an OpenAI-compatible
+ * streaming response body.
+ *
+ * @param lines - Raw JSON strings to wrap in `data:` SSE lines.
+ * @returns A ReadableStream emitting the SSE-formatted text.
+ *
+ * @internal Exported for test files only; not part of the public module API.
+ */
+export function createSSEStream(lines: string[]): ReadableStream {
+  const encoder = new TextEncoder();
+  const data = lines.map((l) => `data: ${l}\n\n`).join('');
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(data));
+      controller.close();
+    },
+  });
+}
