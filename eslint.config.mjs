@@ -28,9 +28,17 @@ export default tseslint.config(
   {
     files: ['**/*.test.ts', '**/*.test.tsx', '**/*.test.mts'],
     rules: {
-      // TODO: They should be enabled eventually (only max-lines).
-      'max-lines': 'off',
+      // Only enforce max lines for test files as they consist of anonymous
+      // functions that can be long and are not reusable.
       'max-lines-per-function': 'off',
+      'max-lines': [
+        'error',
+        {
+          max: 1000,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
     },
   },
   {

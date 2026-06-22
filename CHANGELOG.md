@@ -14,6 +14,8 @@ and this project adheres to
   generalised retryable-fetch module that retries transient network-level
   failures using exponential backoff with jitter, a 60s total deadline, and
   cancellation honoured at every stage.
+- Refactored the code to have smaller files, functions, etc, enforced with
+  ESLint.
 
 ## [v1.2.9] - 2026-06-17
 

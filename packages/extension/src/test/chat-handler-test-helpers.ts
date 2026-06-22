@@ -10,6 +10,7 @@ import { vi } from 'vitest';
 import type * as vscode from 'vscode';
 import type { Model, Provider } from '../db/index.js';
 import type { ReasoningCacheService } from '../services/reasoning-cache/index.js';
+import type { ChatContext } from '../services/chat-handler/chat-handler.js';
 
 // ---------------------------------------------------------------------------
 // VS Code API mock
@@ -197,4 +198,25 @@ export function mockToken(
     onCancellationRequested:
       overrides.onCancellationRequested ?? vi.fn(() => ({ dispose: vi.fn() })),
   } as unknown as vscode.CancellationToken;
+}
+
+// ---------------------------------------------------------------------------
+// Chat context factory
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper to create a base ChatContext for chat-handler tests.
+ *
+ * Provides sensible defaults: a non-streaming test model, the default test
+ * provider, and a dummy API key. Pass overrides to customise per test.
+ *
+ * @internal Exported for test files only; not part of the public module API.
+ */
+export function baseChatContext(overrides: Partial<ChatContext> = {}): ChatContext {
+  return {
+    model: mockModel({ streaming: 0 }),
+    provider: mockProvider(),
+    apiKey: 'sk-test',
+    ...overrides,
+  };
 }
