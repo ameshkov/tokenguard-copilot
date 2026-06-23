@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.2.10] - 2026-06-23
+
 ### Changed
 
 - Replaced the single-shot `fetchWithRetry` helper in `ChatHandler` with a
@@ -16,11 +18,6 @@ and this project adheres to
   cancellation honoured at every stage.
 - Refactored the code to have smaller files, functions, etc, enforced with
   ESLint.
-- Split the oversized `handle-streaming.test.ts` and
-  `content-rules-service.test.ts` files to comply with the ESLint `max-lines`
-  rule, extracting the shared `createSSEStream` helper into
-  `chat-handler-test-helpers` and moving reasoning/thinking and content-rule
-  substitution test suites into dedicated files.
 
 ## [v1.2.9] - 2026-06-17
 
@@ -217,7 +214,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.9...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.10...HEAD
+[v1.2.10]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.10
 [v1.2.9]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.9
 [v1.2.8]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.8
 [v1.2.7]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.7

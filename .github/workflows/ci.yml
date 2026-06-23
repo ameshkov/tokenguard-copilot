@@ -11,6 +11,11 @@ permissions:
   contents: read
   actions: write
 
+# Cancel superseded runs on PRs (never on tag pushes, which drive releases).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   ci:
     name: Lint, Unit Tests & Package
