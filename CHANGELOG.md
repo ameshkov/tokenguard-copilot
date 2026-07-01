@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Added Sonnet 5 to model defaults.
+
 ## [v1.2.10] - 2026-06-23
 
 ### Changed

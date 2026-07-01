@@ -2,7 +2,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)qwen3.6-plus$"
+      "value": "(^|/)qwen3.6-plus"
     },
     "contextSize": 262144,
     "maxTokens": 65500,
@@ -28,7 +28,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)qwen3.7-max$"
+      "value": "(^|/)qwen3.7-max"
     },
     "contextSize": 262144,
     "maxTokens": 65500,
@@ -54,7 +54,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)qwen3.7-plus$"
+      "value": "(^|/)qwen3.7-plus"
     },
     "contextSize": 262144,
     "maxTokens": 65500,
@@ -80,7 +80,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)qwen3.6-27b$"
+      "value": "(^|/)qwen3.6-27b"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -106,7 +106,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)qwen3.6-35b-a3b$"
+      "value": "(^|/)qwen3.6-35b-a3b"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -132,7 +132,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)kimi-k2.6$"
+      "value": "(^|/)kimi-k2.6"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -158,7 +158,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)kimi-k2.7-code$"
+      "value": "(^|/)kimi-k2.7-code"
     },
     "contextSize": 262000,
     "maxTokens": 65500,
@@ -184,7 +184,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)glm-5.1$"
+      "value": "(^|/)glm-5.1"
     },
     "contextSize": 203000,
     "maxTokens": 65500,
@@ -210,7 +210,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)glm-5.2$"
+      "value": "(^|/)glm-5.2"
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
@@ -245,7 +245,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)deepseek-v4-pro$"
+      "value": "(^|/)deepseek-v4-pro"
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
@@ -277,7 +277,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)deepseek-v4-flash$"
+      "value": "(^|/)deepseek-v4-flash"
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
@@ -309,7 +309,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)mimo-v2.5-pro$"
+      "value": "(^|/)mimo-v2.5-pro"
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
@@ -334,7 +334,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)mimo-v2.5-pro-ultraspeed$"
+      "value": "(^|/)mimo-v2.5-pro-ultraspeed"
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
@@ -359,7 +359,7 @@
   {
     "match": {
       "type": "regex",
-      "value": "(^|/)mimo-v2.5$"
+      "value": "(^|/)mimo-v2.5"
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
@@ -651,7 +651,7 @@
     },
     "contextSize": 200000,
     "maxTokens": 65500,
-    "inputCostPer1M": 11.25,
+    "inputCostPer1M": 6.25,
     "outputCostPer1M": 25.0,
     "cachedInputCostPer1M": 0.5,
     "supportedCapabilities": ["vision", "reasoning_effort"],
@@ -688,7 +688,7 @@
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
-    "inputCostPer1M": 11.25,
+    "inputCostPer1M": 6.25,
     "outputCostPer1M": 25.0,
     "cachedInputCostPer1M": 0.5,
     "supportedCapabilities": ["vision", "reasoning_effort"],
@@ -762,7 +762,7 @@
     },
     "contextSize": 1000000,
     "maxTokens": 65500,
-    "inputCostPer1M": 22.5,
+    "inputCostPer1M": 12.5,
     "outputCostPer1M": 50.0,
     "cachedInputCostPer1M": 1.0,
     "supportedCapabilities": ["vision", "reasoning_effort"],
@@ -836,9 +836,46 @@
     },
     "contextSize": 200000,
     "maxTokens": 65500,
-    "inputCostPer1M": 6.75,
+    "inputCostPer1M": 3.75,
     "outputCostPer1M": 15.0,
     "cachedInputCostPer1M": 0.3,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning": { "effort": "none" }
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      },
+      "xhigh": {
+        "reasoning_effort": "xhigh",
+        "reasoning": { "effort": "xhigh" }
+      }
+    },
+    "customFields": {
+      "cache_control": { "type": "ephemeral" }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/|-)sonnet-5$"
+    },
+    "contextSize": 200000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 2.5,
+    "outputCostPer1M": 10.0,
+    "cachedInputCostPer1M": 0.2,
     "supportedCapabilities": ["vision", "reasoning_effort"],
     "defaultReasoningEffort": "high",
     "reasoningEffortMap": {
@@ -899,7 +936,7 @@
     },
     "contextSize": 200000,
     "maxTokens": 65500,
-    "inputCostPer1M": 11.25,
+    "inputCostPer1M": 6.25,
     "outputCostPer1M": 25.0,
     "cachedInputCostPer1M": 0.5,
     "supportedCapabilities": ["vision", "reasoning_effort"],
@@ -937,7 +974,7 @@
     },
     "contextSize": 200000,
     "maxTokens": 65500,
-    "inputCostPer1M": 6.75,
+    "inputCostPer1M": 3.75,
     "outputCostPer1M": 15.0,
     "cachedInputCostPer1M": 0.3,
     "supportedCapabilities": ["vision", "reasoning_effort"],
