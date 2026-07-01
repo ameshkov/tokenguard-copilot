@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.2.11] - 2026-07-01
+
 ### Changed
 
 - Added Sonnet 5 to model defaults.
@@ -218,7 +220,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.10...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.11...HEAD
+[v1.2.11]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.11
 [v1.2.10]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.10
 [v1.2.9]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.9
 [v1.2.8]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.8
