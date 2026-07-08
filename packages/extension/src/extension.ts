@@ -52,6 +52,12 @@ export async function activate(context: VSCodeExtensionContext): Promise<Extensi
     rawDb.exec('PRAGMA foreign_keys = ON');
     rawDb.exec('PRAGMA busy_timeout = 5000');
 
+    // Force a WAL checkpoint to integrate any orphaned
+    // journal content into the main database file.
+    // This prevents contention between recovery and
+    // subsequent migration writes.
+    rawDb.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+
     const db = createDb(rawDb);
     const migrationsFolder = path.join(__dirname, 'db', 'migrations');
     runMigrations(db, migrationsFolder);
@@ -97,6 +103,15 @@ export async function activate(context: VSCodeExtensionContext): Promise<Extensi
     const message = error instanceof Error ? error.message : String(error);
     log.error('Database initialization failed', message);
     window.showErrorMessage(`TokenGuard Copilot: database initialization failed — ${message}`);
+
+    // Clean up the database connection so it doesn't block
+    // future activation attempts.
+    try {
+      rawDb?.close();
+    } catch {
+      // Ignore close errors.
+    }
+    rawDb = null;
     return;
   }
 

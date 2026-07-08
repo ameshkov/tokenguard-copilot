@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.2.12] - 2026-07-08
+
+### Fixed
+
+- Fixed "database is locked" error during extension startup by closing the
+  database connection on initialization failure and adding a WAL checkpoint
+  on startup to integrate orphaned journal state from prior crashes.
+
 ## [v1.2.11] - 2026-07-01
 
 ### Changed
@@ -220,7 +228,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.11...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.12...HEAD
+[v1.2.12]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.12
 [v1.2.11]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.11
 [v1.2.10]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.10
 [v1.2.9]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.9
