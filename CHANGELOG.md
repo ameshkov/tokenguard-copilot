@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.3.0] - 2026-07-09
+
 ### Added
 
 - Added Grok 4.5 to model defaults (xAI, 500K context, $2/$6 per 1M tokens).
@@ -233,7 +235,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.2.12...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.3.0...HEAD
+[v1.3.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.3.0
 [v1.2.12]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.12
 [v1.2.11]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.11
 [v1.2.10]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.10
