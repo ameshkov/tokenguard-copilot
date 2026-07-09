@@ -309,6 +309,64 @@
   {
     "match": {
       "type": "regex",
+      "value": "(^|/)grok-4\\.5"
+    },
+    "contextSize": 500000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 2.0,
+    "outputCostPer1M": 6.0,
+    "cachedInputCostPer1M": 0.5,
+    "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": "none",
+        "reasoning": { "effort": "none" }
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)hy3"
+    },
+    "contextSize": 262144,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.14,
+    "outputCostPer1M": 0.58,
+    "cachedInputCostPer1M": 0.035,
+    "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": "none",
+        "reasoning": { "effort": "none" }
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
       "value": "(^|/)mimo-v2.5-pro"
     },
     "contextSize": 1000000,

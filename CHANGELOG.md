@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Added Grok 4.5 to model defaults (xAI, 500K context, $2/$6 per 1M tokens).
+- Added Hy3 to model defaults (Tencent, 262K context, $0.14/$0.58 per 1M tokens).
+
 ## [v1.2.12] - 2026-07-08
 
 ### Fixed
