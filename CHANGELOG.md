@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Added GPT-5.6 Sol, Terra, and Luna to model defaults (272K context,
+  $5/$30, $2.50/$15, and $1/$6 per 1M tokens respectively).
+
 ## [v1.3.0] - 2026-07-09
 
 ### Added
