@@ -10,6 +10,7 @@ and this project adheres to
 
 ### Added
 
+- Added Kimi K3 to model defaults.
 - Chat Debug logs now attribute the source of each assistant message's
   reasoning — `cache` (injected from the SQLite reasoning cache) vs.
   `thinking-part` (extracted from VS Code `LanguageModelThinkingPart`
