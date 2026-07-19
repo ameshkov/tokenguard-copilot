@@ -3,6 +3,7 @@ import type * as vscode from 'vscode';
 // Import test-helpers first to activate the vi.mock('vscode', ...) before chat-handler imports vscode
 import { createSSEStream } from '../../test/chat-handler-test-helpers.js';
 import { handleStreaming } from './handle-streaming.js';
+import type { ReasoningCollector } from './chat-types.js';
 
 describe('handleStreaming (reasoning/thinking)', () => {
   it('reports reasoning_content as LanguageModelThinkingPart in real time', async () => {
@@ -440,5 +441,102 @@ describe('handleStreaming (reasoning/thinking)', () => {
     expect(reported).toHaveLength(2);
     expect(reported[0]).toHaveProperty('value', 'I will call a tool.');
     expect(reported[1]).toHaveProperty('callId', 'call_1');
+  });
+
+  it('accumulates streamed reasoning_details with signature into one merged block', async () => {
+    // Reproduces the OpenRouter/Anthropic streaming shape: the
+    // reasoning text arrives in chunks and only the final chunk
+    // carries the `signature`. The accumulated reasoning_details
+    // must be a single merged block (full text + signature),
+    // not a split array with the signature on the last item.
+    const stream = createSSEStream([
+      JSON.stringify({
+        choices: [
+          {
+            delta: {
+              reasoning: 'The',
+              reasoning_details: [
+                {
+                  type: 'reasoning.text',
+                  text: 'The',
+                  index: 0,
+                  format: 'anthropic-claude-v1',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      JSON.stringify({
+        choices: [
+          {
+            delta: {
+              reasoning: ' kubilot',
+              reasoning_details: [
+                {
+                  type: 'reasoning.text',
+                  text: ' kubilot',
+                  index: 0,
+                  format: 'anthropic-claude-v1',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      JSON.stringify({
+        choices: [
+          {
+            delta: {
+              reasoning: ' server.',
+              reasoning_details: [
+                {
+                  type: 'reasoning.text',
+                  text: ' server.',
+                  index: 0,
+                  format: 'anthropic-claude-v1',
+                  signature: 'sig',
+                },
+              ],
+            },
+            finish_reason: 'stop',
+          },
+        ],
+      }),
+      '[DONE]',
+    ]);
+
+    const response = {
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      body: stream,
+    };
+
+    const reasoningOut: ReasoningCollector = { fields: null };
+    const progress = { report: () => {} };
+    const token = {
+      isCancellationRequested: false,
+      onCancellationRequested: vi.fn(),
+    };
+
+    await handleStreaming(
+      response as unknown as Response,
+      progress as unknown as vscode.Progress<vscode.LanguageModelResponsePart>,
+      token as unknown as vscode.CancellationToken,
+      reasoningOut,
+    );
+
+    expect(reasoningOut.fields).not.toBeNull();
+    expect(reasoningOut.fields!.reasoning).toBe('The kubilot server.');
+    expect(reasoningOut.fields!.reasoning_details).toEqual([
+      {
+        type: 'reasoning.text',
+        text: 'The kubilot server.',
+        index: 0,
+        format: 'anthropic-claude-v1',
+        signature: 'sig',
+      },
+    ]);
   });
 });

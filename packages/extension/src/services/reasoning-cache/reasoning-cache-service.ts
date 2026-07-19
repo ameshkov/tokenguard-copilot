@@ -9,6 +9,20 @@ import type { OpenAIMessage } from '../chat-handler/index.js';
 import type { Logger } from '../../logger/index.js';
 
 /**
+ * Result of a reasoning backfill pass.
+ */
+export interface ReasoningBackfillResult {
+  /**
+   * Indices of assistant messages whose reasoning was
+   * injected from the persistent cache. Messages with
+   * reasoning that are *not* in this list received their
+   * reasoning from VS Code thinking parts (the primary
+   * source).
+   */
+  backfilledIndices: number[];
+}
+
+/**
  * Manages reasoning preservation across multi-turn
  * conversations.
  *
@@ -56,29 +70,39 @@ export class ReasoningCacheService {
    *   (mutated in place).
    * @param preserveReasoning - Whether reasoning
    *   preservation is enabled for this model.
+   * @returns A summary including the indices of assistant
+   *   messages whose reasoning was injected from the
+   *   cache. Messages with reasoning that were *not* in
+   *   this list received their reasoning from VS Code
+   *   thinking parts (the primary source).
    */
-  backfillReasoning(messages: OpenAIMessage[], preserveReasoning: boolean): void {
+  backfillReasoning(
+    messages: OpenAIMessage[],
+    preserveReasoning: boolean,
+  ): ReasoningBackfillResult {
     if (!preserveReasoning) {
       this.logger.trace('Reasoning backfill skipped: preservation disabled');
-      return;
+      return { backfilledIndices: [] };
     }
 
     const hasAssistant = messages.some((m) => m.role === 'assistant');
     if (!hasAssistant) {
       this.logger.trace('Reasoning backfill skipped: no assistant messages');
-      return;
+      return { backfilledIndices: [] };
     }
 
     const sessionFp = computeFingerprint(messages);
     if (!sessionFp) {
       this.logger.trace('Reasoning backfill skipped: could not compute session fingerprint');
-      return;
+      return { backfilledIndices: [] };
     }
 
     let backfillCount = 0;
     let cacheHitCount = 0;
+    const backfilledIndices: number[] = [];
 
-    for (const msg of messages) {
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
       if (msg.role !== 'assistant') continue;
 
       const msgFp = computeMessageFingerprint(
@@ -119,6 +143,7 @@ export class ReasoningCacheService {
           msg.reasoning_details = cached.reasoning_details;
         }
         this.logger.trace('Reasoning backfill: injected cached reasoning', `msg_fp=${msgFp}`);
+        backfilledIndices.push(i);
         backfillCount++;
       } else {
         // No thinking parts and no cache — leave reasoning
@@ -137,6 +162,8 @@ export class ReasoningCacheService {
         `total_assistant=${messages.filter((m) => m.role === 'assistant').length}`,
       );
     }
+
+    return { backfilledIndices };
   }
 
   /**

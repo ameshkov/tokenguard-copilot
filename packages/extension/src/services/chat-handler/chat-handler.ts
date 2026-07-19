@@ -72,10 +72,8 @@ export class ChatHandler {
     usageCollector?: UsageCollector,
   ): Promise<void> {
     const requestId = randomUUID();
-    const { body, finalMessages, processedMessages, ruleResults, url } = this.prepareRequest(
-      messages,
-      requestId,
-    );
+    const { body, finalMessages, processedMessages, ruleResults, url, reasoningSources } =
+      this.prepareRequest(messages, requestId);
 
     const abortController = new AbortController();
     const cancelDisposable = token.onCancellationRequested(() => abortController.abort());
@@ -156,6 +154,7 @@ export class ChatHandler {
         responseContent: state.responseContent,
         responseToolCalls: state.responseToolCalls,
         reasoningCollector,
+        reasoningSources,
         startTime,
         endTime,
         cancelled,
@@ -189,6 +188,13 @@ export class ChatHandler {
     processedMessages: OpenAIMessage[];
     ruleResults: RuleApplicationResult[] | undefined;
     url: string;
+    /**
+     * Indices of assistant messages whose reasoning was
+     * backfilled from the cache. Other assistant messages
+     * with reasoning received it from VS Code thinking
+     * parts.
+     */
+    reasoningSources: ReadonlySet<number>;
   } {
     const translated = translateMessages(messages);
 
@@ -207,10 +213,11 @@ export class ChatHandler {
     }
 
     // Backfill reasoning from cache into assistant messages
-    this.reasoningCacheService.backfillReasoning(
+    const backfillResult = this.reasoningCacheService.backfillReasoning(
       processedMessages,
       this.ctx.model.preserveReasoning === 1,
     );
+    const reasoningSources = new Set<number>(backfillResult.backfilledIndices);
 
     // Inject cache control markers when enabled
     const finalMessages =
@@ -228,6 +235,6 @@ export class ChatHandler {
       `requestId=${requestId}`,
     );
 
-    return { body, finalMessages, processedMessages, ruleResults, url };
+    return { body, finalMessages, processedMessages, ruleResults, url, reasoningSources };
   }
 }

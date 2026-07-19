@@ -20,6 +20,7 @@ reasoning (thinking tokens) across multi-turn conversations.
     - [Message Fingerprint](#message-fingerprint-computemessagefingerprint)
     - [How the Two Fingerprints Work Together](#how-the-two-fingerprints-work-together)
 - [Message Skipping vs Selective Backfill](#message-skipping-vs-selective-backfill)
+- [Debug Logging](#debug-logging)
 - [TTL and Cleanup](#ttl-and-cleanup)
 - [Configuration](#configuration)
 
@@ -168,7 +169,7 @@ ChatHandler.handle()
 | Layer | Responsibility |
 | --- | --- |
 | `translateMessages()` | **Primary source.** Extracts reasoning from `LanguageModelThinkingPart` objects via `thinkingPartsToReasoning()`, setting fields directly on `OpenAIMessage` when thinking parts are available. |
-| `ChatHandler.backfillReasoning()` | **Fallback.** Skips messages that already have reasoning (from thinking parts). For remaining messages, looks up cached reasoning by fingerprint and injects fields from the database. |
+| `ChatHandler.backfillReasoning()` | **Fallback.** Skips messages that already have reasoning (from thinking parts). For remaining messages, looks up cached reasoning by fingerprint and injects fields from the database. Returns the indices of cache-injected messages so the debug logger can attribute the reasoning source. |
 | `ChatHandler.cacheReasoning()` | Stores reasoning fields from the API response into the cache for future turns. |
 | `ReasoningCacheService` | Computes session and message fingerprints, orchestrates conditional backfill and cache logic. |
 | `ReasoningCacheRepository` | CRUD operations on the `reasoning_cache` table. |
@@ -177,7 +178,33 @@ ChatHandler.handle()
 The utility `thinkingPartsToReasoning()` in
 `utils/reasoning-conversion.ts` converts `LanguageModelThinkingPart`
 objects into `ReasoningFields`, using `presentFields` metadata to
-determine which provider-dependent fields to populate.
+determine which provider-dependent fields to populate. When a thinking
+part was built from a signed reasoning detail, its `signature`,
+`type` (`detailType`), `index` (`detailIndex`), `format`
+(`detailFormat`), and `id` (`detailId`) are round-tripped through
+thinking-part `metadata` so the reconstructed `reasoning_details` block
+keeps the same identity as the original provider response. Dropping the
+`format` (or `index`) for a signed reasoning detail causes upstream
+providers to reject the preserved `thinking` block with the
+`Invalid signature in thinking block` error, because the `format` tag
+is what tells the provider how to interpret the signature.
+
+Streamed `reasoning_details` deltas (OpenRouter sends reasoning text
+chunk-by-chunk, with the `signature` only on the final chunk of a
+block) are merged by `mergeReasoningDetails()` during SSE
+accumulation. Deltas are grouped by block identity
+(`type` + `index` + `format`) and their `text`/`summary`/`data` are
+concatenated into a single detail entry per block, so the
+backfilled assistant message never splits one reasoning block across
+multiple array items. Matching is wildcard-aware: OpenRouter only
+attaches `index`/`format` to some chunks of a block (and the
+`signature` to the final one), so a delta that omits `index` or
+`format` still merges into an existing block of the same `type`. An
+exact (type + index + format) pass runs first so distinct indexed
+blocks stay separate even with wildcard deltas. Without this, a block
+would be split into two entries — one without a `signature` — and the
+upstream provider would reject the preserved `thinking` block with
+`Invalid signature in thinking block`.
 
 Periodic cleanup runs via `ReasoningCacheCleanupService`, which
 deletes expired entries every 30 minutes.
@@ -191,15 +218,46 @@ interface.
 **File:** `packages/extension/src/utils/reasoning.ts`
 
 ```typescript
+export interface ReasoningDetail {
+  type: string;            // e.g. "reasoning.text", "reasoning.summary",
+                           //      "reasoning.encrypted"
+  text?: string;
+  summary?: string;
+  data?: string;
+  signature?: string;      // Anthropic signature (final chunk only)
+  index?: number;
+  format?: string;         // e.g. "anthropic-claude-v1"
+  id?: string;
+  [key: string]: unknown;  // round-trips any other provider field
+}
+
 export interface ReasoningFields {
   reasoning_content?: string;       // DeepSeek, Qwen, Kimi, GLM, MiMo
   reasoning?: string;               // Anthropic (plaintext via OpenRouter)
-  reasoning_details?: Array<{       // Anthropic (structured via OpenRouter)
-    type: string;
-    text?: string;
-  }>;
+  reasoning_details?: ReasoningDetail[]; // Anthropic (structured)
 }
 ```
+
+Within `ReasoningFields`, the `reasoning_details` array is the only
+structured form and carries **identity fields** that providers use to
+validate a signed `thinking` block:
+
+- `signature` — cryptographic signature covering the block's text;
+  present only on the final chunk of a streamed block.
+- `format` — tag telling the provider how to interpret `signature`
+  (e.g. `anthropic-claude-v1`). Without it the signature cannot be
+  validated.
+- `index` — sequential position among interleaved reasoning blocks;
+  disambiguates multiple blocks of the same `type`.
+- `id` — provider-assigned block identifier (e.g. `blk_01`).
+
+These fields must be preserved **verbatim** across both preservation
+tiers. Dropping `index` or `format`, or stranding `signature` on a
+fragment without its identity, causes the provider to reject the next
+request with `Invalid signature in thinking block`. The
+[Architecture Overview](#architecture-overview) explains how the
+extension round-trips these fields through thinking-part metadata and
+merges streamed deltas into one entry per block.
 
 Two extraction functions are provided:
 
@@ -455,6 +513,60 @@ three paths:
 3. **No reasoning fields and no cache entry**:
    Nothing is set — the message is sent as-is. No
    placeholder or fallback value is injected.
+
+## Debug Logging
+
+The **Chat Debug** log (written by `ChatDebugLogger`)
+surfaces which two-tier source produced each assistant
+message's reasoning, plus a structured summary of the
+fields that will reach the provider. This makes the
+cache-vs-thinking-part distinction observable when
+investigating `Invalid signature in thinking block`
+errors.
+
+### Source Attribution
+
+`backfillReasoning()` returns the indices of assistant
+messages whose reasoning was **injected from the cache**.
+These indices are threaded through `ChatHandler` →
+`logChatDebugRequest` → `ChatDebugLogger`. For each
+assistant message that carries reasoning, the log
+renders one of:
+
+```text
+🧠 Reasoning · source: cache
+🧠 Reasoning · source: thinking-part
+```
+
+- `cache` — VS Code did not re-send
+  `LanguageModelThinkingPart` (the agentic loop finished
+  or the user sent a new message), so reasoning was
+  restored from the SQLite cache.
+- `thinking-part` — reasoning was extracted from
+  `LanguageModelThinkingPart` metadata (the primary
+  source) and the cache was not consulted for this
+  message.
+
+### Field Summary
+
+Below the reasoning text, a `Fields:` block lists every
+provider-dependent field present on the message:
+
+```text
+Fields:
+  reasoning_content (27 chars)
+  reasoning_details (2 block(s)):
+    [0] type=reasoning.text index=0 format=anthropic-
+        claude-v1 signature=152c id=blk_01 text=27c
+    [1] type=reasoning.summary index=1 format=—
+        signature=null id=— text=12c
+```
+
+The same summary is rendered for the **response**
+reasoning fields, so a round-trip can be audited end to
+end: the identity fields (`index`, `format`,
+`signature`, `id`) that the provider needs to validate a
+signed `thinking` block are visible at a glance.
 
 ## TTL and Cleanup
 

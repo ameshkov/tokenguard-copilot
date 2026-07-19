@@ -69,7 +69,7 @@ vi.mock('vscode', () => ({
  */
 export function noopReasoningCacheService(): ReasoningCacheService {
   return {
-    backfillReasoning: vi.fn(),
+    backfillReasoning: vi.fn(() => ({ backfilledIndices: [] })),
     cacheReasoning: vi.fn(),
   } as unknown as ReasoningCacheService;
 }
@@ -85,7 +85,7 @@ export function spyReasoningCacheService(): {
   backfillMock: ReturnType<typeof vi.fn>;
   cacheMock: ReturnType<typeof vi.fn>;
 } {
-  const backfillMock = vi.fn();
+  const backfillMock = vi.fn(() => ({ backfilledIndices: [] }));
   const cacheMock = vi.fn();
   return {
     svc: {

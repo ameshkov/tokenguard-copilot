@@ -9,6 +9,7 @@ import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
 import {
   extractReasoning,
   extractReasoningFields,
+  type ReasoningDetail,
   reasoningToThinkingPart,
 } from '../../utils/index.js';
 import type { ReasoningCollector, UsageCollector } from './chat-types.js';
@@ -83,10 +84,7 @@ export async function handleNonStreaming(
         content?: string;
         reasoning_content?: string;
         reasoning?: string;
-        reasoning_details?: Array<{
-          type: string;
-          text?: string;
-        }>;
+        reasoning_details?: ReasoningDetail[];
         tool_calls?: Array<{
           id: string;
           type: string;

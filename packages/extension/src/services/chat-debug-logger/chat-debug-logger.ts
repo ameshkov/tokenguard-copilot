@@ -5,7 +5,14 @@ import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
 import type { SessionTracker } from '../session-tracker/index.js';
 import type { OpenAIMessage, OpenAITool, ChatUsage } from '../chat-handler/index.js';
 import type { RuleApplicationResult } from '../content-rules/index.js';
-import { extractTextContent, extractImageParts, extractReasoning } from '../../utils/index.js';
+import {
+  extractTextContent,
+  extractImageParts,
+  extractReasoning,
+  extractReasoningFields,
+  type ReasoningDetail,
+  type ReasoningFields,
+} from '../../utils/index.js';
 import type { Logger } from '../../logger/index.js';
 
 /** Input data for logging a chat request-response pair. */
@@ -24,6 +31,24 @@ export interface LogRequestInput {
   }>;
   /** Reasoning content from the model response (pre-extracted display string). */
   responseReasoning?: string | null;
+  /**
+   * Full reasoning fields from the model response, used to
+   * render the structured field summary (which provider
+   * fields were present, plus each reasoning block's
+   * identity: `type`, `index`, `format`, `signature`, `id`).
+   * When absent, the response reasoning section only renders
+   * {@link responseReasoning}.
+   */
+  responseReasoningFields?: ReasoningFields | null;
+  /**
+   * Indices of assistant messages whose reasoning was
+   * backfilled from the persistent cache. Assistant messages
+   * with reasoning that are *not* in this set received their
+   * reasoning from VS Code thinking parts (the primary
+   * source). Used to annotate each message's reasoning
+   * block with its source.
+   */
+  reasoningSources?: ReadonlySet<number> | null;
   /** Display name of the model (e.g. "provider/model-id"). */
   modelName: string;
   /** Sampling parameters and other model options. */
@@ -88,6 +113,87 @@ function sanitizeOptions(opts: Record<string, unknown>): Record<string, unknown>
 function formatRoleLabel(msg: OpenAIMessage): string {
   if (msg.role === 'tool') return 'Tool Result';
   return msg.role.charAt(0).toUpperCase() + msg.role.slice(1);
+}
+
+/**
+ * Renders a compact summary of the structured reasoning
+ * fields present on a message or response.
+ *
+ * Lists which provider-dependent fields are populated
+ * (`reasoning_content`, `reasoning`, `reasoning_details`)
+ * and, for each reasoning detail block, its identity
+ * fields (`type`, `index`, `format`, `signature`, `id`)
+ * plus the text length. This surfaces the exact fields the
+ * upstream provider needs to verify a signed `thinking`
+ * block, which is essential for debugging
+ * `Invalid signature in thinking block` errors.
+ *
+ * @param fields - The reasoning fields to summarise.
+ * @returns A multi-line summary string, or `''` when no
+ *   reasoning fields are present.
+ */
+function formatReasoningFieldsSummary(fields: ReasoningFields): string {
+  const extracted = extractReasoningFields(fields);
+  if (!extracted) return '';
+
+  const lines: string[] = ['Fields:'];
+
+  if (typeof extracted.reasoning_content === 'string') {
+    lines.push(`  reasoning_content (${extracted.reasoning_content.length} chars)`);
+  }
+  if (typeof extracted.reasoning === 'string') {
+    lines.push(`  reasoning (${extracted.reasoning.length} chars)`);
+  }
+  if (Array.isArray(extracted.reasoning_details)) {
+    lines.push(`  reasoning_details (${extracted.reasoning_details.length} block(s)):`);
+    extracted.reasoning_details.forEach((detail, i) => {
+      lines.push(`    [${i}] ${formatReasoningDetail(detail)}`);
+    });
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Renders a single reasoning detail block's identity fields
+ * as a compact one-line summary.
+ *
+ * @param detail - The reasoning detail entry.
+ * @returns A compact summary like
+ *   `type=reasoning.text index=0 format=anthropic-claude-v1 signature=152c id=blk_01 text=120c`.
+ */
+function formatReasoningDetail(detail: ReasoningDetail): string {
+  const parts: string[] = [`type=${detail.type ?? ''}`];
+  if (detail.index !== undefined) {
+    parts.push(`index=${detail.index}`);
+  }
+  if (detail.format) {
+    parts.push(`format=${detail.format}`);
+  }
+  // The signature is the field most relevant to
+  // "Invalid signature in thinking block" errors; show its
+  // presence and length rather than the (large) value to
+  // keep the debug log readable.
+  if (typeof detail.signature === 'string' && detail.signature) {
+    parts.push(`signature=${detail.signature.length}c`);
+  } else if (detail.signature === null) {
+    parts.push('signature=null');
+  } else {
+    parts.push('signature=—');
+  }
+  if (detail.id) {
+    parts.push(`id=${detail.id}`);
+  }
+  const textLen =
+    typeof detail.text === 'string'
+      ? detail.text.length
+      : typeof detail.summary === 'string'
+        ? (detail.summary as string).length
+        : typeof detail.data === 'string'
+          ? (detail.data as string).length
+          : 0;
+  parts.push(`text=${textLen}c`);
+  return parts.join(' ');
 }
 
 /**
@@ -201,7 +307,7 @@ export class ChatDebugLogger {
     );
 
     // Messages
-    ChatDebugLogger.buildMessagesBlock(input.messages, sections);
+    ChatDebugLogger.buildMessagesBlock(input.messages, input.reasoningSources ?? null, sections);
 
     // Response
     ChatDebugLogger.buildResponseBlock(input, sections);
@@ -372,14 +478,20 @@ export class ChatDebugLogger {
    * Appends the Messages section with each message formatted.
    *
    * @param messages - The chat messages.
+   * @param reasoningSources - Indices of assistant messages
+   *   whose reasoning was backfilled from the cache.
    * @param sections - The output sections array to append to.
    */
-  private static buildMessagesBlock(messages: OpenAIMessage[], sections: string[]): void {
+  private static buildMessagesBlock(
+    messages: OpenAIMessage[],
+    reasoningSources: ReadonlySet<number> | null,
+    sections: string[],
+  ): void {
     sections.push('## Messages');
     sections.push('');
 
     for (let i = 0; i < messages.length; i++) {
-      ChatDebugLogger.buildSingleMessage(messages[i], i, sections);
+      ChatDebugLogger.buildSingleMessage(messages[i], i, reasoningSources, sections);
     }
   }
 
@@ -388,9 +500,16 @@ export class ChatDebugLogger {
    *
    * @param msg - The message to format.
    * @param index - Zero-based message index.
+   * @param reasoningSources - Indices of assistant messages
+   *   whose reasoning was backfilled from the cache.
    * @param sections - The output sections array to append to.
    */
-  private static buildSingleMessage(msg: OpenAIMessage, index: number, sections: string[]): void {
+  private static buildSingleMessage(
+    msg: OpenAIMessage,
+    index: number,
+    reasoningSources: ReadonlySet<number> | null,
+    sections: string[],
+  ): void {
     const label = formatRoleLabel(msg);
     sections.push(`### Message ${index + 1} (${label})`);
     sections.push('');
@@ -398,9 +517,16 @@ export class ChatDebugLogger {
     // Reasoning block (first, if present)
     const msgReasoning = extractReasoning(msg);
     if (msgReasoning) {
+      const source =
+        msg.role === 'assistant' && reasoningSources?.has(index) ? 'cache' : 'thinking-part';
       sections.push('~~~md');
-      sections.push('🧠 Reasoning');
+      sections.push(`🧠 Reasoning · source: ${source}`);
       sections.push(msgReasoning);
+      const fieldsSummary = formatReasoningFieldsSummary(msg);
+      if (fieldsSummary) {
+        sections.push('');
+        sections.push(fieldsSummary);
+      }
       sections.push('~~~');
       sections.push('');
     }
@@ -464,6 +590,11 @@ export class ChatDebugLogger {
         sections.push('');
         sections.push('~~~');
         sections.push(input.responseReasoning);
+        const fieldsSummary = formatReasoningFieldsSummary(input.responseReasoningFields ?? {});
+        if (fieldsSummary) {
+          sections.push('');
+          sections.push(fieldsSummary);
+        }
         sections.push('~~~');
         sections.push('');
       }

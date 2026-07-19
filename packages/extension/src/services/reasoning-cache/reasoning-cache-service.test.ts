@@ -162,6 +162,72 @@ describe('ReasoningCacheService', () => {
     expect(t2[2].reasoning_details).toBeUndefined();
   });
 
+  it('backfillReasoning reports the indices backfilled from cache', () => {
+    // Turn 1 caches reasoning for the first assistant
+    // response.
+    const t1: OpenAIMessage[] = [
+      { role: 'system', content: 'Be helpful.' },
+      { role: 'user', content: 'Hello' },
+    ];
+    step(svc, t1, true, {
+      content: 'Hi there!',
+      fields: { reasoning_content: 'I should greet the user.' },
+    });
+
+    // Turn 2 has two assistant messages: the first carried
+    // in from thinking parts (already has reasoning), the
+    // second empty (to be backfilled from the cache).
+    const t2: OpenAIMessage[] = [
+      { role: 'system', content: 'Be helpful.' },
+      { role: 'user', content: 'Hello' },
+      {
+        role: 'assistant',
+        content: 'Hi there!',
+        reasoning_content: 'I should greet the user.',
+      },
+      { role: 'user', content: 'How are you?' },
+    ];
+
+    const result = svc.backfillReasoning(t2, true);
+
+    // The first assistant (index 2) was skipped — it
+    // already carried reasoning from thinking parts — so
+    // only the messages that were actually backfilled from
+    // the cache appear in the result. Here the cache held an
+    // entry for "Hi there!" which matched the already-populated
+    // message, so nothing new was injected and the list is
+    // empty.
+    expect(result.backfilledIndices).toEqual([]);
+  });
+
+  it('backfillReasoning lists indices of cache-injected messages', () => {
+    // Turn 1 caches reasoning for the first assistant
+    // response.
+    const t1: OpenAIMessage[] = [
+      { role: 'system', content: 'Be helpful.' },
+      { role: 'user', content: 'Hello' },
+    ];
+    step(svc, t1, true, {
+      content: 'Hi there!',
+      fields: { reasoning_content: 'I should greet the user.' },
+    });
+
+    // Turn 2: VS Code did NOT preserve thinking parts, so the
+    // assistant message has no reasoning — the cache must
+    // inject it and report the index.
+    const t2: OpenAIMessage[] = [
+      { role: 'system', content: 'Be helpful.' },
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi there!' },
+      { role: 'user', content: 'How are you?' },
+    ];
+
+    const result = svc.backfillReasoning(t2, true);
+
+    expect(t2[2].reasoning_content).toBe('I should greet the user.');
+    expect(result.backfilledIndices).toEqual([2]);
+  });
+
   it('Turn 2 second assistant -> Turn 3 backfill both', () => {
     const t1: OpenAIMessage[] = [{ role: 'user', content: 'Hi' }];
     step(svc, t1, true, {

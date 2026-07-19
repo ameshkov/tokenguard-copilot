@@ -324,6 +324,135 @@ describe('ChatDebugLogger', () => {
       expect(md).not.toContain('🧠 Reasoning');
     });
 
+    it('attributes message reasoning source to cache via reasoningSources', () => {
+      // The assistant message at index 1 (after the user
+      // message) is flagged as cache-backfilled, so its
+      // reasoning block must read "source: cache".
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Hello' },
+          {
+            role: 'assistant',
+            content: 'Hi',
+            reasoning_content: 'I reasoned about it.',
+          },
+        ],
+        reasoningSources: new Set<number>([1]),
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🧠 Reasoning · source: cache');
+      expect(md).not.toContain('🧠 Reasoning · source: thinking-part');
+    });
+
+    it('attributes message reasoning source to thinking-part by default', () => {
+      // No reasoningSources → the assistant message's
+      // reasoning came from VS Code thinking parts.
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Hello' },
+          {
+            role: 'assistant',
+            content: 'Hi',
+            reasoning_content: 'I reasoned about it.',
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('🧠 Reasoning · source: thinking-part');
+    });
+
+    it('renders reasoning field summary with reasoning_details identity', () => {
+      // The summary must surface the identity fields the
+      // provider needs to verify a signed `thinking` block
+      // (type, index, format, signature length, id) plus the
+      // text length.
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Hello' },
+          {
+            role: 'assistant',
+            content: 'Final answer.',
+            reasoning: 'The kubilot server is down.',
+            reasoning_details: [
+              {
+                type: 'reasoning.text',
+                text: 'The kubilot server is down.',
+                index: 0,
+                format: 'anthropic-claude-v1',
+                signature: 'a'.repeat(152),
+                id: 'blk_01',
+              },
+            ],
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('Fields:');
+      expect(md).toContain('reasoning (27 chars)');
+      expect(md).toContain('reasoning_details (1 block(s)):');
+      expect(md).toContain(
+        'type=reasoning.text index=0 format=anthropic-claude-v1 signature=152c id=blk_01',
+      );
+    });
+
+    it('omits message field summary when only the display string is present', () => {
+      // A message carrying only the legacy `reasoning_content`
+      // string still renders the summary header and the field
+      // it has.
+      const input: LogRequestInput = {
+        ...baseInput,
+        messages: [
+          { role: 'user', content: 'Hello' },
+          {
+            role: 'assistant',
+            content: 'Hi',
+            reasoning_content: 'thinking',
+          },
+        ],
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('Fields:');
+      expect(md).toContain('reasoning_content (8 chars)');
+      expect(md).not.toContain('reasoning_details');
+    });
+
+    it('renders response reasoning field summary from responseReasoningFields', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        responseReasoning: 'The kubilot server is down.',
+        responseReasoningFields: {
+          reasoning: 'The kubilot server is down.',
+          reasoning_details: [
+            {
+              type: 'reasoning.text',
+              text: 'The kubilot server is down.',
+              index: 0,
+              format: 'anthropic-claude-v1',
+              signature: 'sig',
+            },
+          ],
+        },
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('### Reasoning');
+      expect(md).toContain('Fields:');
+      expect(md).toContain('format=anthropic-claude-v1');
+      expect(md).toContain('signature=3c');
+    });
+
+    it('omits response field summary when responseReasoningFields is absent', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        responseReasoning: 'Just reasoning text.',
+      };
+      const md = ChatDebugLogger.formatLogMarkdown(input, 'test-request-id');
+      expect(md).toContain('### Reasoning');
+      expect(md).not.toContain('Fields:');
+    });
+
     it('renders usage details with all fields populated', () => {
       const input: LogRequestInput = {
         ...baseInput,

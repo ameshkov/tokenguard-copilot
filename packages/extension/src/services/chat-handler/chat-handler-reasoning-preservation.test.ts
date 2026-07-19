@@ -365,4 +365,250 @@ describe('ChatHandler — reasoning preservation', () => {
       raw.close();
     }
   });
+
+  it('streaming OpenRouter reasoning_details round-trips as one merged signed block via cache', async () => {
+    // Reproduces the reported bug: OpenRouter streams Anthropic
+    // reasoning in chunks, with the `signature` on the final
+    // chunk. Turn 1 caches the accumulated reasoning; turn 2
+    // (no thinking parts) backfills it. The outgoing assistant
+    // message must carry a single merged reasoning_details block
+    // (full text + signature), not a split array.
+    const { db, raw } = createTestDb();
+    try {
+      clearTestDb(raw);
+      const repo = new ReasoningCacheRepository(db);
+      const realSvc = new ReasoningCacheService(repo, createMockLogger());
+
+      const sseData =
+        'data: {"choices":[{"delta":{"reasoning":"The","reasoning_details":[{"type":"reasoning.text","text":"The","index":0,"format":"anthropic-claude-v1"}]}}]}\n\n' +
+        'data: {"choices":[{"delta":{"reasoning":" kubilot server is down.","reasoning_details":[{"type":"reasoning.text","text":" kubilot server is down.","index":0,"format":"anthropic-claude-v1","signature":"sig"}]}}]}\n\n' +
+        'data: {"choices":[{"delta":{"content":"Paris"},"finish_reason":"stop"}]}\n\n' +
+        'data: [DONE]\n\n';
+
+      // --- Turn 1: streaming response with signed reasoning ---
+      fetchMock.mockResolvedValueOnce(new Response(new Blob([sseData]).stream(), { status: 200 }));
+
+      const userMsg1 = mockMessage(1, [{ value: 'Capital of France?' }]);
+      const { progress: turn1Progress } = mockProgress();
+      const handler1 = new ChatHandler(
+        { ...baseContext, model: mockModel({ streaming: 1, preserveReasoning: 1 }) },
+        realSvc,
+      );
+      await handler1.handle([userMsg1], turn1Progress, mockToken());
+
+      // --- Turn 2: VS Code did not preserve thinking parts ---
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Sure, let me elaborate.' } }],
+        }),
+      });
+
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Paris');
+      const assistantMsg = mockMessage(2, [textPart as unknown as Record<string, unknown>]);
+      const userMsg2 = mockMessage(1, [{ value: 'Tell me more.' }]);
+
+      const { progress: turn2Progress } = mockProgress();
+      const handler2 = new ChatHandler(
+        { ...baseContext, model: mockModel({ streaming: 0, preserveReasoning: 1 }) },
+        realSvc,
+      );
+      await handler2.handle([assistantMsg, userMsg2], turn2Progress, mockToken());
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, options] = fetchMock.mock.calls[1];
+      const body = JSON.parse(options.body) as { messages: OpenAIMessage[] };
+      const assistantBody = body.messages[0];
+      expect(assistantBody.role).toBe('assistant');
+      expect(assistantBody.reasoning).toBe('The kubilot server is down.');
+      expect(assistantBody.reasoning_details).toEqual([
+        {
+          type: 'reasoning.text',
+          text: 'The kubilot server is down.',
+          index: 0,
+          format: 'anthropic-claude-v1',
+          signature: 'sig',
+        },
+      ]);
+    } finally {
+      raw.close();
+    }
+  });
+
+  it('streaming reasoning_details round-trips identity through thinking parts on turn 2', async () => {
+    // Reproduces the reported Anthropic-via-OpenRouter bug:
+    // the thinking-part primary path (used when VS Code
+    // re-sends thinking parts within an agentic loop) dropped
+    // the reasoning_detail block's `index` and `format` on
+    // reconstruction. The upstream provider then rejected the
+    // next request with "Invalid `signature` in `thinking`
+    // block" because it could not interpret the `signature`
+    // without the `format` tag.
+    //
+    // Turn 1 streams Anthropic reasoning across SSE chunks;
+    // turn 2 replays the reported thinking parts back as the
+    // assistant message. The outgoing turn-2 request body
+    // must carry the full identity (type, index, format,
+    // signature) so the provider accepts the signature.
+
+    const sseData =
+      'data: {"choices":[{"delta":{"reasoning":"The","reasoning_details":[{"type":"reasoning.text","text":"The","index":0,"format":"anthropic-claude-v1"}]}}]}\n\n' +
+      'data: {"choices":[{"delta":{"reasoning":" kubilot server is down.","reasoning_details":[{"type":"reasoning.text","text":" kubilot server is down.","index":0,"format":"anthropic-claude-v1","signature":"sig"}]}}]}\n\n' +
+      'data: {"choices":[{"delta":{"content":"Paris"},"finish_reason":"stop"}]}\n\n' +
+      'data: [DONE]\n\n';
+
+    // --- Turn 1: streaming response with signed reasoning ---
+    fetchMock.mockResolvedValueOnce(new Response(new Blob([sseData]).stream(), { status: 200 }));
+
+    const userMsg1 = mockMessage(1, [{ value: 'Capital of France?' }]);
+    const { parts: turn1Parts, progress: turn1Progress } = mockProgress();
+    const handler1 = new ChatHandler(
+      { ...baseContext, model: mockModel({ streaming: 1, preserveReasoning: 1 }) },
+      noopReasoningCacheService(),
+    );
+    await handler1.handle([userMsg1], turn1Progress, mockToken());
+
+    // Sanity check: turn 1 reported reasoning thinking parts
+    // (carrying the identity metadata) ahead of the text part.
+    const vscodeModule = await import('vscode');
+    const thinkingParts = turn1Parts.filter(
+      (p) => p instanceof vscodeModule.LanguageModelThinkingPart,
+    );
+    expect(thinkingParts.length).toBeGreaterThan(0);
+
+    // --- Turn 2: VS Code re-sends thinking parts in history ---
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        choices: [{ message: { content: 'Sure, let me elaborate.' } }],
+      }),
+    });
+
+    const assistantParts = turn1Parts.filter(
+      (p) =>
+        p instanceof vscodeModule.LanguageModelThinkingPart ||
+        p instanceof vscodeModule.LanguageModelTextPart,
+    );
+    const assistantMsg = mockMessage(2, assistantParts as unknown as Record<string, unknown>[]);
+    const userMsg2 = mockMessage(1, [{ value: 'Tell me more.' }]);
+
+    const { progress: turn2Progress } = mockProgress();
+    const handler2 = new ChatHandler(
+      { ...baseContext, model: mockModel({ streaming: 0, preserveReasoning: 1 }) },
+      noopReasoningCacheService(),
+    );
+    await handler2.handle([assistantMsg, userMsg2], turn2Progress, mockToken());
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [, options] = fetchMock.mock.calls[1];
+    const body = JSON.parse(options.body) as { messages: OpenAIMessage[] };
+    const assistantBody = body.messages[0];
+    expect(assistantBody.role).toBe('assistant');
+    expect(assistantBody.reasoning).toBe('The kubilot server is down.');
+    // The signed `thinking` block must carry every identity
+    // field the upstream provider needs to verify the
+    // signature: `type`, `index`, `format`, and `signature`.
+    expect(assistantBody.reasoning_details).toEqual([
+      {
+        type: 'reasoning.text',
+        text: 'The kubilot server is down.',
+        index: 0,
+        format: 'anthropic-claude-v1',
+        signature: 'sig',
+      },
+    ]);
+  });
+
+  it('streaming reasoning_details with wildcard identity backfills as one signed block via cache', async () => {
+    // Reproduces the second reported bug: when OpenRouter
+    // streams reasoning_details where only some deltas carry
+    // `index`/`format` (and the `signature` lands on a delta
+    // that omits them), the streaming accumulator used to
+    // split the block into two entries — one without a
+    // signature. The cache stored that split array, and on
+    // the next turn (no thinking parts, e.g. after a VS Code
+    // restart) the backfilled assistant message carried an
+    // unsigned `thinking` block, which the upstream provider
+    // rejected with "Invalid signature in thinking block".
+    //
+    // Turn 1 streams fragments with inconsistent identity
+    // fields; turn 2 backfills from the cache. The outgoing
+    // turn-2 body must carry a single merged block with the
+    // full text, `index`, `format`, and `signature`.
+
+    const { db, raw } = createTestDb();
+    try {
+      clearTestDb(raw);
+      const repo = new ReasoningCacheRepository(db);
+      const realSvc = new ReasoningCacheService(repo, createMockLogger());
+
+      // First delta carries index/format but no signature;
+      // later deltas carry the signature but omit
+      // index/format — the shape that previously split.
+      const sseData =
+        'data: {"choices":[{"delta":{"reasoning":"The","reasoning_details":[{"type":"reasoning.text","text":"The","index":0,"format":"anthropic-claude-v1"}]}}]}\n\n' +
+        'data: {"choices":[{"delta":{"reasoning":" kubilot","reasoning_details":[{"type":"reasoning.text","text":" kubilot","signature":"sig"}]}}]}\n\n' +
+        'data: {"choices":[{"delta":{"reasoning":" server.","reasoning_details":[{"type":"reasoning.text","text":" server.","signature":"sig"}]}}]}\n\n' +
+        'data: {"choices":[{"delta":{"content":"Paris"},"finish_reason":"stop"}]}\n\n' +
+        'data: [DONE]\n\n';
+
+      // --- Turn 1: streaming response with split-prone deltas ---
+      fetchMock.mockResolvedValueOnce(new Response(new Blob([sseData]).stream(), { status: 200 }));
+
+      const userMsg1 = mockMessage(1, [{ value: 'Capital of France?' }]);
+      const { progress: turn1Progress } = mockProgress();
+      const handler1 = new ChatHandler(
+        { ...baseContext, model: mockModel({ streaming: 1, preserveReasoning: 1 }) },
+        realSvc,
+      );
+      await handler1.handle([userMsg1], turn1Progress, mockToken());
+
+      // --- Turn 2: VS Code did not preserve thinking parts ---
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Sure, let me elaborate.' } }],
+        }),
+      });
+
+      const vscodeModule = await import('vscode');
+      const textPart = new vscodeModule.LanguageModelTextPart('Paris');
+      const assistantMsg = mockMessage(2, [textPart as unknown as Record<string, unknown>]);
+      const userMsg2 = mockMessage(1, [{ value: 'Tell me more.' }]);
+
+      const { progress: turn2Progress } = mockProgress();
+      const handler2 = new ChatHandler(
+        { ...baseContext, model: mockModel({ streaming: 0, preserveReasoning: 1 }) },
+        realSvc,
+      );
+      await handler2.handle([assistantMsg, userMsg2], turn2Progress, mockToken());
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const [, options] = fetchMock.mock.calls[1];
+      const body = JSON.parse(options.body) as { messages: OpenAIMessage[] };
+      const assistantBody = body.messages[0];
+      expect(assistantBody.role).toBe('assistant');
+      expect(assistantBody.reasoning).toBe('The kubilot server.');
+      // A single merged block carrying the full identity —
+      // not a split array with an unsigned first entry.
+      expect(assistantBody.reasoning_details).toEqual([
+        {
+          type: 'reasoning.text',
+          text: 'The kubilot server.',
+          index: 0,
+          format: 'anthropic-claude-v1',
+          signature: 'sig',
+        },
+      ]);
+    } finally {
+      raw.close();
+    }
+  });
 });

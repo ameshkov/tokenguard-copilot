@@ -1,5 +1,5 @@
 import { LanguageModelThinkingPart } from 'vscode';
-import type { ReasoningFields } from './reasoning.js';
+import type { ReasoningDetail, ReasoningFields } from './reasoning.js';
 import { extractReasoning, extractReasoningFields } from './reasoning.js';
 
 /**
@@ -11,6 +11,13 @@ import { extractReasoning, extractReasoningFields } from './reasoning.js';
  * `metadata.presentFields` array lists every field that
  * was present, allowing faithful reconstruction by
  * {@link thinkingPartsToReasoning}.
+ *
+ * When the reasoning carries a cryptographic `signature`
+ * (e.g. Anthropic `thinking` blocks routed through
+ * OpenRouter), the signed detail's `signature`, `type`,
+ * `index`, `format`, and `id` are stored on the
+ * thinking-part `metadata` so they can be restored
+ * verbatim on the next turn.
  *
  * @param fields - The reasoning fields from an LLM
  *   response.
@@ -33,15 +40,80 @@ export function reasoningToThinkingPart(fields: ReasoningFields): LanguageModelT
     presentFields.push('reasoning');
   }
   if (Array.isArray(extracted.reasoning_details)) {
-    const hasText = extracted.reasoning_details.some(
-      (d) => (d.type === 'text' || d.type === 'summary') && d.text,
-    );
-    if (hasText) {
+    if (extracted.reasoning_details.some(hasDisplayableText)) {
       presentFields.push('reasoning_details');
     }
   }
 
-  return new LanguageModelThinkingPart(value, undefined, { presentFields });
+  const metadata: {
+    presentFields: string[];
+    signature?: string;
+    detailType?: string;
+    detailIndex?: number;
+    detailFormat?: string;
+    detailId?: string;
+  } = { presentFields };
+
+  // Carry the reasoning block's identity fields through the
+  // thinking part metadata so they can be reconstructed
+  // faithfully on the next turn. The `signature`, `type`,
+  // `index`, `format`, and `id` of a signed reasoning detail
+  // are all required by some providers (notably OpenRouter
+  // when forwarding signed Anthropic `thinking` blocks): if
+  // any field is dropped the upstream provider rejects the
+  // request with "Invalid `signature` in `thinking` block".
+  // Attached only when a signature is present, keeping
+  // metadata minimal for providers that do not sign their
+  // reasoning.
+  const signedDetail = Array.isArray(extracted.reasoning_details)
+    ? extracted.reasoning_details.find(
+        (d) => typeof d.signature === 'string' && d.signature.length > 0,
+      )
+    : undefined;
+  if (signedDetail) {
+    metadata.detailType = signedDetail.type;
+    if (typeof signedDetail.index === 'number') {
+      metadata.detailIndex = signedDetail.index;
+    }
+    if (typeof signedDetail.format === 'string' && signedDetail.format) {
+      metadata.detailFormat = signedDetail.format;
+    }
+    if (typeof signedDetail.id === 'string' && signedDetail.id) {
+      metadata.detailId = signedDetail.id;
+    }
+    // The `.find()` predicate above guarantees a non-empty
+    // string signature, but TS cannot narrow through `.find()`
+    // callbacks — narrow explicitly so the metadata signature
+    // stays strictly `string | undefined` (some providers emit
+    // `signature: null` on later deltas, which we drop here).
+    const signature = signedDetail.signature;
+    if (typeof signature === 'string' && signature) {
+      metadata.signature = signature;
+    }
+  }
+
+  return new LanguageModelThinkingPart(value, undefined, metadata);
+}
+
+/**
+ * Returns whether a reasoning detail entry carries
+ * displayable text.
+ *
+ * Mirrors the type recognition in {@link extractReasoning}
+ * (kept local to this module to avoid widening the utils
+ * public API).
+ *
+ * @param detail - A single reasoning detail entry.
+ * @returns `true` when the entry has visible reasoning text.
+ */
+function hasDisplayableText(detail: ReasoningDetail): boolean {
+  if (detail.type === 'text' || detail.type === 'reasoning.text') {
+    return Boolean(detail.text);
+  }
+  if (detail.type === 'summary' || detail.type === 'reasoning.summary') {
+    return Boolean(detail.summary ?? detail.text);
+  }
+  return false;
 }
 
 /**
@@ -52,6 +124,19 @@ export function reasoningToThinkingPart(fields: ReasoningFields): LanguageModelT
  * LLM response field each part belongs to. When
  * metadata is absent (backward compat), all three
  * fields are populated from the part's value.
+ *
+ * Consecutive `reasoning_details` deltas are merged into a
+ * single reasoning block: their text is concatenated in
+ * arrival order, and the `signature`, detail `type`,
+ * `index`, `format`, and `id` carried in the thinking-part
+ * metadata (when present) are restored so the
+ * reconstructed block matches the original server output.
+ * Some providers (notably OpenRouter when forwarding
+ * signed Anthropic `thinking` blocks) require the
+ * `format` and `index` fields to interpret the
+ * `signature`; dropping them causes the upstream provider
+ * to reject the backfilled message with an
+ * "Invalid `signature` in `thinking` block" error.
  *
  * @param parts - Array of `LanguageModelThinkingPart`
  *   instances (typically from VS Code message history).
@@ -66,34 +151,67 @@ export function thinkingPartsToReasoning(
 
   const reasoning_content: string[] = [];
   const reasoning: string[] = [];
-  const reasoning_details: Array<{ type: string; text?: string }> = [];
+  const reasoningDetailText: string[] = [];
+  let reasoningDetailSignature: string | undefined;
+  let reasoningDetailType: string | undefined;
+  let reasoningDetailIndex: number | undefined;
+  let reasoningDetailFormat: string | undefined;
+  let reasoningDetailId: string | undefined;
 
   for (const part of parts) {
     const value = Array.isArray(part.value) ? part.value.join('') : part.value;
     if (!value || !value.trim()) continue;
 
-    const presentFields =
-      part.metadata && 'presentFields' in part.metadata
-        ? (part.metadata as Record<string, unknown>).presentFields
-        : undefined;
-    if (Array.isArray(presentFields) && presentFields.length > 0) {
+    const metadata = part.metadata as Record<string, unknown> | undefined;
+    const presentFields = metadata?.presentFields;
+    if (metadata && Array.isArray(presentFields) && presentFields.length > 0) {
       for (const field of presentFields) {
         if (field === 'reasoning_content') {
           reasoning_content.push(value);
         } else if (field === 'reasoning') {
           reasoning.push(value);
         } else if (field === 'reasoning_details') {
-          reasoning_details.push({ type: 'text', text: value });
+          // Accumulate streaming deltas for the same
+          // reasoning block into one entry rather than
+          // emitting one split entry per delta.
+          reasoningDetailText.push(value);
+          if (typeof metadata.signature === 'string' && metadata.signature) {
+            reasoningDetailSignature = metadata.signature;
+          }
+          if (
+            !reasoningDetailType &&
+            typeof metadata.detailType === 'string' &&
+            metadata.detailType
+          ) {
+            reasoningDetailType = metadata.detailType;
+          }
+          if (reasoningDetailIndex === undefined && typeof metadata.detailIndex === 'number') {
+            reasoningDetailIndex = metadata.detailIndex;
+          }
+          if (
+            !reasoningDetailFormat &&
+            typeof metadata.detailFormat === 'string' &&
+            metadata.detailFormat
+          ) {
+            reasoningDetailFormat = metadata.detailFormat;
+          }
+          if (!reasoningDetailId && typeof metadata.detailId === 'string' && metadata.detailId) {
+            reasoningDetailId = metadata.detailId;
+          }
         }
       }
     } else {
       reasoning_content.push(value);
       reasoning.push(value);
-      reasoning_details.push({ type: 'text', text: value });
+      reasoningDetailText.push(value);
     }
   }
 
-  if (reasoning_content.length === 0 && reasoning.length === 0 && reasoning_details.length === 0) {
+  if (
+    reasoning_content.length === 0 &&
+    reasoning.length === 0 &&
+    reasoningDetailText.length === 0
+  ) {
     return null;
   }
 
@@ -104,8 +222,29 @@ export function thinkingPartsToReasoning(
   if (reasoning.length > 0) {
     result.reasoning = reasoning.join('');
   }
-  if (reasoning_details.length > 0) {
-    result.reasoning_details = reasoning_details;
+  if (reasoningDetailText.length > 0) {
+    const detail: ReasoningDetail = {
+      type: reasoningDetailType ?? 'text',
+      text: reasoningDetailText.join(''),
+    };
+    if (reasoningDetailSignature) {
+      detail.signature = reasoningDetailSignature;
+    }
+    // Round-trip the reasoning block identity fields carried
+    // through the thinking-part metadata. Some providers reject
+    // preserved reasoning blocks when these fields are missing
+    // (e.g. OpenRouter requires `format` to interpret the
+    // `signature` for Anthropic `thinking` blocks).
+    if (reasoningDetailIndex !== undefined) {
+      detail.index = reasoningDetailIndex;
+    }
+    if (reasoningDetailFormat) {
+      detail.format = reasoningDetailFormat;
+    }
+    if (reasoningDetailId) {
+      detail.id = reasoningDetailId;
+    }
+    result.reasoning_details = [detail];
   }
   return result;
 }

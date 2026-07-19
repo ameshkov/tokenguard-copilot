@@ -202,6 +202,14 @@ export function logChatDebugRequest(
     responseContent: string;
     responseToolCalls: Array<{ id: string; name: string; arguments: string }>;
     reasoningCollector: ReasoningCollector;
+    /**
+     * Indices of assistant messages whose reasoning was
+     * backfilled from the persistent cache. Other assistant
+     * messages with reasoning received it from VS Code
+     * thinking parts. Optional in tests that do not
+     * exercise reasoning preservation.
+     */
+    reasoningSources?: ReadonlySet<number>;
     startTime: Date;
     endTime: Date;
     cancelled: boolean;
@@ -219,6 +227,8 @@ export function logChatDebugRequest(
       responseContent: input.responseContent,
       responseToolCalls: input.responseToolCalls,
       responseReasoning: extractReasoning(input.reasoningCollector.fields ?? {}),
+      responseReasoningFields: input.reasoningCollector.fields ?? null,
+      reasoningSources: input.reasoningSources ?? null,
       modelName: `${ctx.provider.name}/${ctx.model.id}`,
       modelOptions: Object.fromEntries(
         Object.entries(input.body).filter(

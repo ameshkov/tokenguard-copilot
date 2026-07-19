@@ -8,6 +8,32 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Chat Debug logs now attribute the source of each assistant message's
+  reasoning — `cache` (injected from the SQLite reasoning cache) vs.
+  `thinking-part` (extracted from VS Code `LanguageModelThinkingPart`
+  metadata) — and render a structured summary of the reasoning fields
+  (`reasoning_content`, `reasoning`, and each `reasoning_details`
+  block's `type`, `index`, `format`, `signature`, and `id`). The same
+  summary is rendered for the response reasoning, making signed
+  `thinking` blocks auditable end to end.
+
+### Fixed
+
+- Fixed model pricing pre-filled from a provider's `/models` endpoint
+  being off by a factor of 1,000,000. Per-token pricing values are now
+  multiplied by 1,000,000 to match the "per 1M Tokens" label.
+- Fixed preserved Anthropic (OpenRouter) `thinking` blocks being
+  rejected with `Invalid signature in thinking block` on the next turn
+  or when backfilled from the SQLite cache. Streamed
+  `reasoning_details` deltas now merge into single signed blocks: the
+  per-block `signature` (on the final chunk) and the detail's `index`,
+  `format`, and `id` are carried through both the SQLite cache fallback
+  and the thinking-part round-trip, and block matching is
+  wildcard-aware (an exact pass runs first) so all fragments merge into
+  one entry.
+
 ## [v1.3.1] - 2026-07-10
 
 ### Added

@@ -255,7 +255,7 @@ describe('ModelRegistry', () => {
       expect(models[0].defaultReasoningEffort).toBe('medium');
     });
 
-    it('parses pricing fields from provider response', async () => {
+    it('parses pricing fields from provider response and converts per-token to per-1M', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
@@ -266,9 +266,9 @@ describe('ModelRegistry', () => {
                 {
                   id: 'priced-model',
                   pricing: {
-                    prompt: 0.15,
-                    completion: 0.3,
-                    input_cache_read: 0.075,
+                    prompt: 0.00000015,
+                    completion: 0.0000003,
+                    input_cache_read: 0.000000075,
                   },
                 },
               ],
@@ -277,12 +277,13 @@ describe('ModelRegistry', () => {
       );
 
       const models = await registry.fetchModels(providerId);
-      expect(models[0].inputCostPer1M).toBe(0.15);
-      expect(models[0].outputCostPer1M).toBe(0.3);
-      expect(models[0].cachedInputCostPer1M).toBe(0.075);
+      // Provider values are per-token; ×1,000,000 → per-1M-tokens.
+      expect(models[0].inputCostPer1M).toBeCloseTo(0.15, 10);
+      expect(models[0].outputCostPer1M).toBeCloseTo(0.3, 10);
+      expect(models[0].cachedInputCostPer1M).toBeCloseTo(0.075, 10);
     });
 
-    it('parses string pricing values from provider response', async () => {
+    it('parses string pricing values and converts per-token to per-1M', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
@@ -293,9 +294,9 @@ describe('ModelRegistry', () => {
                 {
                   id: 'string-priced-model',
                   pricing: {
-                    prompt: '0.3',
-                    completion: '1.2',
-                    input_cache_read: '0.06',
+                    prompt: '0.0000003',
+                    completion: '0.0000012',
+                    input_cache_read: '0.00000006',
                   },
                 },
               ],
@@ -304,9 +305,10 @@ describe('ModelRegistry', () => {
       );
 
       const models = await registry.fetchModels(providerId);
-      expect(models[0].inputCostPer1M).toBe(0.3);
-      expect(models[0].outputCostPer1M).toBe(1.2);
-      expect(models[0].cachedInputCostPer1M).toBe(0.06);
+      // Provider values are per-token; ×1,000,000 → per-1M-tokens.
+      expect(models[0].inputCostPer1M).toBeCloseTo(0.3, 10);
+      expect(models[0].outputCostPer1M).toBeCloseTo(1.2, 10);
+      expect(models[0].cachedInputCostPer1M).toBeCloseTo(0.06, 10);
     });
 
     it('includes input_cache_write in input cost for OpenRouter-style pricing', async () => {
@@ -320,10 +322,10 @@ describe('ModelRegistry', () => {
                 {
                   id: 'openrouter-model',
                   pricing: {
-                    prompt: '1.5',
-                    completion: '7.5',
-                    input_cache_read: '0.15',
-                    input_cache_write: '2.0',
+                    prompt: '0.0000015',
+                    completion: '0.0000075',
+                    input_cache_read: '0.00000015',
+                    input_cache_write: '0.000002',
                   },
                 },
               ],
@@ -332,10 +334,11 @@ describe('ModelRegistry', () => {
       );
 
       const models = await registry.fetchModels(providerId);
+      // Values are per-token; ×1,000,000 → per-1M-tokens.
       // input = prompt + input_cache_write = 1.5 + 2.0 = 3.5
-      expect(models[0].inputCostPer1M).toBe(3.5);
-      expect(models[0].outputCostPer1M).toBe(7.5);
-      expect(models[0].cachedInputCostPer1M).toBe(0.15);
+      expect(models[0].inputCostPer1M).toBeCloseTo(3.5, 10);
+      expect(models[0].outputCostPer1M).toBeCloseTo(7.5, 10);
+      expect(models[0].cachedInputCostPer1M).toBeCloseTo(0.15, 10);
     });
 
     it('returns null for missing fields', async () => {

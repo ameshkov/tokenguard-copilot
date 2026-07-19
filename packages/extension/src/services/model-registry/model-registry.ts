@@ -570,8 +570,10 @@ function toModelInfo(row: Model): ModelInfo {
  *   max_prompt_tokens is the max *input* token limit).
  * - supportedReasoningEfforts is read from the top-level array.
  * - Pricing (inputCostPer1M, outputCostPer1M, cachedInputCostPer1M)
- *   is read from the top-level `pricing` object. Values are treated
- *   as per-1M-tokens.
+ *   is read from the top-level `pricing` object. Provider pricing
+ *   values are expressed per-token (e.g. OpenRouter reports
+ *   `"prompt": "0.0000015"` for $1.50 / 1M tokens), so each value is
+ *   multiplied by 1,000,000 to convert it to a per-1M-tokens rate.
  *
  * @param entry - Raw model object from the API response.
  * @returns Parsed FetchedModel.
@@ -605,18 +607,22 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
     }
   }
 
-  // Pricing: extract from pricing object (values per 1M tokens)
+  // Pricing: extract from pricing object. Provider values are
+  // per-token; convert to per-1M-tokens by multiplying by 1,000,000.
   let inputCostPer1M: number | null = null;
   let outputCostPer1M: number | null = null;
   let cachedInputCostPer1M: number | null = null;
   if (pricing) {
+    const TOKENS_PER_MILLION = 1_000_000;
     const parsePricingValue = (v: unknown): number | null => {
-      if (typeof v === 'number') return v;
-      if (typeof v === 'string') {
+      let perToken: number | null = null;
+      if (typeof v === 'number') {
+        perToken = v;
+      } else if (typeof v === 'string') {
         const n = Number(v);
-        return Number.isFinite(n) ? n : null;
+        perToken = Number.isFinite(n) ? n : null;
       }
-      return null;
+      return perToken !== null ? perToken * TOKENS_PER_MILLION : null;
     };
     const prompt = parsePricingValue(pricing.prompt);
     const inputCacheWrite = parsePricingValue(pricing.input_cache_write);

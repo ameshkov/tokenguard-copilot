@@ -9,7 +9,7 @@ import type { CacheControlConfig } from '@tokenguard/shared';
 import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { ContentRulesService } from '../content-rules/index.js';
-import type { ReasoningFields } from '../../utils/index.js';
+import type { ReasoningDetail, ReasoningFields } from '../../utils/index.js';
 import type { Logger } from '../../logger/index.js';
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ export interface OpenAIMessage {
   /** Reasoning (string) — Anthropic plaintext. */
   reasoning?: string;
   /** Reasoning details (array) — Anthropic structured. */
-  reasoning_details?: Array<{ type: string; text?: string }>;
+  reasoning_details?: ReasoningDetail[];
 }
 
 // ---------------------------------------------------------------------------

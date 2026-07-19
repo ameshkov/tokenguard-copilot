@@ -1,1 +1,1 @@
-export { ReasoningCacheService } from './reasoning-cache-service.js';
+export { ReasoningCacheService, type ReasoningBackfillResult } from './reasoning-cache-service.js';

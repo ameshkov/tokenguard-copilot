@@ -122,6 +122,13 @@ Pass `reasoning_details` back unmodified on assistant messages.
 The entire sequence of consecutive reasoning blocks must match the
 original output exactly — do not reorder or edit them.
 
+OpenRouter streams `reasoning_details` across many SSE chunks: each
+chunk carries a text fragment and only the final chunk of a block
+carries the `signature`. The extension reassembles these deltas into
+a single merged detail entry per block (grouped by `type` + `index` +
+`format`), preserving the `signature` so the backfilled assistant
+message matches the provider's original output.
+
 ## DeepSeek Models
 
 DeepSeek models (V4-Pro, V4-Flash, V3.x series) use a `thinking`
@@ -432,6 +439,15 @@ ensures:
 2. Do **not** reorder, edit, or truncate reasoning blocks.
 3. Reasoning tokens count toward input token consumption and are
     billed accordingly.
+4. Each structured `reasoning_details` block carries identity
+    fields (`type`, `index`, `format`, `signature`, `id`) that the
+    provider uses to validate a signed `thinking` block. Preserve
+    them verbatim — dropping `index` or `format`, or stranding the
+    `signature` on a fragment without its identity, causes the
+    provider to reject the next request with
+    `Invalid signature in thinking block`. For streamed responses,
+    merge all fragments of one block (same `type` + `index` +
+    `format`) into a single entry before re-sending.
 
 ### Preserve Reasoning Summary
 

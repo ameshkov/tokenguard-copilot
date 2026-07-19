@@ -6,7 +6,12 @@
 import { LanguageModelDataPart, LanguageModelTextPart, LanguageModelToolCallPart } from 'vscode';
 import type { LanguageModelResponsePart, Progress } from 'vscode';
 import { USAGE_DATA_PART_MIME } from '@tokenguard/shared';
-import { extractReasoningFields, reasoningToThinkingPart } from '../../utils/index.js';
+import {
+  extractReasoningFields,
+  mergeReasoningDetails,
+  type ReasoningDetail,
+  reasoningToThinkingPart,
+} from '../../utils/index.js';
 import type { ReasoningCollector, UsageCollector, OpenAIToolCall } from './chat-types.js';
 import type { Logger } from '../../logger/index.js';
 import { extractUsageFromResponse } from './extract-usage.js';
@@ -56,7 +61,7 @@ type SseChunk = {
       content?: string;
       reasoning_content?: string;
       reasoning?: string;
-      reasoning_details?: Array<{ type: string; text?: string }>;
+      reasoning_details?: ReasoningDetail[];
       tool_calls?: Array<{
         index: number;
         id?: string;
@@ -129,8 +134,10 @@ function accumulateReasoningFields(
   if (df.reasoning)
     reasoningOut.fields.reasoning = (reasoningOut.fields.reasoning ?? '') + df.reasoning;
   if (df.reasoning_details) {
-    if (!reasoningOut.fields.reasoning_details) reasoningOut.fields.reasoning_details = [];
-    reasoningOut.fields.reasoning_details.push(...df.reasoning_details);
+    reasoningOut.fields.reasoning_details = mergeReasoningDetails(
+      reasoningOut.fields.reasoning_details,
+      df.reasoning_details,
+    );
   }
 }
 
