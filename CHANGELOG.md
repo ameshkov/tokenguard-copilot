@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-07-19
+
 ### Added
 
 - Added Kimi K3 to model defaults.
