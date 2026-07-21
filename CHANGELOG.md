@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Added Thinking Machines Inkling to model defaults (1M context,
+  $1/$4.05 per 1M tokens, vision + reasoning).
+- Added Meituan LongCat 2.0 to model defaults (1M context,
+  $0.75/$3.00 per 1M tokens, reasoning; base non-promotional pricing).
+- Added Meta Muse Spark 1.1 to model defaults (1M context,
+  $1.25/$4.25 per 1M tokens, vision + reasoning).
+- Added Kwaipilot KAT-Coder-Pro V2.5 to model defaults (256K context,
+  $0.74/$2.96 per 1M tokens, non-reasoning coding model).
+- Added Kwaipilot KAT-Coder-Air V2.5 to model defaults (256K context,
+  $0.15/$0.60 per 1M tokens, non-reasoning coding model).
+
 ## [v1.4.0] - 2026-07-19
 
 ### Added

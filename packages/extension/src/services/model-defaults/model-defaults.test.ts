@@ -283,6 +283,71 @@ describe('getDefaults', () => {
     expect(Object.keys(result!.reasoningEffortMap!).length).toBeGreaterThan(0);
   });
 
+  it('should return defaults for Thinking Machines Inkling with vision + reasoning', () => {
+    const result = getDefaults('thinkingmachines/inkling');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(1000000);
+    expect(result!.inputCostPer1M).toBe(1.0);
+    expect(result!.outputCostPer1M).toBe(4.05);
+    expect(result!.cachedInputCostPer1M).toBe(0.17);
+    expect(result!.supportedCapabilities).toContain('vision');
+    expect(result!.supportedCapabilities).toContain('reasoning_effort');
+    expect(result!.defaultReasoningEffort).toBe('high');
+    expect(result!.reasoningEffortMap).toBeDefined();
+    expect(Object.keys(result!.reasoningEffortMap!)).toContain('high');
+  });
+
+  it('should return base (non-promotional) pricing for Meituan LongCat 2.0', () => {
+    const result = getDefaults('meituan/longcat-2.0');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(1000000);
+    // Base pricing — NOT the promotional 60%-off rates.
+    expect(result!.inputCostPer1M).toBe(0.75);
+    expect(result!.outputCostPer1M).toBe(3.0);
+    expect(result!.cachedInputCostPer1M).toBe(0.015);
+    expect(result!.supportedCapabilities).toContain('reasoning_effort');
+    expect(result!.supportedCapabilities).not.toContain('vision');
+    expect(result!.defaultReasoningEffort).toBe('high');
+  });
+
+  it('should return defaults for Meta Muse Spark 1.1 with vision + reasoning', () => {
+    const result = getDefaults('meta/muse-spark-1.1');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(1000000);
+    expect(result!.inputCostPer1M).toBe(1.25);
+    expect(result!.outputCostPer1M).toBe(4.25);
+    expect(result!.cachedInputCostPer1M).toBe(0.15);
+    expect(result!.supportedCapabilities).toContain('vision');
+    expect(result!.supportedCapabilities).toContain('reasoning_effort');
+    expect(result!.defaultReasoningEffort).toBe('high');
+    expect(result!.reasoningEffortMap).toBeDefined();
+  });
+
+  it('should return defaults for Kwaipilot KAT-Coder-Pro V2.5 without reasoning', () => {
+    const result = getDefaults('kwaipilot/kat-coder-pro-v2.5');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(262144);
+    expect(result!.inputCostPer1M).toBe(0.74);
+    expect(result!.outputCostPer1M).toBe(2.96);
+    expect(result!.cachedInputCostPer1M).toBe(0.15);
+    // Non-reasoning coding model — no capabilities, no reasoning map.
+    expect(result!.supportedCapabilities).toEqual([]);
+    expect(result!.reasoningEffortMap).toBeUndefined();
+    expect(result!.defaultReasoningEffort).toBeUndefined();
+  });
+
+  it('should return defaults for Kwaipilot KAT-Coder-Air V2.5 without reasoning', () => {
+    const result = getDefaults('kwaipilot/kat-coder-air-v2.5');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(262144);
+    expect(result!.inputCostPer1M).toBe(0.15);
+    expect(result!.outputCostPer1M).toBe(0.6);
+    expect(result!.cachedInputCostPer1M).toBe(0.03);
+    expect(result!.supportedCapabilities).toEqual([]);
+    expect(result!.reasoningEffortMap).toBeUndefined();
+    expect(result!.defaultReasoningEffort).toBeUndefined();
+  });
+
   it('returns customFields from defaults when present', () => {
     const tmpPath = resolve(__dirname, 'test-custom-fields.json');
     const entries = [

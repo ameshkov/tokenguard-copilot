@@ -1258,5 +1258,119 @@
         "reasoning": { "effort": "xhigh" }
       }
     }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)inkling"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 1.0,
+    "outputCostPer1M": 4.05,
+    "cachedInputCostPer1M": 0.17,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)longcat-2\\.0"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.75,
+    "outputCostPer1M": 3.0,
+    "cachedInputCostPer1M": 0.015,
+    "supportedCapabilities": ["reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)muse-spark-1\\.1"
+    },
+    "contextSize": 1000000,
+    "maxTokens": 65500,
+    "inputCostPer1M": 1.25,
+    "outputCostPer1M": 4.25,
+    "cachedInputCostPer1M": 0.15,
+    "supportedCapabilities": ["vision", "reasoning_effort"],
+    "defaultReasoningEffort": "high",
+    "reasoningEffortMap": {
+      "none": {
+        "reasoning_effort": null
+      },
+      "low": {
+        "reasoning_effort": "low",
+        "reasoning": { "effort": "low" }
+      },
+      "medium": {
+        "reasoning_effort": "medium",
+        "reasoning": { "effort": "medium" }
+      },
+      "high": {
+        "reasoning_effort": "high",
+        "reasoning": { "effort": "high" }
+      }
+    }
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)kat-coder-pro-v2\\.5"
+    },
+    "contextSize": 262144,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.74,
+    "outputCostPer1M": 2.96,
+    "cachedInputCostPer1M": 0.15,
+    "supportedCapabilities": []
+  },
+  {
+    "match": {
+      "type": "regex",
+      "value": "(^|/)kat-coder-air-v2\\.5"
+    },
+    "contextSize": 262144,
+    "maxTokens": 65500,
+    "inputCostPer1M": 0.15,
+    "outputCostPer1M": 0.6,
+    "cachedInputCostPer1M": 0.03,
+    "supportedCapabilities": []
   }
 ]
