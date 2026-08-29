@@ -86,8 +86,10 @@ tokenguard-copilot/
 ├── eslint.config.mjs            # ESLint flat config
 ├── knip.config.ts               # Knip unused-export config
 ├── .vscode-test.mjs             # E2E test runner config
+├── scripts/                      # Data fetch scripts (manual sync)
+│   └── fetch-models-dev.mjs      # Downloads the models.dev snapshot
 ├── assets/                      # Static assets shipped with extension
-│   ├── model-defaults.json      # Bundled model defaults database
+│   ├── models.dev.json          # Bundled models.dev snapshot
 │   └── webview/
 │       └── settings.html        # Webview HTML shell template
 ├── test-e2e/                    # E2E tests (separate from packages)
@@ -107,6 +109,7 @@ tokenguard-copilot/
 │   │   ├── tsconfig.json
 │   │   └── src/
 │   │       ├── index.ts         # Barrel exports
+│   │       ├── qwen-model.ts    # Qwen family/version detection for model defaults
 │   │       └── messages.ts      # Host ↔ webview message protocol
 │   ├── extension/               # Extension host (VS Code extension)
 │   │   ├── package.json         # @tokenguard/extension
@@ -144,7 +147,7 @@ tokenguard-copilot/
 │   │       │   │   ├── index.ts                 # Barrel exports
 │   │       │   │   ├── content-rules-service.ts # Rule application + CRUD
 │   │       │   │   └── content-rules-service.test.ts # Unit tests
-│   │       │   ├── model-defaults/ # Model defaults lookup
+│   │       │   ├── model-defaults/ # models.dev defaults lookup
 │   │       │   │   └── index.ts # Module barrel
 │   │       │   └── provider-manager/ # Provider CRUD
 │   │       │       ├── index.ts # Module barrel
@@ -435,6 +438,9 @@ Configuration and documentation MUST stay synchronized with code:
   MUST update `DEVELOPMENT.md`.
 - **Structure tracking**: Changes to project structure MUST update the Project
   Structure section in `AGENTS.md`.
+- **Version bumps**: When bumping the extension version, refresh the bundled
+  models.dev snapshot (`assets/models.dev.json`) with `pnpm run fetch:models-dev`
+  as part of the release process.
 
 ### Webview Theming
 

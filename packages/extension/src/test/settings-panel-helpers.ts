@@ -65,6 +65,9 @@ export function createMockAppCtx(): AppContext {
       updateModel: vi.fn(),
       removeModel: vi.fn(),
     },
+    modelDefaults: {
+      getDefaults: vi.fn().mockReturnValue(null),
+    },
     chatDebugSettings: {
       getSettings: vi.fn().mockReturnValue({
         enabled: false,

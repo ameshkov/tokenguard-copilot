@@ -3,29 +3,32 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { Extension } from 'vscode';
 import { getExtension } from './helpers.js';
 
 /** The database file name created by the extension. */
 const DB_FILENAME = 'tokenguard-copilot.db';
 
 /**
- * Derives the global storage path for the extension in
- * the VS Code test environment.
+ * Resolves the extension's global storage directory from the
+ * activated extension's exports.
  *
- * The test runner stores user data under
- * `{project}/.vscode-test/user-data/`. Global storage
- * lives at `User/globalStorage/{extensionId}` within
- * that directory.
+ * The extension derives its database path from `globalStorageUri`,
+ * which follows the `--user-data-dir` VS Code runs with (the test
+ * runner may move it, e.g. under the OS temp directory when the
+ * workspace path exceeds macOS' limit for IPC socket paths).
+ * Reading the path from the exports keeps this test independent of
+ * the runner's user-data layout.
  *
- * @param extensionId - The extension identifier.
- * @returns Absolute path to the extension's global
- *   storage directory.
+ * @param extension - The activated extension instance.
+ * @returns Absolute path to the extension's global storage
+ *   directory.
  */
-function getGlobalStoragePath(extensionId: string): string {
-  // At runtime __dirname is out/test-e2e. Go up two levels
-  // to reach the project root where .vscode-test lives.
-  const projectRoot = path.resolve(__dirname, '..', '..');
-  return path.join(projectRoot, '.vscode-test', 'user-data', 'User', 'globalStorage', extensionId);
+function getGlobalStoragePath(extension: Extension<unknown>): string {
+  const storagePath = (extension.exports as { globalStoragePath?: string } | undefined)
+    ?.globalStoragePath;
+  assert.ok(storagePath, 'Extension should export globalStoragePath');
+  return storagePath;
 }
 
 suite('Database Lifecycle', () => {
@@ -35,8 +38,7 @@ suite('Database Lifecycle', () => {
 
   test('database file exists after activation', async () => {
     const extension = await getExtension();
-    const storagePath = getGlobalStoragePath(extension.id);
-    const dbPath = path.join(storagePath, DB_FILENAME);
+    const dbPath = path.join(getGlobalStoragePath(extension), DB_FILENAME);
 
     assert.ok(fs.existsSync(dbPath), `Database file should exist at ${dbPath}`);
 
@@ -46,8 +48,7 @@ suite('Database Lifecycle', () => {
 
   test('database has expected tables after migration', async () => {
     const extension = await getExtension();
-    const storagePath = getGlobalStoragePath(extension.id);
-    const dbPath = path.join(storagePath, DB_FILENAME);
+    const dbPath = path.join(getGlobalStoragePath(extension), DB_FILENAME);
 
     // Use Node.js built-in SQLite to inspect the schema.
     const { DatabaseSync } = await import('node:sqlite');

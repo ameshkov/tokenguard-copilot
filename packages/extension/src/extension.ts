@@ -27,6 +27,8 @@ export interface ExtensionApi {
   readonly providerManager: ExtensionContext['providerManager'];
   /** Model lifecycle and registration. */
   readonly modelRegistry: ExtensionContext['modelRegistry'];
+  /** Absolute path to the extension's global storage directory. */
+  readonly globalStoragePath: string;
 }
 
 let rawDb: DatabaseSync | null = null;
@@ -137,6 +139,7 @@ export async function activate(context: VSCodeExtensionContext): Promise<Extensi
   return {
     providerManager: localCtx.providerManager,
     modelRegistry: localCtx.modelRegistry,
+    globalStoragePath: context.globalStorageUri.fsPath,
   } satisfies ExtensionApi;
 }
 

@@ -50,6 +50,16 @@ This runs several sub-commands in sequence:
 5. **`compile:e2e`** — compiles E2E test files with `tsc` into
    `out/test-e2e/`.
 
+The bundled models.dev snapshot
+(`assets/models.dev.json`) is refreshed manually when needed:
+
+```bash
+pnpm run fetch:models-dev
+```
+
+The download is atomic; if it fails, the existing snapshot is
+kept, and the command only fails when no snapshot exists yet.
+
 ## Type checking
 
 ```bash
@@ -286,7 +296,7 @@ file, and a `.test.ts` file.
 | **ReasoningCacheService** | `reasoning-cache/` | Caches reasoning/chain-of-thought content across multi-turn conversations |
 | **ReasoningCacheCleanup** | `reasoning-cache-cleanup/` | Periodic cleanup of expired reasoning cache entries |
 | **CacheControlService** | `cache-control/` | Manages `cache_control` configuration for provider models |
-| **ModelDefaults** | `model-defaults/` | Looks up default model configurations from bundled `assets/model-defaults.json` |
+| **ModelDefaults** | `model-defaults/` | Looks up model defaults from the bundled `assets/models.dev.json` snapshot (context, output, costs, capabilities); merges defaults into fetched models |
 
 ### Utility Modules
 

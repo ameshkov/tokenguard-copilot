@@ -8,6 +8,7 @@ import type { TokenCounter } from '../token-counter/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import type { UsageTracker } from '../usage-tracker/index.js';
 import type { ContentRulesService } from '../content-rules/index.js';
+import type { ModelDefaultsService } from '../model-defaults/index.js';
 import { ChatModelProvider } from '../../providers/index.js';
 import type { Logger } from '../../logger/index.js';
 import { buildUserAgent } from '../../utils/index.js';
@@ -46,6 +47,9 @@ export class ModelRegistry {
    *   provideTokenCount.
    * @param reasoningCacheService - Service for caching reasoning.
    * @param usageTracker - Service for tracking usage metrics.
+   * @param contentRulesService - Service for content rules.
+   * @param modelDefaults - Service for bundled models.dev
+   *   defaults lookup and fetch merging.
    * @param logger - Logger for runtime diagnostics.
    * @param version - Extension version for User-Agent header.
    */
@@ -58,6 +62,7 @@ export class ModelRegistry {
     private readonly reasoningCacheService: ReasoningCacheService,
     private readonly usageTracker: UsageTracker,
     private readonly contentRulesService: ContentRulesService,
+    private readonly modelDefaults: ModelDefaultsService,
     private readonly logger: Logger,
     private readonly version: string,
   ) {}
@@ -111,7 +116,9 @@ export class ModelRegistry {
 
     const fetched = data
       .filter((entry) => typeof entry.id === 'string' && !existing.has(entry.id))
-      .map((entry) => parseFetchedModel(entry));
+      .map((entry) =>
+        this.modelDefaults.applyToFetched(parseFetchedModel(entry), provider.baseUrl),
+      );
 
     this.logger.debug(
       'Models fetched',
@@ -560,52 +567,33 @@ function toModelInfo(row: Model): ModelInfo {
 }
 
 /**
- * Parses a raw model object from a provider's `/models` endpoint into
- * a FetchedModel.
+ * Parses a raw model object from a provider's `/models` endpoint
+ * (OpenRouter `/api/v1/models` shape) into a FetchedModel.
  *
  * Extraction rules:
- * - vision is read from `capabilities.supports.vision` (nested path only).
- * - maxOutputTokens tries `limits.max_output_tokens` first, then falls
- *   back to `max_context_window_tokens - max_prompt_tokens` (assuming
- *   max_prompt_tokens is the max *input* token limit).
- * - supportedReasoningEfforts is read from the top-level array.
+ * - maxContextWindowTokens reads `top_provider.context_length`,
+ *   falling back to the top-level `context_length`.
+ * - maxOutputTokens reads `top_provider.max_completion_tokens`.
+ * - vision is read from `architecture.input_modalities` containing
+ *   `image`.
+ * - supportedReasoningEfforts and defaultReasoningEffort are read
+ *   from `reasoning.supported_efforts` / `reasoning.default_effort`.
  * - Pricing (inputCostPer1M, outputCostPer1M, cachedInputCostPer1M)
- *   is read from the top-level `pricing` object. Provider pricing
- *   values are expressed per-token (e.g. OpenRouter reports
- *   `"prompt": "0.0000015"` for $1.50 / 1M tokens), so each value is
- *   multiplied by 1,000,000 to convert it to a per-1M-tokens rate.
+ *   is read from the top-level `pricing` object. OpenRouter reports
+ *   prices per token (e.g. `"prompt": "0.0000015"` for
+ *   $1.50 / 1M tokens), so each value is multiplied by 1,000,000 to
+ *   convert it to a per-1M-tokens rate. Input cost is the sum of
+ *   `prompt` and `input_cache_write` (cache writes are billed as
+ *   input).
  *
  * @param entry - Raw model object from the API response.
  * @returns Parsed FetchedModel.
  */
 function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
-  const capabilities = entry.capabilities as Record<string, unknown> | undefined;
-  const limits = capabilities?.limits as Record<string, unknown> | undefined;
-  const supports = capabilities?.supports as Record<string, unknown> | undefined;
+  const topProvider = entry.top_provider as Record<string, unknown> | undefined;
+  const architecture = entry.architecture as Record<string, unknown> | undefined;
+  const reasoning = entry.reasoning as Record<string, unknown> | undefined;
   const pricing = entry.pricing as Record<string, unknown> | undefined;
-
-  const defaultEffort = entry.defaultReasoningEffort;
-
-  // maxOutputTokens: try max_output_tokens first, then calculate
-  let maxOutputTokens: number | null = null;
-  if (typeof limits?.max_output_tokens === 'number') {
-    maxOutputTokens = limits.max_output_tokens;
-  } else if (
-    typeof limits?.max_context_window_tokens === 'number' &&
-    typeof limits?.max_prompt_tokens === 'number'
-  ) {
-    maxOutputTokens = limits.max_context_window_tokens - limits.max_prompt_tokens;
-  }
-
-  // supportedReasoningEfforts: validate as array of strings
-  let supportedReasoningEfforts: string[] | null = null;
-  const rawEfforts = entry.supportedReasoningEfforts;
-  if (Array.isArray(rawEfforts)) {
-    const strings = rawEfforts.filter((e): e is string => typeof e === 'string');
-    if (strings.length > 0) {
-      supportedReasoningEfforts = strings;
-    }
-  }
 
   // Pricing: extract from pricing object. Provider values are
   // per-token; convert to per-1M-tokens by multiplying by 1,000,000.
@@ -633,16 +621,51 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
     cachedInputCostPer1M = parsePricingValue(pricing.input_cache_read);
   }
 
+  // Vision: read from architecture.input_modalities.
+  let vision: boolean | null = null;
+  const rawModalities = architecture?.input_modalities;
+  if (Array.isArray(rawModalities)) {
+    vision = rawModalities.includes('image');
+  }
+
+  // supportedReasoningEfforts: validate as array of strings.
+  let supportedReasoningEfforts: string[] | null = null;
+  const rawEfforts = reasoning?.supported_efforts;
+  if (Array.isArray(rawEfforts)) {
+    const strings = rawEfforts.filter((e): e is string => typeof e === 'string');
+    if (strings.length > 0) {
+      supportedReasoningEfforts = strings;
+    }
+  }
+
+  // defaultReasoningEffort from reasoning.default_effort.
+  let defaultReasoningEffort: string | null = null;
+  const rawDefaultEffort = reasoning?.default_effort;
+  if (typeof rawDefaultEffort === 'string') {
+    defaultReasoningEffort = rawDefaultEffort;
+  }
+
+  // Context window: top_provider.context_length, then the
+  // top-level context_length.
+  let maxContextWindowTokens: number | null = null;
+  if (typeof topProvider?.context_length === 'number') {
+    maxContextWindowTokens = topProvider.context_length;
+  } else if (typeof entry.context_length === 'number') {
+    maxContextWindowTokens = entry.context_length;
+  }
+
+  let maxOutputTokens: number | null = null;
+  if (typeof topProvider?.max_completion_tokens === 'number') {
+    maxOutputTokens = topProvider.max_completion_tokens;
+  }
+
   return {
     id: entry.id as string,
     name: typeof entry.name === 'string' ? entry.name : null,
-    maxContextWindowTokens:
-      typeof limits?.max_context_window_tokens === 'number'
-        ? limits.max_context_window_tokens
-        : null,
+    maxContextWindowTokens,
     maxOutputTokens,
-    defaultReasoningEffort: typeof defaultEffort === 'string' ? defaultEffort : null,
-    vision: typeof supports?.vision === 'boolean' ? supports.vision : null,
+    defaultReasoningEffort,
+    vision,
     supportedReasoningEfforts,
     inputCostPer1M,
     outputCostPer1M,

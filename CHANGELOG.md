@@ -10,16 +10,75 @@ and this project adheres to
 
 ### Added
 
-- Added Thinking Machines Inkling to model defaults (1M context,
-  $1/$4.05 per 1M tokens, vision + reasoning).
-- Added Meituan LongCat 2.0 to model defaults (1M context,
-  $0.75/$3.00 per 1M tokens, reasoning; base non-promotional pricing).
-- Added Meta Muse Spark 1.1 to model defaults (1M context,
-  $1.25/$4.25 per 1M tokens, vision + reasoning).
-- Added Kwaipilot KAT-Coder-Pro V2.5 to model defaults (256K context,
-  $0.74/$2.96 per 1M tokens, non-reasoning coding model).
-- Added Kwaipilot KAT-Coder-Air V2.5 to model defaults (256K context,
-  $0.15/$0.60 per 1M tokens, non-reasoning coding model).
+- Model defaults now ship two universal "crutch" presets:
+  `preserveReasoning` is enabled for every model (so reasoning tokens
+  are kept across turns whenever a provider returns them), and prompt
+  caching (`cacheControl`) is enabled by default for Qwen models of
+  version 3.7 or older. The Qwen version check lives in the shared
+  `qwen-model` helper and also applies to models fetched from custom
+  gateways that are absent from the models.dev snapshot.
+
+### Changed
+
+- Extracted the models.dev defaults derivation into its own
+  `derive-defaults` module and added coverage for OpenRouter's
+  `~`-prefixed "latest" aliases, which are keyed verbatim in the
+  snapshot and the `/models` response.
+- Replaced the bundled custom model defaults
+  (`assets/model-defaults.json`, per-entry `match` + flat fields) with
+  a snapshot of the [models.dev](https://models.dev) database
+  (`assets/models.dev.json`), refreshed manually via the new
+  `fetch:models-dev` script. Defaults are now looked up by provider
+  base URL host (with a hardcoded host table for SDK-only providers
+  and a model-ID-prefix fallback) and derived from `limit`, `cost`,
+  `modalities.input`, and `reasoning_options`; context, output limits,
+  costs, and capabilities merged into fetched models only fill null
+  fields.
+- `parseFetchedModel` now parses the real OpenRouter `/api/v1/models`
+  shape (`top_provider.context_length` /
+  `top_provider.max_completion_tokens`, `architecture.input_modalities`,
+  `reasoning.supported_efforts` / `reasoning.default_effort`, string
+  per-token `pricing` converted to per-1M rates).
+- The `getModelDefaults` webview request now carries `providerId` so
+  the host resolves the provider base URL;
+  `ModelDefaultsResult` fields are all optional because models.dev
+  entries do not guarantee every field.
+- Dropped bundled per-model presets that no longer have a source:
+  injected `parallel_tool_calls: true`, `cacheControl`, and
+  provider-specific reasoning effort bodies (e.g. `enable_thinking`).
+  Reasoning effort maps now come from the provider `/models`
+  response and the per-model database row.
+
+### Fixed
+
+- Restored toggle-only Qwen reasoning defaults when deriving from the
+  bundled models.dev snapshot, so Alibaba-style models still prefill
+  `enable_thinking` / `preserve_thinking` request bodies and unknown
+  hosts no longer inherit arbitrary defaults for duplicate bare model
+  IDs.
+- Fixed `pnpm run test:e2e` failing on macOS: bumped
+  `@vscode/test-electron` to 3.1.0 (VS Code moved the macOS
+  executable from `Contents/MacOS/Electron` to `Code`, which older
+  versions of the test runner could not spawn), and moved the test
+  user-data directory under the OS temp directory so VS Code's IPC
+  socket stays within macOS' 103-char path limit. The database
+  lifecycle test now resolves the global storage path from the
+  extension's exports instead of hard-coding the runner's user-data
+  layout.
+- Fixed the E2E test user-data directory leaking state between runs:
+  it is now per-run (`tokenguard-copilot-e2e-<pid>` under the OS temp
+  directory), so concurrent runs do not conflict and stale
+  globalStorage/database content cannot be reused.
+- Fixed `ModelDefaultsService.getDefaults()` falling back to a global
+  all-provider scan even when a provider was resolved from the base
+  URL or model ID prefix; it now stays within the resolved provider
+  (the global unambiguous scan runs only when no provider can be
+  resolved), preventing unrelated providers' defaults from being
+  misapplied and removing the hot-path scan when enriching fetched
+  models that are absent from the snapshot.
+- Fixed `fetch-models-dev` crashing when Prettier config cannot be
+  resolved (`resolveConfig` returns `null`), and reworded an awkward
+  comment in the model registry.
 
 ## [v1.4.0] - 2026-07-19
 

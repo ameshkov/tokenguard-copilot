@@ -198,4 +198,31 @@ describe('useModelConfigPreFill', () => {
 
     expect(settersRef.current?.setPreserveReasoning).toHaveBeenCalledWith(true);
   });
+
+  it('enables prompt caching for a Qwen 3.7 model without defaults', () => {
+    const settersRef: { current: ModelConfigPrefillSetters | null } = { current: null };
+    render(
+      <TestWrapper
+        fetchedModel={makeFetchedModel({ id: 'my-gateway/qwen3.6-plus' })}
+        settersRef={settersRef}
+      />,
+    );
+
+    expect(settersRef.current?.setPreserveReasoning).toHaveBeenCalledWith(true);
+    expect(settersRef.current?.setCacheControlEnabled).toHaveBeenCalledWith(true);
+    expect(settersRef.current?.setCacheMaxMarkers).toHaveBeenCalledWith('4');
+  });
+
+  it('does not enable prompt caching for a Qwen 3.8 model without defaults', () => {
+    const settersRef: { current: ModelConfigPrefillSetters | null } = { current: null };
+    render(
+      <TestWrapper
+        fetchedModel={makeFetchedModel({ id: 'my-gateway/qwen3.8-max' })}
+        settersRef={settersRef}
+      />,
+    );
+
+    expect(settersRef.current?.setPreserveReasoning).toHaveBeenCalledWith(true);
+    expect(settersRef.current?.setCacheControlEnabled).not.toHaveBeenCalled();
+  });
 });

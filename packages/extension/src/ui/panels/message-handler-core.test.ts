@@ -17,11 +17,6 @@ import {
   handleGetModelDefaults,
 } from './message-handler-core.js';
 
-const mockGetDefaults = vi.hoisted(() => vi.fn().mockReturnValue(null));
-vi.mock('../../services/model-defaults/index.js', () => ({
-  getDefaults: mockGetDefaults,
-}));
-
 vi.mock('vscode', () => ({
   window: { showInformationMessage: vi.fn() },
 }));
@@ -380,15 +375,22 @@ describe('message-handler-core', () => {
 
     it('handles getModelDefaults request', async () => {
       const defaults = { contextSize: 128000, maxTokens: 16384 };
-      mockGetDefaults.mockReturnValueOnce(defaults);
+      vi.mocked(appCtx.providerManager.getProviders).mockReturnValue([
+        { id: 'p1', name: 'A', baseUrl: 'https://api.acme.test/v1' },
+      ]);
+      vi.mocked(appCtx.modelDefaults.getDefaults).mockReturnValue(defaults);
 
       await handleGetModelDefaults(appCtx, webview, {
         type: 'getModelDefaults',
         requestId: 'r19',
+        providerId: 'p1',
         modelId: 'gpt-4o',
       } as Extract<WebviewCommand, { type: 'getModelDefaults' }>);
 
-      expect(mockGetDefaults).toHaveBeenCalledWith('gpt-4o');
+      expect(appCtx.modelDefaults.getDefaults).toHaveBeenCalledWith(
+        'https://api.acme.test/v1',
+        'gpt-4o',
+      );
       expect(webview.postMessage).toHaveBeenCalledWith({
         type: 'getModelDefaultsResult',
         requestId: 'r19',
@@ -397,11 +399,15 @@ describe('message-handler-core', () => {
     });
 
     it('handles getModelDefaults when no defaults found', async () => {
-      mockGetDefaults.mockReturnValueOnce(null);
+      vi.mocked(appCtx.providerManager.getProviders).mockReturnValue([
+        { id: 'p1', name: 'A', baseUrl: 'https://api.acme.test/v1' },
+      ]);
+      vi.mocked(appCtx.modelDefaults.getDefaults).mockReturnValue(null);
 
       await handleGetModelDefaults(appCtx, webview, {
         type: 'getModelDefaults',
         requestId: 'r20',
+        providerId: 'p1',
         modelId: 'unknown-model',
       } as Extract<WebviewCommand, { type: 'getModelDefaults' }>);
 
@@ -410,6 +416,19 @@ describe('message-handler-core', () => {
         requestId: 'r20',
         defaults: null,
       });
+    });
+
+    it('handles getModelDefaults when the provider is not found', async () => {
+      vi.mocked(appCtx.providerManager.getProviders).mockReturnValue([]);
+
+      await handleGetModelDefaults(appCtx, webview, {
+        type: 'getModelDefaults',
+        requestId: 'r21',
+        providerId: 'missing',
+        modelId: 'gpt-4o',
+      } as Extract<WebviewCommand, { type: 'getModelDefaults' }>);
+
+      expect(appCtx.modelDefaults.getDefaults).toHaveBeenCalledWith(null, 'gpt-4o');
     });
   });
 });

@@ -63,7 +63,7 @@ export function ModelConfigDialog(props: ModelConfigDialogProps): React.JSX.Elem
   const [reasoningEffortMap, setReasoningEffortMap] = useState<Record<string, string>>({});
   const [newEffortName, setNewEffortName] = useState('');
   const [newEffortParams, setNewEffortParams] = useState('');
-  const [preserveReasoning, setPreserveReasoning] = useState(false);
+  const [preserveReasoning, setPreserveReasoning] = useState(true);
   const [inputCostPer1m, setInputCostPer1m] = useState('');
   const [outputCostPer1m, setOutputCostPer1m] = useState('');
   const [cachedInputCostPer1m, setCachedInputCostPer1m] = useState('');

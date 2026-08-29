@@ -1,228 +1,286 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { CacheControlConfig } from '@tokenguard/shared';
+import type { FetchedModel, ModelDefaultsResult } from '@tokenguard/shared';
+import type { Logger } from '../../logger/index.js';
+import { deriveDefaults, type ModelsDevModel } from './derive-defaults.js';
+
+/** Subsection of a models.dev provider entry used for defaults. */
+interface ModelsDevProvider {
+  /** Provider identifier. */
+  id?: string;
+  /** Human-readable provider name. */
+  name?: string;
+  /** OpenAI-compatible API base URL, when the provider
+   *  exposes one. */
+  api?: string;
+  /** Models keyed by model ID. */
+  models?: Record<string, ModelsDevModel>;
+}
+
+/** Root models.dev snapshot keyed by provider ID. */
+type ModelsDevData = Record<string, ModelsDevProvider>;
 
 /**
- * Match specification for a model defaults entry.
- *
- * - `exact`: the model ID must equal `value` exactly.
- * - `regex`: the model ID must match the regex in `value`.
+ * Static host → models.dev provider ID table for providers
+ * that ship without an `api` URL (SDK-based providers).
  */
-interface ModelDefaultsMatch {
-  /** Match strategy: exact string or regex pattern. */
-  type: 'exact' | 'regex';
-  /** The value to match against — exact model ID or regex
-   *  pattern string. */
-  value: string;
+const KNOWN_MODELS_DEV_HOSTS: Readonly<Record<string, string>> = {
+  'api.openai.com': 'openai',
+  'api.anthropic.com': 'anthropic',
+  'generativelanguage.googleapis.com': 'google',
+  'us-aiplatform.googleapis.com': 'google-vertex',
+  'aiplatform.googleapis.com': 'google-vertex',
+  'api.x.ai': 'xai',
+  'api.cohere.com': 'cohere',
+  'api.mistral.ai': 'mistral',
+  'api.groq.com': 'groq',
+  'api.cerebras.ai': 'cerebras',
+  'api.together.xyz': 'togetherai',
+  'api.perplexity.ai': 'perplexity',
+  'api.deepinfra.com': 'deepinfra',
+  'aihubmix.com': 'aihubmix',
+  'openai.azure.com': 'azure',
+};
+
+/** Suffix for region-scoped Azure OpenAI hosts, e.g.
+ *  `my-resource.openai.azure.com`. */
+const AZURE_HOST_SUFFIX = '.openai.azure.com';
+
+/**
+ * Extracts the lowercase hostname from a URL string.
+ *
+ * @param url - The URL to parse, or `null`/`undefined`.
+ * @returns The hostname, or `null` when the URL is invalid.
+ */
+function hostnameOf(url: string | null | undefined): string | null {
+  if (url === null || url === undefined) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
 }
 
 /**
- * A single entry in the bundled model defaults JSON file.
+ * Looks up model defaults from a bundled models.dev snapshot.
  *
- * Each entry maps a model ID (via exact or regex match) to
- * known default configuration values.
- */
-export interface ModelDefaultsEntry {
-  /** How to match this entry against a model ID. */
-  match: ModelDefaultsMatch;
-  /** Maximum context window size in tokens. */
-  contextSize: number;
-  /** Maximum prompt/output tokens. */
-  maxTokens: number;
-  /** Cost per 1M input tokens in dollars. */
-  inputCostPer1M: number;
-  /** Cost per 1M output tokens in dollars. */
-  outputCostPer1M: number;
-  /** Cost per 1M cached input tokens in dollars. */
-  cachedInputCostPer1M?: number;
-  /** Supported model capabilities (e.g., "reasoning_effort",
-   *  "vision"). */
-  supportedCapabilities: string[];
-  /** Maps reasoning effort level names to provider-specific
-   *  chat completion body parameters. When present, the map
-   *  keys define supported efforts. */
-  reasoningEffortMap?: Record<string, Record<string, unknown>>;
-  /** Default reasoning effort level. When `reasoningEffortMap`
-   *  is present, this must be one of its keys. */
-  defaultReasoningEffort?: string;
-  /** When true, preserve `reasoning_content` from responses
-   *  and inject it into subsequent requests. */
-  preserveReasoning?: boolean;
-  /** Cache control injection configuration. */
-  cacheControl?: CacheControlConfig;
-  /** Custom request body fields pre-filled from bundled
-   *  model defaults. */
-  customFields?: Record<string, unknown>;
-}
-
-/**
- * Model defaults returned by {@link getDefaults}.
+ * The snapshot (`assets/models.dev.json`) is fetched at build
+ * time and committed. It is loaded synchronously on first use
+ * and cached for the service lifetime.
  *
- * Contains the default configuration values for a known model,
- * without the match specification.
- */
-export interface ModelDefaults {
-  /** Maximum context window size in tokens. */
-  contextSize: number;
-  /** Maximum prompt/output tokens. */
-  maxTokens: number;
-  /** Cost per 1M input tokens in dollars. */
-  inputCostPer1M: number;
-  /** Cost per 1M output tokens in dollars. */
-  outputCostPer1M: number;
-  /** Cost per 1M cached input tokens in dollars. */
-  cachedInputCostPer1M?: number;
-  /** Supported model capabilities (e.g., "reasoning_effort",
-   *  "vision"). */
-  supportedCapabilities: string[];
-  /** Maps reasoning effort level names to provider-specific
-   *  chat completion body parameters. When present, the map
-   *  keys define supported efforts. */
-  reasoningEffortMap?: Record<string, Record<string, unknown>>;
-  /** Default reasoning effort level. When `reasoningEffortMap`
-   *  is present, this must be one of its keys. */
-  defaultReasoningEffort?: string;
-  /** When true, preserve `reasoning_content` from responses
-   *  and inject it into subsequent requests. */
-  preserveReasoning?: boolean;
-  /** Cache control injection configuration. */
-  cacheControl?: CacheControlConfig;
-  /** Custom request body fields pre-filled from bundled
-   *  model defaults. */
-  customFields?: Record<string, unknown>;
-}
-
-/**
- * Compiled regex entry used internally for pattern matching.
- */
-interface CompiledRegexEntry {
-  pattern: RegExp;
-  defaults: ModelDefaults;
-}
-
-/** Map of exact model ID → defaults. */
-let exactMap: Map<string, ModelDefaults> | null = null;
-
-/** Ordered list of compiled regex entries. */
-let regexEntries: CompiledRegexEntry[] | null = null;
-
-/** Custom path to the model-defaults.json file. */
-let customJsonPath: string | null = null;
-
-/**
- * Initializes the model defaults lookup with a custom JSON
- * file path. Call this before {@link getDefaults} to override
- * the default bundled path.
+ * Provider resolution order:
+ * 1. Host of the provider base URL matched against the
+ *    snapshot's `api` hosts.
+ * 2. Host of the base URL matched against
+ *    {@link KNOWN_MODELS_DEV_HOSTS} (SDK-only providers).
+ * 3. Model ID prefix (`foo/bar` ⇒ models.dev provider `foo`),
+ *    falling back to lookup inside the resolved provider's
+ *    `models` map by the full model ID.
+ * 4. Last resort: global model-ID search across all providers,
+ *    used only when no provider could be resolved and exactly
+ *    one provider defines that unscoped ID.
  *
- * Primarily used in tests where the runtime `__dirname`-based
- * resolution does not match the source directory layout.
- *
- * @param jsonPath - Absolute path to the model-defaults.json.
+ * Synchronous file reads keep webview request handling free
+ * of async state.
  */
-export function initDefaults(jsonPath: string): void {
-  customJsonPath = jsonPath;
-  exactMap = null;
-  regexEntries = null;
-}
+export class ModelDefaultsService {
+  private readonly jsonPath: string;
+  private readonly logger: Logger;
+  private data: ModelsDevData | null = null;
+  private providersById: Map<string, ModelsDevProvider> | null = null;
+  private providersByApiHost: Map<string, string> | null = null;
 
-/**
- * Resets the cached defaults state. Useful for test isolation.
- */
-export function resetDefaults(): void {
-  exactMap = null;
-  regexEntries = null;
-  customJsonPath = null;
-}
+  /**
+   * Creates a new ModelDefaultsService.
+   *
+   * @param deps - Dependencies.
+   * @param deps.logger - Runtime diagnostics logger.
+   * @param deps.jsonPath - Path to the models.dev snapshot.
+   *   Defaults to the bundled `assets/models.dev.json`; tests
+   *   inject a fixture path.
+   */
+  constructor(deps: { logger: Logger; jsonPath?: string }) {
+    this.logger = deps.logger;
+    this.jsonPath = deps.jsonPath ?? resolve(__dirname, '..', 'assets', 'models.dev.json');
+  }
 
-/**
- * Strips the `match` field from an entry, returning only the
- * defaults data.
- *
- * Automatically includes `parallel_tool_calls: true` as a
- * default custom field for every model. If the entry already
- * has a `parallel_tool_calls` custom field, the entry's value
- * takes precedence.
- *
- * @param entry - The full model defaults entry.
- * @returns A new object containing only the defaults fields.
- */
-function toDefaults(entry: ModelDefaultsEntry): ModelDefaults {
-  const builtInCustomFields: Record<string, unknown> = {
-    parallel_tool_calls: true,
-  };
+  /**
+   * Returns known default configuration values for a model,
+   * or `null` if the model is not present in the bundled
+   * models.dev snapshot.
+   *
+   * @param providerBaseUrl - The provider base URL, used to
+   *   resolve the models.dev provider. `null` when unknown.
+   * @param modelId - The model identifier to look up.
+   * @returns The matching defaults, or `null` if not found.
+   */
+  getDefaults(providerBaseUrl: string | null, modelId: string): ModelDefaultsResult | null {
+    const providerId = this.resolveProviderId(providerBaseUrl, modelId);
+    if (providerId !== null) {
+      // models.dev keys OpenRouter "latest" aliases with the leading
+      // `~` (e.g. `~openai/gpt-latest`), and OpenRouter uses those
+      // exact IDs in its `/models` response and chat requests, so the
+      // fetched model ID matches the snapshot key verbatim.
+      const model = this.getProvidersById().get(providerId)?.models?.[modelId];
+      if (model !== undefined) {
+        return deriveDefaults(model, modelId);
+      }
 
-  return {
-    contextSize: entry.contextSize,
-    maxTokens: entry.maxTokens,
-    inputCostPer1M: entry.inputCostPer1M,
-    outputCostPer1M: entry.outputCostPer1M,
-    cachedInputCostPer1M: entry.cachedInputCostPer1M,
-    supportedCapabilities: [...entry.supportedCapabilities],
-    reasoningEffortMap:
-      entry.reasoningEffortMap !== undefined ? { ...entry.reasoningEffortMap } : undefined,
-    defaultReasoningEffort: entry.defaultReasoningEffort,
-    preserveReasoning: entry.preserveReasoning ?? true,
-    cacheControl: entry.cacheControl,
-    customFields: entry.customFields
-      ? { ...builtInCustomFields, ...entry.customFields }
-      : builtInCustomFields,
-  };
-}
-
-/**
- * Loads and compiles the model defaults from the bundled JSON
- * file. Called lazily on first access and cached thereafter.
- */
-function loadDefaults(): void {
-  const jsonPath = customJsonPath ?? resolve(__dirname, '..', 'assets', 'model-defaults.json');
-  const raw = readFileSync(jsonPath, 'utf-8');
-  const entries = JSON.parse(raw) as ModelDefaultsEntry[];
-
-  exactMap = new Map<string, ModelDefaults>();
-  regexEntries = [];
-
-  for (const entry of entries) {
-    if (entry.match.type === 'exact') {
-      exactMap.set(entry.match.value, toDefaults(entry));
-    } else {
-      regexEntries.push({
-        pattern: new RegExp(entry.match.value),
-        defaults: toDefaults(entry),
-      });
+      // A resolved provider that does not define the model: never
+      // scan other providers, otherwise defaults from an unrelated
+      // provider could be misapplied when the same bare model ID
+      // exists in multiple providers.
+      return null;
     }
-  }
-}
 
-/**
- * Returns known default configuration values for a model ID,
- * or `null` if the model is not in the bundled defaults
- * database.
- *
- * Matching strategy:
- * 1. Exact match is checked first.
- * 2. If no exact match, regex patterns are tested in the
- *    order they appear in the JSON file. First match wins.
- *
- * @param modelId - The model identifier to look up.
- * @returns The matching defaults, or `null` if not found.
- */
-export function getDefaults(modelId: string): ModelDefaults | null {
-  if (exactMap === null || regexEntries === null) {
-    loadDefaults();
-  }
-
-  // Exact match takes precedence.
-  const exact = exactMap!.get(modelId);
-  if (exact) {
-    return exact;
-  }
-
-  // Fall back to regex patterns in order.
-  for (const entry of regexEntries!) {
-    if (entry.pattern.test(modelId)) {
-      return entry.defaults;
+    // No provider could be resolved (unknown host, no scoped prefix):
+    // search all providers by model ID as a last resort, but only
+    // accept globally unique matches so unknown hosts do not inherit
+    // arbitrary provider-specific defaults for duplicate bare IDs.
+    let uniqueMatch: ModelsDevModel | null = null;
+    for (const provider of this.getProvidersById().values()) {
+      const found = provider.models?.[modelId];
+      if (found === undefined) {
+        continue;
+      }
+      if (uniqueMatch !== null) {
+        return null;
+      }
+      uniqueMatch = found;
     }
+    if (uniqueMatch !== null) {
+      return deriveDefaults(uniqueMatch, modelId);
+    }
+
+    return null;
   }
 
-  return null;
+  /**
+   * Fills missing fields of a fetched model with bundled
+   * defaults. Only `null` fields are filled — values reported
+   * by the provider always win.
+   *
+   * @param fetched - The parsed provider model data.
+   * @param providerBaseUrl - The provider base URL, used to
+   *   resolve the models.dev provider. `null` when unknown.
+   * @returns The fetched model enriched with defaults, or the
+   *   original object when no defaults are found.
+   */
+  applyToFetched(fetched: FetchedModel, providerBaseUrl: string | null): FetchedModel {
+    const defaults = this.getDefaults(providerBaseUrl, fetched.id);
+    if (defaults === null) {
+      return fetched;
+    }
+
+    return {
+      ...fetched,
+      maxContextWindowTokens: fetched.maxContextWindowTokens ?? defaults.contextSize ?? null,
+      maxOutputTokens: fetched.maxOutputTokens ?? defaults.maxTokens ?? null,
+      vision:
+        fetched.vision ??
+        (defaults.supportedCapabilities?.includes('vision') === true ? true : null),
+      supportedReasoningEfforts:
+        fetched.supportedReasoningEfforts ??
+        (defaults.reasoningEffortMap !== undefined
+          ? Object.keys(defaults.reasoningEffortMap)
+          : null),
+      defaultReasoningEffort:
+        fetched.defaultReasoningEffort ?? defaults.defaultReasoningEffort ?? null,
+      inputCostPer1M: fetched.inputCostPer1M ?? defaults.inputCostPer1M ?? null,
+      outputCostPer1M: fetched.outputCostPer1M ?? defaults.outputCostPer1M ?? null,
+      cachedInputCostPer1M: fetched.cachedInputCostPer1M ?? defaults.cachedInputCostPer1M ?? null,
+    };
+  }
+
+  /**
+   * Resolves the models.dev provider ID for a base URL and
+   * model ID.
+   *
+   * @param providerBaseUrl - The provider base URL.
+   * @param modelId - The model identifier.
+   * @returns The resolved provider ID, or `null`.
+   */
+  private resolveProviderId(providerBaseUrl: string | null, modelId: string): string | null {
+    const host = hostnameOf(providerBaseUrl);
+    if (host !== null) {
+      const byApiHost = this.getProvidersByApiHost().get(host);
+      if (byApiHost !== undefined) {
+        return byApiHost;
+      }
+      const known = KNOWN_MODELS_DEV_HOSTS[host];
+      if (known !== undefined) {
+        return known;
+      }
+      if (host.endsWith(AZURE_HOST_SUFFIX)) {
+        return 'azure';
+      }
+    }
+
+    const slash = modelId.indexOf('/');
+    if (slash > 0) {
+      const prefix = modelId.slice(0, slash);
+      if (this.getProvidersById().has(prefix)) {
+        return prefix;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Lazy-loads and caches the bundled snapshot.
+   *
+   * @returns The parsed snapshot.
+   */
+  private getData(): ModelsDevData {
+    if (this.data === null) {
+      try {
+        const raw = readFileSync(this.jsonPath, 'utf-8');
+        this.data = JSON.parse(raw) as ModelsDevData;
+        this.logger.info('Model defaults loaded', `file=${this.jsonPath}`);
+      } catch (error: unknown) {
+        this.logger.error(
+          'Failed to load model defaults',
+          error instanceof Error ? error.message : String(error),
+          `file=${this.jsonPath}`,
+        );
+        this.data = {};
+      }
+    }
+    return this.data;
+  }
+
+  /**
+   * Returns the index of providers keyed by provider ID.
+   *
+   * @returns The provider index.
+   */
+  private getProvidersById(): Map<string, ModelsDevProvider> {
+    if (this.providersById === null) {
+      this.providersById = new Map(Object.entries(this.getData()));
+    }
+    return this.providersById;
+  }
+
+  /**
+   * Returns the index of models.dev provider IDs keyed by
+   * the hostname of their `api` URL.
+   *
+   * @returns The API host index.
+   */
+  private getProvidersByApiHost(): Map<string, string> {
+    if (this.providersByApiHost === null) {
+      const index = new Map<string, string>();
+      for (const [providerId, provider] of this.getProvidersById()) {
+        const host = hostnameOf(provider.api);
+        if (host !== null) {
+          index.set(host, providerId);
+        }
+      }
+      this.providersByApiHost = index;
+    }
+    return this.providersByApiHost;
+  }
 }

@@ -61,7 +61,7 @@ tokenguard-copilot/
 ├── .vscodeignore                    # Files excluded from .vsix
 │
 ├── assets/                          # Static assets shipped with extension
-│   ├── model-defaults.json          # Bundled model defaults database
+│   ├── models.dev.json              # Bundled models.dev snapshot
 │   └── webview/
 │       └── settings.html            # Webview HTML shell template
 │
@@ -105,7 +105,7 @@ tokenguard-copilot/
 │   │       │       └── index.ts     # Module barrel
 │   │       │
 │   │       ├── services/            # Business logic layer
-│   │       │   └── model-defaults/  # Model defaults lookup
+│   │       │   └── model-defaults/  # models.dev defaults lookup
 │   │       │       └── index.ts     # Module barrel
 │   │       │
 │   │       ├── repositories/        # Data access layer

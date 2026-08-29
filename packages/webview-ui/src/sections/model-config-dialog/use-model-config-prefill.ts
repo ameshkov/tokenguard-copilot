@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { isQwen37OrOlder } from '@tokenguard/shared';
 import type {
   CustomField,
   CustomFieldType,
@@ -297,9 +298,14 @@ export function useModelConfigPreFill(
       filled = prefillFromDefaults(defaults, filled, setters);
     } else {
       // No bundled default exists for this model. Default preserve
-      // reasoning to enabled, matching known models that omit the
-      // field (see ModelDefaults.toDefaults).
+      // reasoning to enabled, matching the bundled defaults crutch;
+      // also enable prompt caching for Qwen 3.7 and older so the
+      // model config pre-fills the same way as known models.
       setters.setPreserveReasoning(true);
+      if (fetchedModel !== undefined && isQwen37OrOlder(fetchedModel.id)) {
+        setters.setCacheControlEnabled(true);
+        setters.setCacheMaxMarkers('4');
+      }
     }
 
     setters.setPrefilledFields(filled);
