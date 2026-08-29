@@ -139,10 +139,12 @@ Per-model settings include:
 
 ### Bundled Model Defaults
 
-The extension ships a database of pre-configured defaults for known models.
-When you select a recognized model ID, the configuration form auto-populates
-with correct values for context window size, token costs, capabilities,
-reasoning maps, and cache control.
+The extension ships a snapshot of the [models.dev](https://models.dev)
+database with default parameters for known models.
+When you select a recognized model ID, the configuration form
+auto-populates with correct values for context window size, token
+costs, and capabilities. The snapshot can be refreshed manually
+with `pnpm run fetch:models-dev`.
 
 <img src="https://cdn.adtidy.org/website/github.com/tokenguard-copilot/tokenguard_costs.png" alt="TokenGuard Copilot model costs settings screenshot" width="600">
 

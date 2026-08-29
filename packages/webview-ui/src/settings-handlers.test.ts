@@ -382,6 +382,7 @@ describe('selectModel', () => {
 
     expect(sendRequest).toHaveBeenCalledWith({
       type: 'getModelDefaults',
+      providerId,
       modelId: 'gpt-4',
     });
     expect(setPage).toHaveBeenCalledWith({

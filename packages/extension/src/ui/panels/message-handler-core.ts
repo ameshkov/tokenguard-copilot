@@ -1,6 +1,5 @@
 import { type Webview, window } from 'vscode';
 import type { ExtensionContext as AppContext } from '../../context.js';
-import { getDefaults } from '../../services/model-defaults/index.js';
 import type {
   WebviewCommand,
   GetProvidersResponse,
@@ -324,18 +323,22 @@ export async function handleRemoveModel(
 /**
  * Handles the getModelDefaults webview message.
  *
- * @param _appCtx - The application context (unused; defaults are
- *   from bundled asset).
+ * Resolves the provider by ID to obtain its base URL, then
+ * looks up bundled models.dev defaults for the model.
+ *
+ * @param appCtx - The application context with services.
  * @param webview - The webview to post the response to.
  * @param message - The incoming message.
  */
 export async function handleGetModelDefaults(
-  _appCtx: AppContext,
+  appCtx: AppContext,
   webview: Webview,
   message: Extract<WebviewCommand, { type: 'getModelDefaults' }>,
 ): Promise<void> {
-  void _appCtx;
-  const defaults = getDefaults(message.modelId);
+  const provider = appCtx.providerManager
+    .getProviders()
+    .find((provider) => provider.id === message.providerId);
+  const defaults = appCtx.modelDefaults.getDefaults(provider?.baseUrl ?? null, message.modelId);
   await webview.postMessage({
     type: 'getModelDefaultsResult',
     requestId: message.requestId,

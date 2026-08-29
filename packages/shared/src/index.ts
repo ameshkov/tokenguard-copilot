@@ -5,6 +5,7 @@
  * the extension host and the webview UI.
  */
 export * from './messages.js';
+export * from './qwen-model.js';
 
 /**
  * MIME type for token usage data parts reported to

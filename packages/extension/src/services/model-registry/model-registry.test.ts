@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { resolve } from 'node:path';
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { providers } from '../../db/index.js';
 import { ModelRepository, ProviderRepository } from '../../repositories/index.js';
@@ -8,6 +9,31 @@ import type { ModelConfig, CacheControlConfig } from '@tokenguard/shared';
 import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 import { createMockLogger } from '../../test/mock-logger.js';
+import { ModelDefaultsService } from '../model-defaults/index.js';
+
+const fixtureJsonPath = resolve(
+  __dirname,
+  '..',
+  '..',
+  'test',
+  'fixtures',
+  'models-dev.fixture.json',
+);
+
+/**
+ * Stubs global fetch to return the given `/models` data.
+ *
+ * @param data - Model objects returned by `/models`.
+ */
+function stubModelsResponse(data: Array<Record<string, unknown>>): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data }),
+    }),
+  );
+}
 
 const mockRegister = vi.hoisted(() =>
   vi.fn<
@@ -107,6 +133,10 @@ describe('ModelRegistry', () => {
         ruleResults: [],
       }),
     };
+    const modelDefaults = new ModelDefaultsService({
+      logger: createMockLogger(),
+      jsonPath: fixtureJsonPath,
+    });
     registry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -116,6 +146,7 @@ describe('ModelRegistry', () => {
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
       mockUsageTracker as unknown as import('../usage-tracker/index.js').UsageTracker,
       mockContentRulesService as unknown as import('../content-rules/index.js').ContentRulesService,
+      modelDefaults,
       createMockLogger(),
       '0.0.0-test',
     );
@@ -149,30 +180,19 @@ describe('ModelRegistry', () => {
 
   describe('fetchModels', () => {
     it('fetches and parses models from provider', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'gpt-4o',
-                  name: 'GPT-4o',
-                  capabilities: {
-                    supports: {
-                      vision: true,
-                    },
-                    limits: {
-                      max_context_window_tokens: 128000,
-                      max_output_tokens: 16384,
-                    },
-                  },
-                },
-              ],
-            }),
-        }),
-      );
+      stubModelsResponse([
+        {
+          id: 'gpt-4o',
+          name: 'GPT-4o',
+          top_provider: {
+            context_length: 128000,
+            max_completion_tokens: 16384,
+          },
+          architecture: {
+            input_modalities: ['text', 'image'],
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       expect(models).toHaveLength(1);
@@ -183,72 +203,54 @@ describe('ModelRegistry', () => {
       expect(models[0].vision).toBe(true);
     });
 
-    it('parses vision from capabilities.supports.vision', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'vision-model',
-                  capabilities: {
-                    supports: { vision: true },
-                  },
-                },
-              ],
-            }),
-        }),
-      );
+    it('parses vision from architecture.input_modalities', async () => {
+      stubModelsResponse([
+        {
+          id: 'vision-model',
+          architecture: {
+            input_modalities: ['text', 'image'],
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       expect(models[0].vision).toBe(true);
     });
 
-    it('calculates maxOutputTokens from context minus prompt tokens', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'calc-model',
-                  capabilities: {
-                    limits: {
-                      max_context_window_tokens: 200000,
-                      max_prompt_tokens: 134500,
-                    },
-                  },
-                },
-              ],
-            }),
-        }),
-      );
+    it('parses maxOutputTokens from top_provider.max_completion_tokens', async () => {
+      stubModelsResponse([
+        {
+          id: 'calc-model',
+          context_length: 200000,
+          top_provider: {
+            context_length: 200000,
+            max_completion_tokens: 65500,
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       expect(models[0].maxOutputTokens).toBe(65500);
     });
 
-    it('parses supportedReasoningEfforts array', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'reasoning-model',
-                  supportedReasoningEfforts: ['none', 'low', 'medium', 'high'],
-                  defaultReasoningEffort: 'medium',
-                },
-              ],
-            }),
-        }),
-      );
+    it('falls back to the top-level context_length when top_provider lacks it', async () => {
+      stubModelsResponse([{ id: 'fallback-model', context_length: 250000 }]);
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].maxContextWindowTokens).toBe(250000);
+      expect(models[0].maxOutputTokens).toBeNull();
+    });
+
+    it('parses supportedReasoningEfforts and defaultReasoningEffort from reasoning', async () => {
+      stubModelsResponse([
+        {
+          id: 'reasoning-model',
+          reasoning: {
+            supported_efforts: ['none', 'low', 'medium', 'high'],
+            default_effort: 'medium',
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       expect(models[0].supportedReasoningEfforts).toEqual(['none', 'low', 'medium', 'high']);
@@ -256,25 +258,16 @@ describe('ModelRegistry', () => {
     });
 
     it('parses pricing fields from provider response and converts per-token to per-1M', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'priced-model',
-                  pricing: {
-                    prompt: 0.00000015,
-                    completion: 0.0000003,
-                    input_cache_read: 0.000000075,
-                  },
-                },
-              ],
-            }),
-        }),
-      );
+      stubModelsResponse([
+        {
+          id: 'priced-model',
+          pricing: {
+            prompt: 0.00000015,
+            completion: 0.0000003,
+            input_cache_read: 0.000000075,
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       // Provider values are per-token; ×1,000,000 → per-1M-tokens.
@@ -284,25 +277,16 @@ describe('ModelRegistry', () => {
     });
 
     it('parses string pricing values and converts per-token to per-1M', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'string-priced-model',
-                  pricing: {
-                    prompt: '0.0000003',
-                    completion: '0.0000012',
-                    input_cache_read: '0.00000006',
-                  },
-                },
-              ],
-            }),
-        }),
-      );
+      stubModelsResponse([
+        {
+          id: 'string-priced-model',
+          pricing: {
+            prompt: '0.0000003',
+            completion: '0.0000012',
+            input_cache_read: '0.00000006',
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       // Provider values are per-token; ×1,000,000 → per-1M-tokens.
@@ -312,26 +296,17 @@ describe('ModelRegistry', () => {
     });
 
     it('includes input_cache_write in input cost for OpenRouter-style pricing', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [
-                {
-                  id: 'openrouter-model',
-                  pricing: {
-                    prompt: '0.0000015',
-                    completion: '0.0000075',
-                    input_cache_read: '0.00000015',
-                    input_cache_write: '0.000002',
-                  },
-                },
-              ],
-            }),
-        }),
-      );
+      stubModelsResponse([
+        {
+          id: 'openrouter-model',
+          pricing: {
+            prompt: '0.0000015',
+            completion: '0.0000075',
+            input_cache_read: '0.00000015',
+            input_cache_write: '0.000002',
+          },
+        },
+      ]);
 
       const models = await registry.fetchModels(providerId);
       // Values are per-token; ×1,000,000 → per-1M-tokens.
@@ -341,17 +316,34 @@ describe('ModelRegistry', () => {
       expect(models[0].cachedInputCostPer1M).toBeCloseTo(0.15, 10);
     });
 
+    it('merges bundled defaults into fetched models', async () => {
+      stubModelsResponse([{ id: 'acme/model-basic' }]);
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].maxContextWindowTokens).toBe(32000);
+      expect(models[0].maxOutputTokens).toBeNull();
+      expect(models[0].inputCostPer1M).toBe(0.1);
+      expect(models[0].outputCostPer1M).toBe(0.4);
+      expect(models[0].cachedInputCostPer1M).toBeNull();
+    });
+
+    it('does not override provider-reported values with defaults', async () => {
+      stubModelsResponse([
+        {
+          id: 'acme/model-basic',
+          top_provider: { context_length: 111111 },
+          pricing: { prompt: '0.0000009', completion: '0.0000033' },
+        },
+      ]);
+
+      const models = await registry.fetchModels(providerId);
+      expect(models[0].maxContextWindowTokens).toBe(111111);
+      expect(models[0].inputCostPer1M).toBeCloseTo(0.9, 10);
+      expect(models[0].outputCostPer1M).toBeCloseTo(3.3, 10);
+    });
+
     it('returns null for missing fields', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: [{ id: 'minimal-model' }],
-            }),
-        }),
-      );
+      stubModelsResponse([{ id: 'minimal-model' }]);
 
       const models = await registry.fetchModels(providerId);
       expect(models[0].name).toBeNull();

@@ -231,6 +231,7 @@ export async function selectModel(
   try {
     const resp = await sendRequest<GetModelDefaultsResponse>({
       type: 'getModelDefaults',
+      providerId,
       modelId: model.id,
     });
     defaults = resp.defaults;

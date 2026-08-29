@@ -1,0 +1,133 @@
+{
+  "acme": {
+    "id": "acme",
+    "name": "Acme AI",
+    "api": "https://api.acme.test/v1",
+    "models": {
+      "acme/model-vision": {
+        "limit": {
+          "context": 200000,
+          "output": 8192
+        },
+        "cost": {
+          "input": 0.5,
+          "output": 1.5,
+          "cache_read": 0.05
+        },
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["low", "high"]
+          }
+        ],
+        "modalities": {
+          "input": ["text", "image"]
+        }
+      },
+      "~acme/model-latest": {
+        "id": "~acme/model-latest",
+        "limit": {
+          "context": 99000,
+          "output": 8192
+        }
+      },
+      "acme/model-effort-default": {
+        "reasoning_options": [
+          {
+            "type": "effort",
+            "values": ["minimal", "high"]
+          }
+        ],
+        "reasoning": {
+          "default_effort": "high"
+        }
+      },
+      "acme/model-budget": {
+        "reasoning_options": [
+          {
+            "type": "budget_tokens"
+          }
+        ]
+      },
+      "acme/model-basic": {
+        "limit": {
+          "context": 32000
+        },
+        "cost": {
+          "input": 0.1,
+          "output": 0.4
+        }
+      },
+      "acme/qwen3.7-max": {
+        "limit": {
+          "context": 1000000,
+          "output": 65536
+        },
+        "reasoning_options": [
+          {
+            "type": "toggle"
+          }
+        ]
+      },
+      "acme/qwen3.8-max": {
+        "limit": {
+          "context": 1000000,
+          "output": 65536
+        }
+      }
+    }
+  },
+  "azure": {
+    "id": "azure",
+    "name": "Azure OpenAI",
+    "models": {
+      "model-one": {
+        "limit": {
+          "context": 96000,
+          "output": 4096
+        }
+      }
+    }
+  },
+  "mystery": {
+    "id": "mystery",
+    "name": "Mystery AI",
+    "models": {
+      "mystery/chat": {
+        "limit": {
+          "context": 64000,
+          "output": 4096
+        }
+      }
+    }
+  },
+  "noded": {
+    "id": "noded",
+    "name": "NodeD",
+    "models": {
+      "noded/chat": {
+        "limit": {
+          "context": 128000,
+          "output": 8192
+        }
+      }
+    }
+  },
+  "openai": {
+    "id": "openai",
+    "name": "OpenAI",
+    "models": {
+      "gpt-4o": {
+        "limit": {
+          "context": 128000,
+          "output": 16384
+        },
+        "cost": {
+          "input": 2.5,
+          "output": 10,
+          "cache_read": 1.25
+        }
+      }
+    }
+  }
+}

@@ -588,43 +588,24 @@ context.subscriptions.push(ctx.reasoningCacheCleanup.startPeriodicCleanup());
 
 Reasoning preservation is configured per model through two mechanisms:
 
-### 1. Model Defaults (bundled JSON)
+### 1. Model Defaults (models.dev snapshot)
 
-**File:** `assets/model-defaults.json`
+**File:** `assets/models.dev.json` (refreshed manually via
+`pnpm run fetch:models-dev`)
 
-Each model entry can include:
+The bundled snapshot of models.dev provides context/output limits,
+costs, and capabilities (vision, reasoning options) for known models.
+It does not carry reasoning-preservation settings per entry —
+`preserveReasoning`, `reasoningEffortMap`, and `defaultReasoningEffort`
+are configured per model in the database row (below) or pre-filled from
+the provider's `/models` response (`reasoning.supported_efforts`).
 
-| Field | Type | Purpose |
-| --- | --- | --- |
-| `preserveReasoning` | `boolean` | Master switch for reasoning preservation |
-| `defaultReasoningEffort` | `string` | Default effort level (`"none"`, `"high"`, etc.) |
-| `reasoningEffortMap` | `object` | Maps effort levels to provider-specific body parameters |
-
-Example for `qwen3.6-plus`:
-
-```json
-{
-  "defaultReasoningEffort": "high",
-  "reasoningEffortMap": {
-    "none": { "enable_thinking": false },
-    "high": { "enable_thinking": true, "preserve_thinking": true }
-  },
-  "preserveReasoning": true
-}
-```
-
-Example for `deepseek-v4-pro`:
-
-```json
-{
-  "reasoningEffortMap": {
-    "none": { "thinking": { "type": "disabled" } },
-    "high": { "reasoning_effort": "high", "thinking": { "type": "enabled" } },
-    "xhigh": { "reasoning_effort": "max", "thinking": { "type": "enabled" } }
-  },
-  "preserveReasoning": true
-}
-```
+As a universal default, `deriveDefaults` enables `preserveReasoning`
+for every model and additionally enables `cacheControl`
+(`{ enabled: true, maxMarkers: 4 }`) for Qwen models of version 3.7 or
+older — those pair with the Alibaba-style request bodies and benefit
+from prompt caching. The user can still override both in the model
+configuration dialog.
 
 ### 2. Database Model Row
 
@@ -660,18 +641,21 @@ model requests:
 ```typescript
 // packages/extension/src/context.ts
 const reasoningCacheRepo = new ReasoningCacheRepository(deps.db);
-const reasoningCacheService = new ReasoningCacheService(reasoningCacheRepo);
+const reasoningCacheService = new ReasoningCacheService(reasoningCacheRepo, deps.logger);
+const modelDefaults = new ModelDefaultsService({ logger: deps.logger });
 
 this.modelRegistry = new ModelRegistry(
-  modelRepo, providerRepo, deps.secrets, getDefaults,
-  this.chatDebugLogger, this.tokenCounter,
-  reasoningCacheService,
-  this.usageTracker,
+  modelRepo, providerRepo, deps.secrets, this.chatDebugLogger,
+  this.tokenCounter, reasoningCacheService, this.usageTracker,
+  this.contentRules, modelDefaults, deps.logger, deps.version,
 );
 ```
 
-In `ModelRegistry`, each chat request creates a `ChatHandler` with the
-same shared `ReasoningCacheService` instance.
+The `ModelDefaultsService` reads the bundled models.dev snapshot
+(`assets/models.dev.json`) for context, costs, and capabilities, and
+merges those defaults into models fetched from a provider's `/models`
+endpoint. In `ModelRegistry`, each chat request creates a
+`ChatHandler` with the same shared `ReasoningCacheService` instance.
 
 ## Summary
 

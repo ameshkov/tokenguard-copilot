@@ -11,6 +11,7 @@ import { ChatDebugLogger } from './services/chat-debug-logger/index.js';
 import { ChatDebugCleanupService } from './services/chat-debug-cleanup/index.js';
 import { ProviderManager, type ResetCallback } from './services/provider-manager/index.js';
 import { ModelRegistry } from './services/model-registry/index.js';
+import { ModelDefaultsService } from './services/model-defaults/index.js';
 import { TokenCounter } from './services/token-counter/index.js';
 import { ContentRulesRepository } from './repositories/index.js';
 import { ReasoningCacheRepository } from './repositories/index.js';
@@ -62,6 +63,9 @@ export class ExtensionContext {
 
   /** Model registry service. */
   readonly modelRegistry: ModelRegistry;
+
+  /** Model defaults service (bundled models.dev lookup). */
+  readonly modelDefaults: ModelDefaultsService;
 
   /** Chat debug settings service. */
   readonly chatDebugSettings: ChatDebugSettingsService;
@@ -126,6 +130,7 @@ export class ExtensionContext {
     this.usageTracker = new UsageTracker(usageRecordRepo, modelRepo, deps.logger);
     const contentRulesRepo = new ContentRulesRepository(deps.db);
     this.contentRules = new ContentRulesService(contentRulesRepo, deps.logger);
+    this.modelDefaults = new ModelDefaultsService({ logger: deps.logger });
     this.modelRegistry = new ModelRegistry(
       modelRepo,
       providerRepo,
@@ -135,6 +140,7 @@ export class ExtensionContext {
       reasoningCacheService,
       this.usageTracker,
       this.contentRules,
+      this.modelDefaults,
       deps.logger,
       deps.version,
     );

@@ -111,6 +111,7 @@
   },
   "scripts": {
     "compile": "pnpm run compile:shared && pnpm run compile:extension && pnpm run compile:webview && pnpm run compile:migrations && pnpm run compile:e2e",
+    "fetch:models-dev": "node scripts/fetch-models-dev.mjs",
     "compile:shared": "pnpm --filter @tokenguard/shared run build",
     "compile:extension": "pnpm --filter @tokenguard/extension run build",
     "compile:webview": "pnpm --filter @tokenguard/webview-ui run build",
@@ -141,7 +142,7 @@
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.120.0",
     "@vscode/test-cli": "0.0.12",
-    "@vscode/test-electron": "2.5.2",
+    "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "^3.9.1",
     "eslint": "^9.13.0",
     "globals": "^17.6.0",

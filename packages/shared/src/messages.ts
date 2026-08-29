@@ -77,12 +77,19 @@ export interface FetchedModel {
 
 /** Model defaults data returned to the webview. */
 export interface ModelDefaultsResult {
-  contextSize: number;
-  maxTokens: number;
-  inputCostPer1M: number;
-  outputCostPer1M: number;
+  /** Maximum context window size in tokens. */
+  contextSize?: number;
+  /** Maximum prompt/output tokens. */
+  maxTokens?: number;
+  /** Cost per 1M input tokens in dollars. */
+  inputCostPer1M?: number;
+  /** Cost per 1M output tokens in dollars. */
+  outputCostPer1M?: number;
+  /** Cost per 1M cached input tokens in dollars. */
   cachedInputCostPer1M?: number;
-  supportedCapabilities: string[];
+  /** Supported model capabilities (e.g., "vision",
+   *  "reasoning_effort"). */
+  supportedCapabilities?: string[];
   /** Maps reasoning effort level names to provider-specific
    *  chat completion body parameters. */
   reasoningEffortMap?: Record<string, Record<string, unknown>>;
@@ -314,6 +321,9 @@ export interface RemoveModelRequest extends WebviewRequest {
 /** Get bundled defaults for a model ID. */
 export interface GetModelDefaultsRequest extends WebviewRequest {
   type: 'getModelDefaults';
+  /** Provider ID the model belongs to, used to resolve the
+   *  provider base URL for the lookup. */
+  providerId: string;
   modelId: string;
 }
 

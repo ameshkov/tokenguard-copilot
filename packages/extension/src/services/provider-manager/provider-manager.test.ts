@@ -98,6 +98,10 @@ describe('ProviderManager', () => {
           ruleResults: [],
         }),
       } as unknown as import('../content-rules/index.js').ContentRulesService,
+      {
+        getDefaults: vi.fn(),
+        applyToFetched: vi.fn(),
+      } as unknown as import('../model-defaults/index.js').ModelDefaultsService,
       createMockLogger(),
       '0.0.0-test',
     );

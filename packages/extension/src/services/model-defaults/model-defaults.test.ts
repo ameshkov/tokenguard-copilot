@@ -1,415 +1,275 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { describe, it, expect } from 'vitest';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { ModelDefaults, ModelDefaultsEntry } from './model-defaults.js';
-import { getDefaults, initDefaults, resetDefaults } from './model-defaults.js';
+import type { FetchedModel } from '@tokenguard/shared';
+import { ModelDefaultsService } from './model-defaults.js';
+import { createMockLogger } from '../../test/mock-logger.js';
 
-const jsonPath = resolve(__dirname, '..', '..', '..', '..', '..', 'assets', 'model-defaults.json');
+const fixtureJsonPath = resolve(
+  __dirname,
+  '..',
+  '..',
+  'test',
+  'fixtures',
+  'models-dev.fixture.json',
+);
 
-beforeEach(() => {
-  resetDefaults();
-  initDefaults(jsonPath);
-});
-
-describe('ModelDefaults types', () => {
-  it('should allow a valid ModelDefaultsEntry with exact match', () => {
-    const entry: ModelDefaultsEntry = {
-      match: { type: 'exact', value: 'gpt-4o' },
-      contextSize: 128000,
-      maxTokens: 16384,
-      inputCostPer1M: 2.5,
-      outputCostPer1M: 10.0,
-      supportedCapabilities: [],
-      reasoningEffortMap: {
-        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
-        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
-      },
-    };
-    expect(entry.match.type).toBe('exact');
+/** Creates a service pointing at the shared fixture. */
+function createFixtureService(): ModelDefaultsService {
+  return new ModelDefaultsService({
+    logger: createMockLogger(),
+    jsonPath: fixtureJsonPath,
   });
+}
 
-  it('should allow a valid ModelDefaultsEntry with regex match', () => {
-    const entry: ModelDefaultsEntry = {
-      match: { type: 'regex', value: '^gpt-4o-' },
-      contextSize: 128000,
-      maxTokens: 16384,
-      inputCostPer1M: 2.5,
-      outputCostPer1M: 10.0,
-      supportedCapabilities: [],
-      reasoningEffortMap: {
-        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
-        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
-      },
-    };
-    expect(entry.match.type).toBe('regex');
-  });
+function makeFetchedModel(overrides: Partial<FetchedModel> = {}): FetchedModel {
+  return {
+    id: 'acme/model-vision',
+    name: null,
+    maxContextWindowTokens: null,
+    maxOutputTokens: null,
+    defaultReasoningEffort: null,
+    vision: null,
+    supportedReasoningEfforts: null,
+    inputCostPer1M: null,
+    outputCostPer1M: null,
+    cachedInputCostPer1M: null,
+    ...overrides,
+  };
+}
 
-  it('should allow optional cachedInputCostPer1M', () => {
-    const entry: ModelDefaultsEntry = {
-      match: { type: 'exact', value: 'gpt-4o' },
-      contextSize: 128000,
-      maxTokens: 16384,
-      inputCostPer1M: 2.5,
-      outputCostPer1M: 10.0,
-      cachedInputCostPer1M: 1.25,
-      supportedCapabilities: [],
-      reasoningEffortMap: {
-        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
-        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
-      },
-    };
-    expect(entry.cachedInputCostPer1M).toBe(1.25);
-  });
-
-  it('should produce ModelDefaults without match field', () => {
-    const defaults: ModelDefaults = {
-      contextSize: 128000,
-      maxTokens: 16384,
-      inputCostPer1M: 2.5,
-      outputCostPer1M: 10.0,
-      supportedCapabilities: [],
-      reasoningEffortMap: {
-        low: { reasoning_effort: 'low', reasoning: { effort: 'low' } },
-        high: { reasoning_effort: 'high', reasoning: { effort: 'high' } },
-      },
-    };
-    expect(defaults).not.toHaveProperty('match');
-  });
-});
-
-describe('model-defaults.json schema validation', () => {
-  let entries: ModelDefaultsEntry[];
-
-  beforeAll(() => {
-    const raw = readFileSync(jsonPath, 'utf-8');
-    entries = JSON.parse(raw) as ModelDefaultsEntry[];
-  });
-
-  it('should be a non-empty array', () => {
-    expect(Array.isArray(entries)).toBe(true);
-    expect(entries.length).toBeGreaterThan(0);
-  });
-
-  it('every entry should have a valid match field', () => {
-    for (const entry of entries) {
-      expect(entry.match).toBeDefined();
-      expect(['exact', 'regex']).toContain(entry.match.type);
-      expect(typeof entry.match.value).toBe('string');
-      expect(entry.match.value.length).toBeGreaterThan(0);
-    }
-  });
-
-  it('every entry should have numeric fields > 0', () => {
-    for (const entry of entries) {
-      expect(entry.contextSize).toBeGreaterThan(0);
-      expect(entry.maxTokens).toBeGreaterThan(0);
-      expect(entry.inputCostPer1M).toBeGreaterThan(0);
-      expect(entry.outputCostPer1M).toBeGreaterThan(0);
-      if (entry.cachedInputCostPer1M !== undefined) {
-        expect(entry.cachedInputCostPer1M).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('every entry should have a supportedCapabilities array', () => {
-    for (const entry of entries) {
-      expect(Array.isArray(entry.supportedCapabilities)).toBe(true);
-      for (const cap of entry.supportedCapabilities) {
-        expect(typeof cap).toBe('string');
-      }
-    }
-  });
-
-  it('every regex pattern should be a valid RegExp', () => {
-    for (const entry of entries) {
-      if (entry.match.type === 'regex') {
-        expect(() => new RegExp(entry.match.value)).not.toThrow();
-      }
-    }
-  });
-
-  it('should not have duplicate exact match values', () => {
-    const exactValues = entries.filter((e) => e.match.type === 'exact').map((e) => e.match.value);
-    const uniqueValues = new Set(exactValues);
-    expect(uniqueValues.size).toBe(exactValues.length);
-  });
-
-  it('reasoningEffortMap values should be objects when present', () => {
-    for (const entry of entries) {
-      if (entry.reasoningEffortMap !== undefined) {
-        expect(typeof entry.reasoningEffortMap).toBe('object');
-        for (const [key, value] of Object.entries(entry.reasoningEffortMap)) {
-          expect(typeof key).toBe('string');
-          expect(typeof value).toBe('object');
-          expect(value).not.toBeNull();
-        }
-      }
-    }
-  });
-
-  it('every entry should have reasoningEffortMap when reasoning_effort capability is present', () => {
-    for (const entry of entries) {
-      if (entry.supportedCapabilities?.includes('reasoning_effort')) {
-        expect(entry.reasoningEffortMap).toBeDefined();
-      }
-    }
-  });
-
-  it('every entry should have reasoningEffortMap when reasoning_effort capability is present', () => {
-    for (const entry of entries) {
-      if (entry.supportedCapabilities?.includes('reasoning_effort')) {
-        expect(entry.reasoningEffortMap).toBeDefined();
-      }
-    }
-  });
-  it('preserveReasoning should be a boolean when present', () => {
-    for (const entry of entries) {
-      if (entry.preserveReasoning !== undefined) {
-        expect(typeof entry.preserveReasoning).toBe('boolean');
-      }
-    }
-  });
-});
-
-describe('getDefaults', () => {
-  it('should return defaults for an exact model ID match', () => {
-    const result = getDefaults('gpt-5.4');
+describe('ModelDefaultsService provider resolution', () => {
+  it('resolves a provider by matching the base URL host against the api hosts', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/model-basic');
     expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(272000);
-    expect(result!.maxTokens).toBe(65500);
+    expect(result!.contextSize).toBe(32000);
+  });
+
+  it('matches the api host regardless of the base URL path', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v2/', 'acme/model-basic');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(32000);
+  });
+
+  it('resolves known SDK-only hosts via the hardcoded table', () => {
+    const service = createFixtureService();
+    // api.openai.com maps to the "openai" provider; the model lookup
+    // uses the models.dev model key (gpt-4o, no prefix).
+    const result = service.getDefaults('https://api.openai.com/v1', 'gpt-4o');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(128000);
+    expect(result!.maxTokens).toBe(16384);
     expect(result!.inputCostPer1M).toBe(2.5);
-    expect(result!.outputCostPer1M).toBe(15.0);
-    expect(result!.supportedCapabilities).toContain('vision');
-    expect(result!.reasoningEffortMap).toBeDefined();
-    expect(Object.keys(result!.reasoningEffortMap!)).toContain('xhigh');
   });
 
-  it('should return defaults for a regex pattern match', () => {
-    const result = getDefaults('kimi-k2.6-preview');
+  it('resolves region-scoped Azure hosts via the openai.azure.com suffix', () => {
+    const service = createFixtureService();
+    // The unprefixed model key ("model-one") can only be found
+    // through the azure provider, which the host suffix resolves.
+    const result = service.getDefaults('https://my-resource.openai.azure.com', 'model-one');
     expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(262000);
+    expect(result!.contextSize).toBe(96000);
   });
 
-  it('should return null for an unknown model ID', () => {
-    const result = getDefaults('unknown-model-xyz');
-    expect(result).toBeNull();
-  });
-
-  it('should prefer exact match over regex match', () => {
-    // "kimi-k2.6" matches both the exact entry and the
-    // "^kimi-k2" regex. Exact should win.
-    const result = getDefaults('kimi-k2.6');
+  it('falls back to the model ID prefix when the host is unknown', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://gateway.example.com/v1', 'noded/chat');
     expect(result).not.toBeNull();
-    expect(result!.cachedInputCostPer1M).toBe(0.16);
+    expect(result!.contextSize).toBe(128000);
+    expect(result!.maxTokens).toBe(8192);
   });
 
-  it('should match the first regex when multiple regexes match', () => {
-    // "kimi-k2.6" should match the "^kimi-k2" regex
-    const result = getDefaults('kimi-k2.6');
+  it('searches all providers by model ID as a last resort', () => {
+    const service = createFixtureService();
+    // Unknown gateway host with an unprefixed model ID can only be
+    // found by searching every provider's models map.
+    const result = service.getDefaults('https://gateway.example.com/v1', 'gpt-4o');
     expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(262000);
+    expect(result!.contextSize).toBe(128000);
+    expect(result!.maxTokens).toBe(16384);
   });
 
-  it('should return defaults without the match field', () => {
-    const result = getDefaults('gpt-5.4');
+  it('resolves OpenRouter-style ~-prefixed latest aliases verbatim', () => {
+    const service = createFixtureService();
+    // models.dev keys "latest" aliases with a leading `~` and
+    // OpenRouter uses the same ID in its /models response, so the
+    // lookup must use the tilde-prefixed key as-is.
+    const result = service.getDefaults('https://api.acme.test/v1', '~acme/model-latest');
     expect(result).not.toBeNull();
-    expect(result).not.toHaveProperty('match');
+    expect(result!.contextSize).toBe(99000);
   });
 
-  it('should include cachedInputCostPer1M when present', () => {
-    const result = getDefaults('qwen3.6-plus');
+  it('returns null when the host and prefix are unknown', () => {
+    const service = createFixtureService();
+    expect(service.getDefaults(null, 'unknown-model')).toBeNull();
+    expect(service.getDefaults('https://unknown.example.com/v1', 'nope/model')).toBeNull();
+    expect(service.getDefaults('https://api.acme.test/v1', 'acme/not-there')).toBeNull();
+  });
+
+  it('falls back to the model ID prefix when the base URL is invalid', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('not-a-url', 'noded/chat');
     expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(128000);
+  });
+});
+
+describe('ModelDefaultsService defaults derivation', () => {
+  it('derives context, output, costs, and capabilities from a full entry', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/model-vision');
+    expect(result).not.toBeNull();
+    expect(result!.contextSize).toBe(200000);
+    expect(result!.maxTokens).toBe(8192);
+    expect(result!.inputCostPer1M).toBe(0.5);
+    expect(result!.outputCostPer1M).toBe(1.5);
     expect(result!.cachedInputCostPer1M).toBe(0.05);
-  });
-
-  it('should include reasoningEffortMap when present', () => {
-    const result = getDefaults('deepseek-v4-pro');
-    expect(result).not.toBeNull();
-    expect(result!.reasoningEffortMap).toBeDefined();
-    expect(result!.reasoningEffortMap!['none']).toEqual({
-      thinking: { type: 'disabled' },
-    });
-    expect(result!.reasoningEffortMap!['high']).toEqual({
-      reasoning_effort: 'high',
-      thinking: { type: 'enabled' },
+    expect(result!.supportedCapabilities).toEqual(['vision', 'reasoning_effort']);
+    expect(result!.reasoningEffortMap).toEqual({
+      low: { reasoning_effort: 'low' },
+      high: { reasoning_effort: 'high' },
     });
   });
 
-  it('should include reasoningEffortMap for models with reasoning_effort capability', () => {
-    const result = getDefaults('gpt-5.4');
+  it('derives defaultReasoningEffort from reasoning.default_effort', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/model-effort-default');
     expect(result).not.toBeNull();
-    expect(result!.reasoningEffortMap).toBeDefined();
-    expect(Object.keys(result!.reasoningEffortMap!)).toContain('low');
-    expect(Object.keys(result!.reasoningEffortMap!)).toContain('high');
-  });
-
-  it('should include defaultReasoningEffort for reasoningEffortMap models', () => {
-    const result = getDefaults('deepseek-v4-pro');
-    expect(result).not.toBeNull();
+    expect(result!.supportedCapabilities).toEqual(['reasoning_effort']);
+    expect(result!.reasoningEffortMap).toEqual({
+      minimal: { reasoning_effort: 'minimal' },
+      high: { reasoning_effort: 'high' },
+    });
     expect(result!.defaultReasoningEffort).toBe('high');
   });
 
-  it('should default preserveReasoning to true', () => {
-    const result = getDefaults('kimi-k2.6');
+  it('treats budget_tokens reasoning options without effort values as non-reasoning', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/model-budget');
+    expect(result).not.toBeNull();
+    expect(result!.supportedCapabilities).toBeUndefined();
+    expect(result!.reasoningEffortMap).toBeUndefined();
+  });
+
+  it('omits fields not present in the entry', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/model-basic');
+    expect(result).not.toBeNull();
+    expect(result!.maxTokens).toBeUndefined();
+    expect(result!.cachedInputCostPer1M).toBeUndefined();
+    expect(result!.supportedCapabilities).toBeUndefined();
+    expect(result!.reasoningEffortMap).toBeUndefined();
+    expect(result!.defaultReasoningEffort).toBeUndefined();
+  });
+
+  it('enables preserve reasoning and prompt caching for Qwen 3.7 models', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/qwen3.7-max');
     expect(result).not.toBeNull();
     expect(result!.preserveReasoning).toBe(true);
+    expect(result!.cacheControl).toEqual({ enabled: true, maxMarkers: 4 });
   });
 
-  it('should default preserveReasoning to true for entries without the field', () => {
-    const result = getDefaults('gpt-5.4');
+  it('enables preserve reasoning but not prompt caching for other models', () => {
+    const service = createFixtureService();
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/qwen3.8-max');
     expect(result).not.toBeNull();
     expect(result!.preserveReasoning).toBe(true);
-  });
-
-  it('should include cacheControl for Qwen models', () => {
-    const result = getDefaults('qwen3.7-max');
-    expect(result).not.toBeNull();
-    expect(result!.cacheControl).toBeDefined();
-    expect(result!.cacheControl!.enabled).toBe(true);
-    expect(result!.cacheControl!.maxMarkers).toBe(4);
-    expect(result!.cacheControl!.ttl).toBeUndefined();
-  });
-
-  it('should omit cacheControl for models without it', () => {
-    const result = getDefaults('deepseek-v4-flash');
-    expect(result).not.toBeNull();
     expect(result!.cacheControl).toBeUndefined();
   });
+});
 
-  it('should include reasoningEffortMap for all reasoning models', () => {
-    const result = getDefaults('gpt-5.4');
-    expect(result).not.toBeNull();
-    expect(result!.reasoningEffortMap).toBeDefined();
-    expect(Object.keys(result!.reasoningEffortMap!).length).toBeGreaterThan(0);
+describe('ModelDefaultsService.applyToFetched', () => {
+  it('fills null fields from defaults', () => {
+    const service = createFixtureService();
+    const result = service.applyToFetched(makeFetchedModel(), 'https://api.acme.test/v1');
+    expect(result.maxContextWindowTokens).toBe(200000);
+    expect(result.maxOutputTokens).toBe(8192);
+    expect(result.vision).toBe(true);
+    expect(result.supportedReasoningEfforts).toEqual(['low', 'high']);
+    expect(result.inputCostPer1M).toBe(0.5);
+    expect(result.outputCostPer1M).toBe(1.5);
+    expect(result.cachedInputCostPer1M).toBe(0.05);
+    expect(result.defaultReasoningEffort).toBeNull();
   });
 
-  it('should return defaults for Thinking Machines Inkling with vision + reasoning', () => {
-    const result = getDefaults('thinkingmachines/inkling');
-    expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(1000000);
-    expect(result!.inputCostPer1M).toBe(1.0);
-    expect(result!.outputCostPer1M).toBe(4.05);
-    expect(result!.cachedInputCostPer1M).toBe(0.17);
-    expect(result!.supportedCapabilities).toContain('vision');
-    expect(result!.supportedCapabilities).toContain('reasoning_effort');
-    expect(result!.defaultReasoningEffort).toBe('high');
-    expect(result!.reasoningEffortMap).toBeDefined();
-    expect(Object.keys(result!.reasoningEffortMap!)).toContain('high');
+  it('does not override non-null provider values', () => {
+    const service = createFixtureService();
+    const result = service.applyToFetched(
+      makeFetchedModel({
+        maxContextWindowTokens: 999999,
+        maxOutputTokens: 4096,
+        vision: false,
+        supportedReasoningEfforts: ['minimal'],
+        inputCostPer1M: 9.9,
+        outputCostPer1M: 9.8,
+        cachedInputCostPer1M: 9.7,
+        defaultReasoningEffort: 'low',
+      }),
+      'https://api.acme.test/v1',
+    );
+    expect(result.maxContextWindowTokens).toBe(999999);
+    expect(result.maxOutputTokens).toBe(4096);
+    expect(result.vision).toBe(false);
+    expect(result.supportedReasoningEfforts).toEqual(['minimal']);
+    expect(result.inputCostPer1M).toBe(9.9);
+    expect(result.outputCostPer1M).toBe(9.8);
+    expect(result.cachedInputCostPer1M).toBe(9.7);
+    expect(result.defaultReasoningEffort).toBe('low');
   });
 
-  it('should return base (non-promotional) pricing for Meituan LongCat 2.0', () => {
-    const result = getDefaults('meituan/longcat-2.0');
-    expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(1000000);
-    // Base pricing — NOT the promotional 60%-off rates.
-    expect(result!.inputCostPer1M).toBe(0.75);
-    expect(result!.outputCostPer1M).toBe(3.0);
-    expect(result!.cachedInputCostPer1M).toBe(0.015);
-    expect(result!.supportedCapabilities).toContain('reasoning_effort');
-    expect(result!.supportedCapabilities).not.toContain('vision');
-    expect(result!.defaultReasoningEffort).toBe('high');
+  it('returns the original object when no defaults are found', () => {
+    const service = createFixtureService();
+    const fetched = makeFetchedModel({ id: 'unknown/model' });
+    const result = service.applyToFetched(fetched, 'https://api.acme.test/v1');
+    expect(result).toBe(fetched);
   });
 
-  it('should return defaults for Meta Muse Spark 1.1 with vision + reasoning', () => {
-    const result = getDefaults('meta/muse-spark-1.1');
+  it('does not mutate the input when filling', () => {
+    const service = createFixtureService();
+    const fetched = makeFetchedModel();
+    const result = service.applyToFetched(fetched, 'https://api.acme.test/v1');
+    expect(result).not.toBe(fetched);
+    expect(fetched.maxContextWindowTokens).toBeNull();
+  });
+});
+
+describe('ModelDefaultsService loading', () => {
+  it('loads the bundled snapshot lazily once with an injected jsonPath', () => {
+    const logger = createMockLogger();
+    const service = new ModelDefaultsService({ logger, jsonPath: fixtureJsonPath });
+    const result = service.getDefaults('https://api.acme.test/v1', 'acme/model-basic');
     expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(1000000);
-    expect(result!.inputCostPer1M).toBe(1.25);
-    expect(result!.outputCostPer1M).toBe(4.25);
-    expect(result!.cachedInputCostPer1M).toBe(0.15);
-    expect(result!.supportedCapabilities).toContain('vision');
-    expect(result!.supportedCapabilities).toContain('reasoning_effort');
-    expect(result!.defaultReasoningEffort).toBe('high');
-    expect(result!.reasoningEffortMap).toBeDefined();
+    expect(logger.info).toHaveBeenCalledWith(
+      'Model defaults loaded',
+      expect.stringContaining('fixtures'),
+    );
   });
 
-  it('should return defaults for Kwaipilot KAT-Coder-Pro V2.5 without reasoning', () => {
-    const result = getDefaults('kwaipilot/kat-coder-pro-v2.5');
-    expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(262144);
-    expect(result!.inputCostPer1M).toBe(0.74);
-    expect(result!.outputCostPer1M).toBe(2.96);
-    expect(result!.cachedInputCostPer1M).toBe(0.15);
-    // Non-reasoning coding model — no capabilities, no reasoning map.
-    expect(result!.supportedCapabilities).toEqual([]);
-    expect(result!.reasoningEffortMap).toBeUndefined();
-    expect(result!.defaultReasoningEffort).toBeUndefined();
-  });
-
-  it('should return defaults for Kwaipilot KAT-Coder-Air V2.5 without reasoning', () => {
-    const result = getDefaults('kwaipilot/kat-coder-air-v2.5');
-    expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(262144);
-    expect(result!.inputCostPer1M).toBe(0.15);
-    expect(result!.outputCostPer1M).toBe(0.6);
-    expect(result!.cachedInputCostPer1M).toBe(0.03);
-    expect(result!.supportedCapabilities).toEqual([]);
-    expect(result!.reasoningEffortMap).toBeUndefined();
-    expect(result!.defaultReasoningEffort).toBeUndefined();
-  });
-
-  it('returns customFields from defaults when present', () => {
-    const tmpPath = resolve(__dirname, 'test-custom-fields.json');
-    const entries = [
-      {
-        match: { type: 'exact', value: 'custom-model' },
-        contextSize: 128000,
-        maxTokens: 16384,
-        inputCostPer1M: 1,
-        outputCostPer1M: 2,
-        supportedCapabilities: [],
-        customFields: { reasoning_split: true },
-      },
-    ];
-    writeFileSync(tmpPath, JSON.stringify(entries));
+  it('stays usable when the jsonPath is missing or invalid', () => {
+    const logger = createMockLogger();
+    const tmpPath = resolve(__dirname, 'test-invalid-defaults.json');
+    writeFileSync(tmpPath, '{ not json');
     try {
-      resetDefaults();
-      initDefaults(tmpPath);
-      const result = getDefaults('custom-model');
-      expect(result).not.toBeNull();
-      expect(result!.customFields).toEqual({
-        parallel_tool_calls: true,
-        reasoning_split: true,
-      });
+      const service = new ModelDefaultsService({ logger, jsonPath: tmpPath });
+      expect(service.getDefaults('https://api.acme.test/v1', 'acme/model-basic')).toBeNull();
+      expect(service.applyToFetched(makeFetchedModel(), 'https://api.acme.test/v1')).toEqual(
+        makeFetchedModel(),
+      );
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to load model defaults',
+        expect.any(String),
+        expect.stringContaining('test-invalid-defaults.json'),
+      );
     } finally {
       unlinkSync(tmpPath);
     }
   });
 
-  it('preserves customFields with multiple value types', () => {
-    const entries: ModelDefaultsEntry[] = [
-      {
-        match: { type: 'exact' as const, value: 'multi-type-model' },
-        contextSize: 128000,
-        maxTokens: 4096,
-        inputCostPer1M: 1,
-        outputCostPer1M: 2,
-        supportedCapabilities: [],
-        customFields: {
-          stringField: 'hello',
-          numberField: 42,
-          booleanField: true,
-          jsonField: { type: 'ephemeral' },
-        },
-      },
-    ];
-
-    const tmpPath = resolve(__dirname, 'test-multi-type.json');
-    writeFileSync(tmpPath, JSON.stringify(entries));
-    try {
-      resetDefaults();
-      initDefaults(tmpPath);
-      const result = getDefaults('multi-type-model');
-      expect(result).not.toBeNull();
-      expect(result!.customFields).toEqual({
-        parallel_tool_calls: true,
-        stringField: 'hello',
-        numberField: 42,
-        booleanField: true,
-        jsonField: { type: 'ephemeral' },
-      });
-    } finally {
-      unlinkSync(tmpPath);
-    }
+  it('defaults jsonPath to the bundled assets file', () => {
+    const service = new ModelDefaultsService({ logger: createMockLogger() });
+    expect(service).toBeInstanceOf(ModelDefaultsService);
   });
 });

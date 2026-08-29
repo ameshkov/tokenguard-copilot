@@ -59,6 +59,15 @@ describe('ModelConfigDialog', () => {
     expect(screen.getByText(/Pass reasoning tokens from previous turns/)).toBeDefined();
   });
 
+  it('enables preserve reasoning by default', () => {
+    render(<ModelConfigDialog {...baseProps} />);
+
+    expect(screen.getByRole('checkbox', { name: /Preserve Reasoning/ })).toHaveProperty(
+      'checked',
+      true,
+    );
+  });
+
   it('renders help text for token fields', () => {
     render(<ModelConfigDialog {...baseProps} />);
 
