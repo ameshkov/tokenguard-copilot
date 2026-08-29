@@ -79,8 +79,7 @@ function hostnameOf(url: string | null | undefined): string | null {
  *    falling back to lookup inside the resolved provider's
  *    `models` map by the full model ID.
  * 4. Last resort: global model-ID search across all providers
- *    (custom gateways that proxy prefixed OpenRouter model IDs
- *    such as `openai/gpt-5-nano`).
+ *    only when exactly one provider defines that unscoped ID.
  *
  * Synchronous file reads keep webview request handling free
  * of async state.
@@ -128,16 +127,22 @@ export class ModelDefaultsService {
       return deriveDefaults(model, modelId);
     }
 
-    // Last resort: search all providers by model ID. Covers custom
-    // gateways that serve prefixed OpenRouter-style model IDs
-    // (e.g. `openai/gpt-5-nano`) from an unknown host. When several
-    // providers key the same model ID, the first match in snapshot
-    // order wins.
+    // Last resort: search all providers by model ID, but only accept
+    // globally unique matches so unknown hosts do not inherit
+    // arbitrary provider-specific defaults for duplicate bare IDs.
+    let uniqueMatch: ModelsDevModel | null = null;
     for (const provider of this.getProvidersById().values()) {
       const found = provider.models?.[modelId];
-      if (found !== undefined) {
-        return deriveDefaults(found, modelId);
+      if (found === undefined) {
+        continue;
       }
+      if (uniqueMatch !== null) {
+        return null;
+      }
+      uniqueMatch = found;
+    }
+    if (uniqueMatch !== null) {
+      return deriveDefaults(uniqueMatch, modelId);
     }
 
     return null;

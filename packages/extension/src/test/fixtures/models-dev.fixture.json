@@ -58,6 +58,11 @@
           "output": 0.4
         }
       },
+      "shared-model": {
+        "limit": {
+          "context": 11111
+        }
+      },
       "acme/qwen3.7-max": {
         "limit": {
           "context": 1000000,
@@ -98,6 +103,11 @@
           "context": 64000,
           "output": 4096
         }
+      },
+      "shared-model": {
+        "limit": {
+          "context": 22222
+        }
       }
     }
   },
@@ -126,6 +136,12 @@
           "input": 2.5,
           "output": 10,
           "cache_read": 1.25
+        }
+      },
+      "solo-model": {
+        "limit": {
+          "context": 77777,
+          "output": 1234
         }
       }
     }

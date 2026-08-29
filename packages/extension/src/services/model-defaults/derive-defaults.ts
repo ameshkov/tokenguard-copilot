@@ -42,6 +42,25 @@ export interface ModelsDevModel {
 /** Default cache control configuration for the Qwen 3.7 crutch. */
 const QWEN_CACHE_CONTROL = { enabled: true, maxMarkers: 4 };
 
+/** Reasoning toggle mapping for Alibaba-style Qwen request bodies. */
+const QWEN_TOGGLE_REASONING_MAP = {
+  none: { enable_thinking: false },
+  high: { enable_thinking: true, preserve_thinking: true },
+};
+
+/**
+ * Returns `true` when the model advertises a reasoning toggle.
+ *
+ * @param model - The models.dev model entry.
+ * @returns `true` when a toggle option is present.
+ */
+function hasReasoningToggle(model: ModelsDevModel): boolean {
+  return (
+    Array.isArray(model.reasoning_options) &&
+    model.reasoning_options.some((option) => option?.type === 'toggle')
+  );
+}
+
 /**
  * Derives a {@link ModelDefaultsResult} from a models.dev
  * model entry. Fields present in the entry are set, plus
@@ -106,6 +125,16 @@ export function deriveDefaults(model: ModelsDevModel, modelId: string): ModelDef
     if (Object.keys(effortMap).length > 0) {
       result.reasoningEffortMap = effortMap;
     }
+  }
+
+  if (
+    result.reasoningEffortMap === undefined &&
+    hasReasoningToggle(model) &&
+    isQwen37OrOlder(modelId)
+  ) {
+    result.supportedCapabilities = [...(result.supportedCapabilities ?? []), 'reasoning_effort'];
+    result.reasoningEffortMap = QWEN_TOGGLE_REASONING_MAP;
+    result.defaultReasoningEffort = 'high';
   }
 
   // The object-form `reasoning` entry (with `default_effort`) is

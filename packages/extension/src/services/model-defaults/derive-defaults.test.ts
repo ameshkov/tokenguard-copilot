@@ -49,6 +49,22 @@ describe('deriveDefaults', () => {
     expect(deriveDefaults(model, NON_QWEN_ID)).toEqual({ preserveReasoning: true });
   });
 
+  it('restores Qwen toggle reasoning defaults from toggle-only entries', () => {
+    const model: ModelsDevModel = {
+      reasoning_options: [{ type: 'toggle' }],
+    };
+    expect(deriveDefaults(model, 'qwen3.7-max')).toEqual({
+      supportedCapabilities: ['reasoning_effort'],
+      reasoningEffortMap: {
+        none: { enable_thinking: false },
+        high: { enable_thinking: true, preserve_thinking: true },
+      },
+      defaultReasoningEffort: 'high',
+      preserveReasoning: true,
+      cacheControl: { enabled: true, maxMarkers: 4 },
+    });
+  });
+
   it('gives no reasoning effort defaults for boolean reasoning only', () => {
     const model: ModelsDevModel = { reasoning: true };
     expect(deriveDefaults(model, NON_QWEN_ID)).toEqual({ preserveReasoning: true });

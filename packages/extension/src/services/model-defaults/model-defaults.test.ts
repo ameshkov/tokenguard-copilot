@@ -85,10 +85,15 @@ describe('ModelDefaultsService provider resolution', () => {
     const service = createFixtureService();
     // Unknown gateway host with an unprefixed model ID can only be
     // found by searching every provider's models map.
-    const result = service.getDefaults('https://gateway.example.com/v1', 'gpt-4o');
+    const result = service.getDefaults('https://gateway.example.com/v1', 'solo-model');
     expect(result).not.toBeNull();
-    expect(result!.contextSize).toBe(128000);
-    expect(result!.maxTokens).toBe(16384);
+    expect(result!.contextSize).toBe(77777);
+    expect(result!.maxTokens).toBe(1234);
+  });
+
+  it('returns null for ambiguous last-resort model ID matches', () => {
+    const service = createFixtureService();
+    expect(service.getDefaults('https://gateway.example.com/v1', 'shared-model')).toBeNull();
   });
 
   it('resolves OpenRouter-style ~-prefixed latest aliases verbatim', () => {
@@ -169,6 +174,12 @@ describe('ModelDefaultsService defaults derivation', () => {
     const result = service.getDefaults('https://api.acme.test/v1', 'acme/qwen3.7-max');
     expect(result).not.toBeNull();
     expect(result!.preserveReasoning).toBe(true);
+    expect(result!.supportedCapabilities).toEqual(['reasoning_effort']);
+    expect(result!.reasoningEffortMap).toEqual({
+      none: { enable_thinking: false },
+      high: { enable_thinking: true, preserve_thinking: true },
+    });
+    expect(result!.defaultReasoningEffort).toBe('high');
     expect(result!.cacheControl).toEqual({ enabled: true, maxMarkers: 4 });
   });
 

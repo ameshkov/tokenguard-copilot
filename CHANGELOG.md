@@ -51,6 +51,11 @@ and this project adheres to
 
 ### Fixed
 
+- Restored toggle-only Qwen reasoning defaults when deriving from the
+  bundled models.dev snapshot, so Alibaba-style models still prefill
+  `enable_thinking` / `preserve_thinking` request bodies and unknown
+  hosts no longer inherit arbitrary defaults for duplicate bare model
+  IDs.
 - Fixed `pnpm run test:e2e` failing on macOS: bumped
   `@vscode/test-electron` to 3.1.0 (VS Code moved the macOS
   executable from `Contents/MacOS/Electron` to `Code`, which older
