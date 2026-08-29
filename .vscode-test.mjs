@@ -6,11 +6,12 @@ import { join } from 'node:path';
 // creates its IPC socket inside the user-data dir. The test runner's
 // default `.vscode-test/user-data` path exceeds the limit for deeply
 // nested workspaces, so VS Code fails to launch. Using a short,
-// stable user-data dir under the OS temp directory keeps E2E runs
-// working everywhere. The database test resolves the real global
-// storage path from the extension's exports, so it follows this
-// location automatically.
-const E2E_USER_DATA_DIR = join(tmpdir(), 'tokenguard-copilot-e2e');
+// per-run user-data dir under the OS temp directory keeps E2E runs
+// working everywhere and isolates each run (suffixed with the PID to
+// avoid cross-run state leakage and concurrent-run conflicts). The
+// database test resolves the real global storage path from the
+// extension's exports, so it follows this location automatically.
+const E2E_USER_DATA_DIR = join(tmpdir(), `tokenguard-copilot-e2e-${process.pid}`);
 
 export default defineConfig({
   files: 'out/test-e2e/**/*.test.js',

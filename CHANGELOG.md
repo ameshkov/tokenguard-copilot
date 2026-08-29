@@ -65,6 +65,10 @@ and this project adheres to
   lifecycle test now resolves the global storage path from the
   extension's exports instead of hard-coding the runner's user-data
   layout.
+- Fixed the E2E test user-data directory leaking state between runs:
+  it is now per-run (`tokenguard-copilot-e2e-<pid>` under the OS temp
+  directory), so concurrent runs do not conflict and stale
+  globalStorage/database content cannot be reused.
 
 ## [v1.4.0] - 2026-07-19
 
