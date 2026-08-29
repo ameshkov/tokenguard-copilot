@@ -96,6 +96,24 @@ describe('ModelDefaultsService provider resolution', () => {
     expect(service.getDefaults('https://gateway.example.com/v1', 'shared-model')).toBeNull();
   });
 
+  it('does not fall back to other providers when a provider is resolved', () => {
+    const service = createFixtureService();
+    // "solo-model" exists only in the "openai" provider, but the
+    // "acme" provider is resolved from the base URL; defaults from
+    // an unrelated provider must not be applied.
+    expect(service.getDefaults('https://api.acme.test/v1', 'solo-model')).toBeNull();
+  });
+
+  it('does not scan other providers when resolved by host or prefix', () => {
+    const service = createFixtureService();
+    // "mystery/chat" lives in the "mystery" provider; with the acme
+    // host resolving the provider, a global scan would wrongly pick
+    // it up, so the lookup must stay within the resolved provider.
+    expect(service.getDefaults('https://api.acme.test/v1', 'mystery/chat')).toBeNull();
+    // Likewise when the provider is resolved via the model ID prefix.
+    expect(service.getDefaults('https://gateway.example.com/v1', 'acme/mystery-chat')).toBeNull();
+  });
+
   it('resolves OpenRouter-style ~-prefixed latest aliases verbatim', () => {
     const service = createFixtureService();
     // models.dev keys "latest" aliases with a leading `~` and
@@ -234,6 +252,15 @@ describe('ModelDefaultsService.applyToFetched', () => {
   it('returns the original object when no defaults are found', () => {
     const service = createFixtureService();
     const fetched = makeFetchedModel({ id: 'unknown/model' });
+    const result = service.applyToFetched(fetched, 'https://api.acme.test/v1');
+    expect(result).toBe(fetched);
+  });
+
+  it('does not apply defaults from an unrelated provider', () => {
+    const service = createFixtureService();
+    // "solo-model" belongs to the "openai" provider; with the acme
+    // provider resolved, the model must stay unenriched.
+    const fetched = makeFetchedModel({ id: 'solo-model' });
     const result = service.applyToFetched(fetched, 'https://api.acme.test/v1');
     expect(result).toBe(fetched);
   });

@@ -78,8 +78,9 @@ function hostnameOf(url: string | null | undefined): string | null {
  * 3. Model ID prefix (`foo/bar` ⇒ models.dev provider `foo`),
  *    falling back to lookup inside the resolved provider's
  *    `models` map by the full model ID.
- * 4. Last resort: global model-ID search across all providers
- *    only when exactly one provider defines that unscoped ID.
+ * 4. Last resort: global model-ID search across all providers,
+ *    used only when no provider could be resolved and exactly
+ *    one provider defines that unscoped ID.
  *
  * Synchronous file reads keep webview request handling free
  * of async state.
@@ -117,18 +118,26 @@ export class ModelDefaultsService {
    */
   getDefaults(providerBaseUrl: string | null, modelId: string): ModelDefaultsResult | null {
     const providerId = this.resolveProviderId(providerBaseUrl, modelId);
-    // models.dev keys OpenRouter "latest" aliases with the leading
-    // `~` (e.g. `~openai/gpt-latest`), and OpenRouter uses those
-    // exact IDs in its `/models` response and chat requests, so the
-    // fetched model ID matches the snapshot key verbatim.
-    const model =
-      providerId !== null ? this.getProvidersById().get(providerId)?.models?.[modelId] : undefined;
-    if (model !== undefined) {
-      return deriveDefaults(model, modelId);
+    if (providerId !== null) {
+      // models.dev keys OpenRouter "latest" aliases with the leading
+      // `~` (e.g. `~openai/gpt-latest`), and OpenRouter uses those
+      // exact IDs in its `/models` response and chat requests, so the
+      // fetched model ID matches the snapshot key verbatim.
+      const model = this.getProvidersById().get(providerId)?.models?.[modelId];
+      if (model !== undefined) {
+        return deriveDefaults(model, modelId);
+      }
+
+      // A resolved provider that does not define the model: never
+      // scan other providers, otherwise defaults from an unrelated
+      // provider could be misapplied when the same bare model ID
+      // exists in multiple providers.
+      return null;
     }
 
-    // Last resort: search all providers by model ID, but only accept
-    // globally unique matches so unknown hosts do not inherit
+    // No provider could be resolved (unknown host, no scoped prefix):
+    // search all providers by model ID as a last resort, but only
+    // accept globally unique matches so unknown hosts do not inherit
     // arbitrary provider-specific defaults for duplicate bare IDs.
     let uniqueMatch: ModelsDevModel | null = null;
     for (const provider of this.getProvidersById().values()) {

@@ -69,6 +69,13 @@ and this project adheres to
   it is now per-run (`tokenguard-copilot-e2e-<pid>` under the OS temp
   directory), so concurrent runs do not conflict and stale
   globalStorage/database content cannot be reused.
+- Fixed `ModelDefaultsService.getDefaults()` falling back to a global
+  all-provider scan even when a provider was resolved from the base
+  URL or model ID prefix; it now stays within the resolved provider
+  (the global unambiguous scan runs only when no provider can be
+  resolved), preventing unrelated providers' defaults from being
+  misapplied and removing the hot-path scan when enriching fetched
+  models that are absent from the snapshot.
 
 ## [v1.4.0] - 2026-07-19
 
