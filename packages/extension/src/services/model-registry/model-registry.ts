@@ -645,8 +645,8 @@ function parseFetchedModel(entry: Record<string, unknown>): FetchedModel {
     defaultReasoningEffort = rawDefaultEffort;
   }
 
-  // Context window: top_provider.context_length, then the top
-  // -level context_length.
+  // Context window: top_provider.context_length, then the
+  // top-level context_length.
   let maxContextWindowTokens: number | null = null;
   if (typeof topProvider?.context_length === 'number') {
     maxContextWindowTokens = topProvider.context_length;

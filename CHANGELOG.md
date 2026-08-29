@@ -76,6 +76,9 @@ and this project adheres to
   resolved), preventing unrelated providers' defaults from being
   misapplied and removing the hot-path scan when enriching fetched
   models that are absent from the snapshot.
+- Fixed `fetch-models-dev` crashing when Prettier config cannot be
+  resolved (`resolveConfig` returns `null`), and reworded an awkward
+  comment in the model registry.
 
 ## [v1.4.0] - 2026-07-19
 

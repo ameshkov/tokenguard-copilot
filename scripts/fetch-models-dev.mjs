@@ -105,7 +105,7 @@ async function main() {
     // snapshot stays consistent with `format:check` (e.g. short
     // arrays collapse).
     const projectRoot = dirname(fileURLToPath(import.meta.url));
-    const prettierConfig = await resolveConfig(projectRoot);
+    const prettierConfig = (await resolveConfig(projectRoot)) ?? {};
     const formatted = await format(JSON.stringify(data), {
       ...prettierConfig,
       parser: 'json',
