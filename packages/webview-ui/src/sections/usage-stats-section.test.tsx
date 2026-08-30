@@ -1,11 +1,19 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { UsageStatsSection } from './usage-stats-section.js';
 import type { GetUsageStatsResponse } from '@tokenguard/shared';
 import * as vscodeApi from '../vscode-api.js';
 
 vi.mock('../vscode-api.js', () => ({
   sendRequest: vi.fn(),
+}));
+
+// chart.js depends on browser layout/canvas features (resize observers,
+// computed styles) that jsdom does not provide; re-render cycles make
+// chart.js call resize on detached canvases and crash. Stub the chart
+// as a plain canvas — assertions only need its presence.
+vi.mock('react-chartjs-2', () => ({
+  Bar: () => <canvas aria-label="usage chart" />,
 }));
 
 afterEach(() => {
@@ -114,6 +122,38 @@ describe('UsageStatsSection', () => {
     const selects = container.querySelectorAll('vscode-single-select');
     // Period, Providers, Models
     expect(selects.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('preserves model IDs containing a colon in the model filter', async () => {
+    const colonModelId = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
+    const colonModel = { ...models[0], id: colonModelId };
+    const colonResponse: GetUsageStatsResponse = {
+      ...mockResponse,
+      summary: {
+        ...mockResponse.summary,
+        modelNames: { [`p1:${colonModelId}`]: { name: colonModelId, removed: false } },
+      },
+    };
+    mockSendRequest.mockResolvedValue(colonResponse);
+    const { container } = render(<UsageStatsSection providers={providers} models={[colonModel]} />);
+    await screen.findByText('Usage Stats');
+
+    // The model dropdown option must carry the full model ID as its value.
+    const modelOption = Array.from(container.querySelectorAll('vscode-option')).find(
+      (o) => o.getAttribute('value') === colonModelId,
+    );
+    expect(modelOption).toBeDefined();
+
+    // Selecting it must send the full model ID in the stats request.
+    const modelSelect = container.querySelectorAll('vscode-single-select')[2]!;
+    Object.defineProperty(modelSelect, 'value', {
+      value: colonModelId,
+      writable: true,
+    });
+    fireEvent.change(modelSelect);
+    expect(mockSendRequest).toHaveBeenLastCalledWith(
+      expect.objectContaining({ modelIds: [colonModelId] }),
+    );
   });
 
   it('shows "(removed)" tag for removed providers', async () => {

@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the Usage Stats model filter dropping everything after the
+  first colon of a model ID, so Bedrock-style IDs like
+  `us.anthropic.claude-haiku-...-v1:0` are now sent intact and match
+  the records stored in the database.
+
 ## [v1.6.0] - 2026-08-30
 
 ### Added

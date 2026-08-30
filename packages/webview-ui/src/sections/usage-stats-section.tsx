@@ -93,6 +93,21 @@ function fmtCost(n: number): string {
 }
 
 /**
+ * Split a composite `${providerId}:${modelId}` key into its parts.
+ * Only the first colon separates the segments: provider IDs (UUIDs)
+ * never contain one, while model IDs may (e.g. Bedrock-style IDs
+ * like `us.anthropic.claude-haiku-...-v1:0`), so splitting on every
+ * colon would truncate the model ID.
+ *
+ * @param key - The composite key.
+ * @returns The provider ID and the full model ID.
+ */
+function splitCompositeKey(key: string): { providerId: string; modelId: string } {
+  const separator = key.indexOf(':');
+  return { providerId: key.slice(0, separator), modelId: key.slice(separator + 1) };
+}
+
+/**
  * Builds chart.js options with theme-aware axis colors,
  * stacked bars, and a tooltip that shows token counts
  * and estimated cost.
@@ -498,12 +513,12 @@ export function UsageStatsSection(props: UsageStatsSectionProps): React.JSX.Elem
     return [...merged.entries()]
       .filter(([key]) => {
         if (selectedProviderIds.length === 0) return true;
-        const [providerId] = key.split(':');
+        const { providerId } = splitCompositeKey(key);
         return selectedProviderIds.includes(providerId);
       })
       .map(([key, info]) => ({
         key,
-        modelId: key.split(':')[1],
+        modelId: splitCompositeKey(key).modelId,
         name: info.removed ? `${info.name} (removed)` : info.name,
       }));
   }, [models, response, selectedProviderIds]);
