@@ -113,7 +113,6 @@ export class ExtensionContext {
     this.sessionTracker = new SessionTracker(sessionMappingRepo, deps.logger);
     this.chatDebugLogger = new ChatDebugLogger(
       this.chatDebugSettings,
-      this.sessionTracker,
       deps.logsBasePath,
       deps.logger,
       deps.onTreeRefresh,
@@ -136,6 +135,7 @@ export class ExtensionContext {
       providerRepo,
       deps.secrets,
       this.chatDebugLogger,
+      this.sessionTracker,
       this.tokenCounter,
       reasoningCacheService,
       this.usageTracker,

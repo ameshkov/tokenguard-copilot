@@ -8,6 +8,7 @@
 import type { CacheControlConfig } from '@tokenguard/shared';
 import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
+import type { SessionTracker } from '../session-tracker/index.js';
 import type { ContentRulesService } from '../content-rules/index.js';
 import type { ReasoningDetail, ReasoningFields } from '../../utils/index.js';
 import type { Logger } from '../../logger/index.js';
@@ -167,6 +168,15 @@ export interface ChatContext {
    * Logging is fire-and-forget — errors do not propagate.
    */
   chatDebugLogger?: ChatDebugLogger;
+
+  /**
+   * Session tracker for sticky conversation session IDs.
+   * When provided, the resolved session ID is sent as the
+   * `X-Session-Id` header with the request and the
+   * conversation fingerprint is bound after the response
+   * (works regardless of whether debug logging is enabled).
+   */
+  sessionTracker?: SessionTracker;
 
   /**
    * Workspace folder URI string for computing the

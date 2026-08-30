@@ -5,6 +5,7 @@ import { providers } from '../../db/index.js';
 import { ModelRepository, ProviderRepository } from '../../repositories/index.js';
 import { ModelRegistry } from './model-registry.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
+import type { SessionTracker } from '../session-tracker/index.js';
 import type { ModelConfig, CacheControlConfig } from '@tokenguard/shared';
 import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
@@ -142,6 +143,11 @@ describe('ModelRegistry', () => {
       providerRepo,
       secrets as unknown as import('vscode').SecretStorage,
       mockLogger,
+      {
+        resolveSession: vi.fn(),
+        bindFingerprint: vi.fn(),
+        clearMappings: vi.fn(),
+      } as unknown as SessionTracker,
       mockTokenCounter as unknown as import('../token-counter/index.js').TokenCounter,
       mockReasoningCacheService as unknown as import('../reasoning-cache/reasoning-cache-service.js').ReasoningCacheService,
       mockUsageTracker as unknown as import('../usage-tracker/index.js').UsageTracker,

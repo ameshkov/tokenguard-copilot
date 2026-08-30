@@ -18,6 +18,7 @@ import {
   handleChatSuccess,
   logChatDebugRequest,
 } from './handle-helpers.js';
+import { ChatDebugLogger } from '../chat-debug-logger/index.js';
 import type { ChatContext, OpenAIMessage, UsageCollector } from './chat-types.js';
 import type { RuleApplicationResult } from '../content-rules/index.js';
 import { retryableFetch } from './retryable-fetch.js';
@@ -54,10 +55,12 @@ export class ChatHandler {
    * messages, sending to the provider, and processing
    * the response.
    *
-   * When `chatDebugLogger` is configured, captures response
-   * content and timing for debug logging after the request
-   * completes. Logging is fire-and-forget — errors do not
-   * propagate to the caller.
+   * Resolves the conversation session ID before the request
+   * is sent (sent as the `X-Session-Id` header), so the id
+   * stays sticky across turns. When `chatDebugLogger` is
+   * configured, captures response content and timing for
+   * debug logging after the request completes. Logging is
+   * fire-and-forget — errors do not propagate to the caller.
    *
    * @param messages - VS Code chat request messages.
    * @param progress - VS Code progress reporter.
@@ -74,6 +77,9 @@ export class ChatHandler {
     const requestId = randomUUID();
     const { body, finalMessages, processedMessages, ruleResults, url, reasoningSources } =
       this.prepareRequest(messages, requestId);
+
+    // Resolve the sticky session ID before the request is sent.
+    const sessionId = this.resolveSessionId(finalMessages);
 
     const abortController = new AbortController();
     const cancelDisposable = token.onCancellationRequested(() => abortController.abort());
@@ -94,6 +100,7 @@ export class ChatHandler {
             Authorization: `Bearer ${this.ctx.apiKey}`,
             'User-Agent': buildUserAgent(this.ctx.version),
             'X-TokenGuard-Request-Id': requestId,
+            'X-Session-Id': sessionId,
           },
           body: JSON.stringify(body),
           signal: abortController.signal,
@@ -147,6 +154,7 @@ export class ChatHandler {
     } finally {
       cancelDisposable.dispose();
       const endTime = new Date();
+      this.bindSessionFingerprint(sessionId, finalMessages, state);
       logChatDebugRequest(this.ctx, {
         requestId,
         finalMessages,
@@ -161,6 +169,7 @@ export class ChatHandler {
         error,
         usageCollector,
         ruleResults,
+        sessionId,
       });
     }
   }
@@ -236,5 +245,56 @@ export class ChatHandler {
     );
 
     return { body, finalMessages, processedMessages, ruleResults, url, reasoningSources };
+  }
+
+  private sessionAttrs(): { workspaceId: string; modelName: string } {
+    return {
+      workspaceId: ChatDebugLogger.computeWorkspaceId(this.ctx.workspaceFolderUri ?? ''),
+      modelName: `${this.ctx.provider.name}/${this.ctx.model.id}`,
+    };
+  }
+
+  /** Resolves the sticky session ID; failures fall back to a fresh UUID. */
+  private resolveSessionId(finalMessages: OpenAIMessage[]): string {
+    const tracker = this.ctx.sessionTracker;
+    if (!tracker) return randomUUID();
+    try {
+      return tracker.resolveSession({ messages: finalMessages, ...this.sessionAttrs() }).sessionId;
+    } catch (e) {
+      this.ctx.logger?.warn(
+        'Failed to resolve session',
+        `model=${this.ctx.model.id}`,
+        `error=${e instanceof Error ? e.message : String(e)}`,
+      );
+      return randomUUID();
+    }
+  }
+
+  /** Binds the response fingerprint; fire-and-forget so DB errors are swallowed. */
+  private bindSessionFingerprint(
+    sessionId: string,
+    finalMessages: OpenAIMessage[],
+    state: ReturnType<typeof createCapturingProgress>['state'],
+  ): void {
+    const tracker = this.ctx.sessionTracker;
+    if (!tracker) return;
+    try {
+      tracker.bindFingerprint({
+        sessionId,
+        messages: finalMessages,
+        responseContent: state.responseContent,
+        responseToolCallIds:
+          state.responseToolCalls.length > 0
+            ? state.responseToolCalls.map((tc) => tc.id)
+            : undefined,
+        ...this.sessionAttrs(),
+      });
+    } catch (e) {
+      this.ctx.logger?.warn(
+        'Failed to bind session fingerprint',
+        `model=${this.ctx.model.id}`,
+        `error=${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 }

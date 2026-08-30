@@ -11,6 +11,8 @@ export interface MockOpenAIServer {
   readonly baseUrl: string;
   /** Headers received from the last `/chat/completions` request, or null if none. */
   readonly lastRequestHeaders: Record<string, string | string[] | undefined> | null;
+  /** Headers from every `/chat/completions` request, in request order. */
+  readonly requestHeadersHistory: Array<Record<string, string | string[] | undefined>>;
   /** Shuts down the server. */
   close(): Promise<void>;
 }
@@ -151,6 +153,7 @@ function handleChatCompletions(
 export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
   return new Promise((resolve, reject) => {
     let lastRequestHeaders: Record<string, string | string[] | undefined> | null = null;
+    const requestHeadersHistory: Array<Record<string, string | string[] | undefined>> = [];
 
     const server = http.createServer((req, res) => {
       const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
@@ -163,6 +166,7 @@ export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
       if (req.method === 'POST' && url.pathname === '/chat/completions') {
         handleChatCompletions(req, res, (headers) => {
           lastRequestHeaders = headers;
+          requestHeadersHistory.push(headers);
         });
         return;
       }
@@ -183,6 +187,9 @@ export function startMockOpenAIServer(): Promise<MockOpenAIServer> {
         baseUrl: `http://127.0.0.1:${addr.port}`,
         get lastRequestHeaders() {
           return lastRequestHeaders;
+        },
+        get requestHeadersHistory() {
+          return requestHeadersHistory;
         },
         close: () =>
           new Promise<void>((res, rej) => {

@@ -123,6 +123,16 @@ suite('Chat Completion E2E', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       'X-TokenGuard-Request-Id should be a valid UUID',
     );
+
+    // Verify X-Session-Id header was sent
+    const sessionIdHeader = server.lastRequestHeaders['x-session-id'];
+    assert.ok(sessionIdHeader, 'X-Session-Id header should be present');
+    const sessionIdValue = Array.isArray(sessionIdHeader) ? sessionIdHeader[0] : sessionIdHeader;
+    assert.match(
+      sessionIdValue ?? '',
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'X-Session-Id should be a valid UUID',
+    );
   });
 
   test('streaming chat completion works', async function () {
@@ -187,6 +197,92 @@ suite('Chat Completion E2E', () => {
       headerValue ?? '',
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       'X-TokenGuard-Request-Id should be a valid UUID',
+    );
+
+    // Verify X-Session-Id header was sent
+    const sessionIdHeader = server.lastRequestHeaders['x-session-id'];
+    assert.ok(sessionIdHeader, 'X-Session-Id header should be present');
+    const sessionIdValue = Array.isArray(sessionIdHeader) ? sessionIdHeader[0] : sessionIdHeader;
+    assert.match(
+      sessionIdValue ?? '',
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'X-Session-Id should be a valid UUID',
+    );
+  });
+
+  test('x-session-id is identical across turns of one conversation', async function () {
+    this.timeout(30000);
+    assert.ok(providerId, 'Provider should exist from previous test');
+
+    const chatModel = await waitForCondition(async () => {
+      const models = await lm.selectChatModels({
+        vendor: 'tokenguard-copilot',
+      });
+
+      return models.find((m) => m.family === 'mock-model');
+    }, 15000);
+
+    assert.ok(chatModel, 'Mock model should be selectable');
+
+    // Use a unique first message so this conversation's
+    // fingerprint does not collide with the fingerprints of
+    // the earlier tests (which reuse "Say hello"). Otherwise
+    // turn 2 would resolve to the first stored row for that
+    // shared fingerprint instead of this conversation's id.
+    const firstUserMessage = `Say hello (unique ${Date.now()})`;
+
+    // Turn 1: user asks, assistant answers.
+    const firstResponse = await chatModel.sendRequest(
+      [LanguageModelChatMessage.User(firstUserMessage)],
+      {},
+    );
+    let firstText = '';
+    for await (const part of firstResponse.stream) {
+      if (part instanceof LanguageModelTextPart) {
+        firstText += part.value;
+      }
+    }
+    assert.strictEqual(firstText, 'Hello from mock server!');
+
+    // Turn 2: continue the conversation with the assistant
+    // message from turn 1 in the history.
+    const secondResponse = await chatModel.sendRequest(
+      [
+        LanguageModelChatMessage.User(firstUserMessage),
+        LanguageModelChatMessage.Assistant(firstText),
+        LanguageModelChatMessage.User('Say hello again'),
+      ],
+      {},
+    );
+    for await (const part of secondResponse.stream) {
+      if (part instanceof LanguageModelTextPart) {
+        // Consume the stream
+        void part.value;
+      }
+    }
+
+    const history = server.requestHeadersHistory;
+    assert.ok(history.length >= 2, 'Both turns should have captured request headers');
+
+    const turn1Headers = history[history.length - 2];
+    const turn2Headers = history[history.length - 1];
+
+    const turn1Header = turn1Headers['x-session-id'];
+    const turn2Header = turn2Headers['x-session-id'];
+    const turn1Value = Array.isArray(turn1Header) ? turn1Header[0] : turn1Header;
+    const turn2Value = Array.isArray(turn2Header) ? turn2Header[0] : turn2Header;
+
+    assert.ok(turn1Value, 'X-Session-Id should be present on turn 1');
+    assert.ok(turn2Value, 'X-Session-Id should be present on turn 2');
+    assert.match(
+      turn1Value,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      'X-Session-Id should be a valid UUID',
+    );
+    assert.strictEqual(
+      turn1Value,
+      turn2Value,
+      'X-Session-Id should be identical across turns of one conversation',
     );
   });
 });

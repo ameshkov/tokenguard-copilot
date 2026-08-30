@@ -113,6 +113,67 @@ describe('SessionMappingRepository', () => {
     });
   });
 
+  describe('upsertFingerprintMapping', () => {
+    it('inserts a new mapping when no row exists for the session id', () => {
+      const row = repo.upsertFingerprintMapping({
+        contentFingerprint: 'fp-upsert-new',
+        sessionId: 'sess-upsert',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+        createdAt: '2026-05-20T00:00:00Z',
+      });
+
+      expect(row.contentFingerprint).toBe('fp-upsert-new');
+      expect(row.sessionId).toBe('sess-upsert');
+      expect(repo.getDistinctSessionIds()).toEqual(['sess-upsert']);
+    });
+
+    it('updates an existing mapping instead of inserting a duplicate', () => {
+      repo.insertFingerprintMapping({
+        contentFingerprint: 'fp-upsert-old',
+        sessionId: 'sess-upsert',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+        createdAt: '2026-05-20T00:00:00Z',
+      });
+
+      const row = repo.upsertFingerprintMapping({
+        contentFingerprint: 'fp-upsert-new',
+        sessionId: 'sess-upsert',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+        createdAt: '2026-05-21T00:00:00Z',
+      });
+
+      expect(row.contentFingerprint).toBe('fp-upsert-new');
+      expect(repo.getDistinctSessionIds()).toEqual(['sess-upsert']);
+      expect(repo.findByContentFingerprint('fp-upsert-old')).toBeUndefined();
+      expect(repo.findByContentFingerprint('fp-upsert-new')?.sessionId).toBe('sess-upsert');
+    });
+
+    it('refreshes updatedAt when updating an existing mapping', () => {
+      repo.insertFingerprintMapping({
+        contentFingerprint: 'fp-upsert-stale',
+        sessionId: 'sess-upsert',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+        createdAt: '2026-05-20T00:00:00Z',
+      });
+
+      const row = repo.upsertFingerprintMapping({
+        contentFingerprint: 'fp-upsert-stale',
+        sessionId: 'sess-upsert',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+        createdAt: '2026-05-21T00:00:00Z',
+      });
+
+      expect(new Date(row.updatedAt).getTime()).toBeGreaterThan(
+        new Date('2026-05-21T00:00:00Z').getTime(),
+      );
+    });
+  });
+
   describe('bumpSession', () => {
     it('updates updatedAt for all rows of a session', () => {
       const old = '2026-05-20T00:00:00Z';

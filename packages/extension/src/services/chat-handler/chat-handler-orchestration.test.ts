@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ChatDebugLogger, LogRequestInput } from '../chat-debug-logger/index.js';
+import type { SessionTracker } from '../session-tracker/index.js';
 import {
   mockMessage,
   mockModel,
@@ -63,6 +64,63 @@ describe('ChatHandler — orchestration', () => {
 
       expect(parts).toHaveLength(1);
       expect(parts[0].value).toBe('Response');
+    });
+
+    it('sends X-Session-Id header with the resolved session id', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+
+      const handler = new ChatHandler(baseContext, noopReasoningCacheService());
+      await handler.handle(messages, progress, token);
+
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers['X-Session-Id']).toBe('test-session-id');
+    });
+
+    it('binds the session fingerprint after a successful response', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => ({
+          choices: [{ message: { content: 'Response' } }],
+        }),
+      });
+
+      const bindFingerprint = vi.fn();
+      const ctx = baseChatContext({
+        sessionTracker: {
+          resolveSession: vi.fn(() => ({ sessionId: 'test-session-id', isNew: true })),
+          bindFingerprint,
+          clearMappings: vi.fn(),
+        } as unknown as SessionTracker,
+      });
+
+      const messages = [mockMessage(1, [{ value: 'Hello' }])];
+      const { progress } = mockProgress();
+      const token = mockToken();
+
+      const handler = new ChatHandler(ctx, noopReasoningCacheService());
+      await handler.handle(messages, progress, token);
+
+      expect(bindFingerprint).toHaveBeenCalledOnce();
+      expect(bindFingerprint).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: 'test-session-id',
+          responseContent: 'Response',
+          modelName: `${ctx.provider.name}/${ctx.model.id}`,
+        }),
+      );
     });
 
     it('sends User-Agent header when version is set', async () => {
@@ -129,6 +187,10 @@ describe('ChatHandler — orchestration', () => {
 
       // Should not throw on abort
       await expect(handler.handle(messages, progress, token)).rejects.toThrow();
+
+      // The session header must still be present even when cancelled.
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers['X-Session-Id']).toBe('test-session-id');
     });
 
     it('logs underlying network error cause from a failed fetch', async () => {
@@ -326,9 +388,13 @@ describe('ChatHandler — orchestration', () => {
       const { progress } = mockProgress();
       await handler.handle([], progress, mockToken());
 
+      const [, options] = fetchMock.mock.calls[0];
+      expect(options.headers['X-Session-Id']).toBe('test-session-id');
+
       expect(logRequest).toHaveBeenCalledOnce();
       const input = logRequest.mock.calls[0][0] as LogRequestInput;
       expect(input.responseContent).toBe('Hi there');
+      expect(input.sessionId).toBe('test-session-id');
       expect(input.cancelled).toBe(false);
       expect(input.error).toBeUndefined();
     });

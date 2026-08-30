@@ -8,79 +8,51 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Sticky routing session header (`X-Session-Id`) on every chat completion
+  request. The session id is minted before the first response (so the
+  first request already carries it) and bound to the conversation
+  fingerprint after the response, keeping it identical across turns of
+  conversations that produce bindable responses and consistent with Chat
+  Debug session attribution.
+
 ## [v1.5.0] - 2026-08-29
 
 ### Added
 
-- Model defaults now ship two universal "crutch" presets:
-  `preserveReasoning` is enabled for every model (so reasoning tokens
-  are kept across turns whenever a provider returns them), and prompt
-  caching (`cacheControl`) is enabled by default for Qwen models of
-  version 3.7 or older. The Qwen version check lives in the shared
-  `qwen-model` helper and also applies to models fetched from custom
-  gateways that are absent from the models.dev snapshot.
+- Reasoning preservation is now enabled by default for every model, so
+  reasoning tokens are kept across turns whenever the provider returns
+  them.
+- Prompt caching (`cacheControl`) is now enabled by default for Qwen
+  models of version 3.7 or older, including models fetched from custom
+  gateways that are absent from the bundled snapshot.
 
 ### Changed
 
-- Extracted the models.dev defaults derivation into its own
-  `derive-defaults` module and added coverage for OpenRouter's
-  `~`-prefixed "latest" aliases, which are keyed verbatim in the
-  snapshot and the `/models` response.
-- Replaced the bundled custom model defaults
-  (`assets/model-defaults.json`, per-entry `match` + flat fields) with
-  a snapshot of the [models.dev](https://models.dev) database
-  (`assets/models.dev.json`), refreshed manually via the new
-  `fetch:models-dev` script. Defaults are now looked up by provider
-  base URL host (with a hardcoded host table for SDK-only providers
-  and a model-ID-prefix fallback) and derived from `limit`, `cost`,
-  `modalities.input`, and `reasoning_options`; context, output limits,
-  costs, and capabilities merged into fetched models only fill null
-  fields.
-- `parseFetchedModel` now parses the real OpenRouter `/api/v1/models`
-  shape (`top_provider.context_length` /
-  `top_provider.max_completion_tokens`, `architecture.input_modalities`,
-  `reasoning.supported_efforts` / `reasoning.default_effort`, string
-  per-token `pricing` converted to per-1M rates).
-- The `getModelDefaults` webview request now carries `providerId` so
-  the host resolves the provider base URL;
-  `ModelDefaultsResult` fields are all optional because models.dev
-  entries do not guarantee every field.
-- Dropped bundled per-model presets that no longer have a source:
-  injected `parallel_tool_calls: true`, `cacheControl`, and
-  provider-specific reasoning effort bodies (e.g. `enable_thinking`).
-  Reasoning effort maps now come from the provider `/models`
-  response and the per-model database row.
+- Bundled model defaults are now a snapshot of the
+  [models.dev](https://models.dev) database, refreshed with the new
+  `fetch:models-dev` script, replacing the previously hardcoded
+  defaults file. Defaults are looked up by provider and now support
+  OpenRouter `~`-prefixed "latest" aliases and the real
+  `/api/v1/models` response shape.
+- Removed bundled per-model presets that no longer have a source
+  (injected `parallel_tool_calls: true`, `cacheControl`, and
+  provider-specific reasoning effort bodies); reasoning effort maps
+  now come from the provider's `/models` response and the per-model
+  configuration.
 
 ### Fixed
 
-- Restored toggle-only Qwen reasoning defaults when deriving from the
-  bundled models.dev snapshot, so Alibaba-style models still prefill
-  `enable_thinking` / `preserve_thinking` request bodies and unknown
-  hosts no longer inherit arbitrary defaults for duplicate bare model
-  IDs.
-- Fixed `pnpm run test:e2e` failing on macOS: bumped
-  `@vscode/test-electron` to 3.1.0 (VS Code moved the macOS
-  executable from `Contents/MacOS/Electron` to `Code`, which older
-  versions of the test runner could not spawn), and moved the test
-  user-data directory under the OS temp directory so VS Code's IPC
-  socket stays within macOS' 103-char path limit. The database
-  lifecycle test now resolves the global storage path from the
-  extension's exports instead of hard-coding the runner's user-data
-  layout.
-- Fixed the E2E test user-data directory leaking state between runs:
-  it is now per-run (`tokenguard-copilot-e2e-<pid>` under the OS temp
-  directory), so concurrent runs do not conflict and stale
-  globalStorage/database content cannot be reused.
-- Fixed `ModelDefaultsService.getDefaults()` falling back to a global
-  all-provider scan even when a provider was resolved from the base
-  URL or model ID prefix; it now stays within the resolved provider
-  (the global unambiguous scan runs only when no provider can be
-  resolved), preventing unrelated providers' defaults from being
-  misapplied and removing the hot-path scan when enriching fetched
-  models that are absent from the snapshot.
-- Fixed `fetch-models-dev` crashing when Prettier config cannot be
-  resolved (`resolveConfig` returns `null`), and reworded an awkward
-  comment in the model registry.
+- Restored toggle-only Qwen reasoning defaults, so Alibaba-style
+  models still prefill `enable_thinking` / `preserve_thinking`
+  request bodies, and fixed defaults from unrelated providers being
+  misapplied.
+- Fixed `pnpm run test:e2e` on macOS by bumping
+  `@vscode/test-electron`, and made the E2E user-data directory a
+  per-run temp folder so runs do not conflict or reuse stale state.
+- Fixed the `fetch-models-dev` script crashing when no Prettier
+  config can be resolved.
 
 ## [v1.4.0] - 2026-07-19
 
@@ -345,7 +317,9 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.3.1...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.5.0...HEAD
+[v1.5.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.5.0
+[v1.4.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.4.0
 [v1.3.1]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.3.1
 [v1.3.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.3.0
 [v1.2.12]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.2.12

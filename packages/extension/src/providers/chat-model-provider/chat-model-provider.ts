@@ -21,6 +21,7 @@ import {
   type UsageCollector,
 } from '../../services/chat-handler/index.js';
 import type { ChatDebugLogger } from '../../services/chat-debug-logger/index.js';
+import type { SessionTracker } from '../../services/session-tracker/index.js';
 import type { TokenCounter } from '../../services/token-counter/index.js';
 import type { ReasoningCacheService } from '../../services/reasoning-cache/index.js';
 import type { UsageTracker } from '../../services/usage-tracker/index.js';
@@ -57,6 +58,8 @@ export interface ChatModelProviderDeps {
   secrets: SecretStorage;
   /** Logger for debug log files. */
   chatDebugLogger: ChatDebugLogger;
+  /** Session tracker for sticky conversation session IDs. */
+  sessionTracker: SessionTracker;
   /** Token counting service for provideTokenCount. */
   tokenCounter: TokenCounter;
   /** Reasoning cache service for preserving reasoning. */
@@ -229,6 +232,7 @@ export class ChatModelProvider {
       tools,
       toolMode,
       chatDebugLogger: deps.chatDebugLogger,
+      sessionTracker: deps.sessionTracker,
       workspaceFolderUri: workspace.workspaceFolders?.[0]?.uri.toString() ?? '',
       workspaceFolders: workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [],
       cacheControl,

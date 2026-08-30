@@ -238,6 +238,7 @@ describe('logChatDebugRequest', () => {
 
     logChatDebugRequest(ctx, {
       requestId: 'r1',
+      sessionId: 'test-session-id',
       finalMessages: [{ role: 'user', content: 'Hi' }],
       body: {
         model: 'gpt-4',
@@ -264,6 +265,7 @@ describe('logChatDebugRequest', () => {
     // Filtered fields should be excluded
     expect(input.modelOptions).toEqual({ temperature: 0.7, seed: 42 });
     expect(input.modelName).toBe('test-provider/gpt-4');
+    expect(input.sessionId).toBe('test-session-id');
   });
 
   it('handles missing chatDebugLogger gracefully', () => {
@@ -271,6 +273,7 @@ describe('logChatDebugRequest', () => {
     expect(() =>
       logChatDebugRequest(baseContext, {
         requestId: 'r1',
+        sessionId: 'test-session-id',
         finalMessages: [],
         body: {},
         responseContent: '',
@@ -299,6 +302,7 @@ describe('logChatDebugRequest', () => {
     expect(() =>
       logChatDebugRequest(ctx, {
         requestId: 'r1',
+        sessionId: 'test-session-id',
         finalMessages: [],
         body: {},
         responseContent: '',
@@ -328,6 +332,7 @@ describe('logChatDebugRequest', () => {
 
     logChatDebugRequest(ctx, {
       requestId: 'r1',
+      sessionId: 'test-session-id',
       finalMessages: [],
       body: {},
       responseContent: '',

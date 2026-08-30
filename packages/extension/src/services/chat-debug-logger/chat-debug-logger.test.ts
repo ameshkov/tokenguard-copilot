@@ -16,11 +16,11 @@ vi.mock('vscode', () => ({
 
 import { ChatDebugLogger, type LogRequestInput } from './chat-debug-logger.js';
 import type { ChatDebugSettingsService } from '../chat-debug-settings/index.js';
-import type { SessionTracker } from '../session-tracker/index.js';
 import { createMockLogger } from '../../test/mock-logger.js';
 
 const baseInput: LogRequestInput = {
   requestId: 'test-request-id',
+  sessionId: 'test-session-id',
   messages: [
     { role: 'system', content: 'You are helpful.' },
     { role: 'user', content: 'Hello' },
@@ -617,20 +617,13 @@ describe('ChatDebugLogger', () => {
     let tmpDir: string;
     let logger: ChatDebugLogger;
     let settingsService: ChatDebugSettingsService;
-    let sessionTracker: SessionTracker;
 
     beforeEach(() => {
       tmpDir = mkdtempSync(join(tmpdir(), 'chat-debug-'));
       settingsService = {
         getSettings: () => ({ enabled: true, ttlHours: 24 }),
       } as unknown as ChatDebugSettingsService;
-      sessionTracker = {
-        resolveSession: () => ({
-          sessionId: 'test-session-id',
-          isNew: true,
-        }),
-      } as unknown as SessionTracker;
-      logger = new ChatDebugLogger(settingsService, sessionTracker, tmpDir, createMockLogger());
+      logger = new ChatDebugLogger(settingsService, tmpDir, createMockLogger());
     });
 
     afterEach(() => {
@@ -645,6 +638,19 @@ describe('ChatDebugLogger', () => {
       const files = readdirSync(sessionDir);
       expect(files).toHaveLength(1);
       expect(files[0]).toMatch(/^\d{8}-\d{6}-\d{3}-test-request-id\.md$/);
+    });
+
+    it('uses the input session id for session directory naming', () => {
+      const input: LogRequestInput = {
+        ...baseInput,
+        sessionId: 'another-session-id',
+      };
+      logger.logRequest(input);
+
+      const workspaceId = ChatDebugLogger.computeWorkspaceId(input.workspaceFolderUri);
+      const sessionDir = join(tmpDir, workspaceId, 'my-provider-test-model--another-session-id');
+      const files = readdirSync(sessionDir);
+      expect(files).toHaveLength(1);
     });
 
     it('creates session directory with encoded model name', () => {
@@ -716,7 +722,6 @@ describe('ChatDebugLogger', () => {
     it('does not throw when write fails', () => {
       const badLogger = new ChatDebugLogger(
         settingsService,
-        sessionTracker,
         '/nonexistent/path/that/should/fail',
         createMockLogger(),
       );
@@ -744,7 +749,6 @@ describe('ChatDebugLogger', () => {
       const onLogWrite = vi.fn();
       const loggerWithCb = new ChatDebugLogger(
         settingsService,
-        sessionTracker,
         tmpDir,
         createMockLogger(),
         onLogWrite,
@@ -763,7 +767,6 @@ describe('ChatDebugLogger', () => {
       });
       const loggerWithCb = new ChatDebugLogger(
         settingsService,
-        sessionTracker,
         tmpDir,
         createMockLogger(),
         onLogWrite,

@@ -197,6 +197,8 @@ export function logChatDebugRequest(
   ctx: ChatContext,
   input: {
     requestId: string;
+    /** Session ID resolved before the request was sent. */
+    sessionId: string;
     finalMessages: OpenAIMessage[];
     body: Record<string, unknown>;
     responseContent: string;
@@ -223,6 +225,7 @@ export function logChatDebugRequest(
   try {
     ctx.chatDebugLogger.logRequest({
       requestId: input.requestId,
+      sessionId: input.sessionId,
       messages: input.finalMessages,
       responseContent: input.responseContent,
       responseToolCalls: input.responseToolCalls,

@@ -83,6 +83,11 @@ describe('ProviderManager', () => {
       secrets as unknown as vscode.SecretStorage,
       { logRequest: vi.fn() } as unknown as import('../chat-debug-logger/index.js').ChatDebugLogger,
       {
+        resolveSession: vi.fn(),
+        bindFingerprint: vi.fn(),
+        clearMappings: vi.fn(),
+      } as unknown as import('../session-tracker/index.js').SessionTracker,
+      {
         countTokens: vi.fn(),
         countMessageTokens: vi.fn(),
         initialize: vi.fn(),

@@ -14,18 +14,33 @@ vi.mock('vscode', () => ({
 import { createTestDb, clearTestDb } from '../../test/db-setup.js';
 import { SessionMappingRepository } from '../../repositories/index.js';
 import { SessionTracker } from './session-tracker.js';
+import { computeFingerprint, type FingerprintMessage } from '../../utils/index.js';
 import { createMockLogger } from '../../test/mock-logger.js';
 import type { Database } from '../../db/index.js';
 import type { DatabaseSync } from 'node:sqlite';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+const turn1Messages: FingerprintMessage[] = [
+  { role: 'system', content: 'You are helpful' },
+  { role: 'user', content: 'Hello' },
+];
+
+const turn2Messages: FingerprintMessage[] = [
+  ...turn1Messages,
+  { role: 'assistant', content: 'Hi there' },
+  { role: 'user', content: 'Follow-up question' },
+];
+
 describe('SessionTracker', () => {
   let db: Database;
   let raw: DatabaseSync;
+  let repo: SessionMappingRepository;
   let tracker: SessionTracker;
 
   beforeEach(() => {
     ({ db, raw } = createTestDb());
-    const repo = new SessionMappingRepository(db);
+    repo = new SessionMappingRepository(db);
     tracker = new SessionTracker(repo, createMockLogger());
   });
 
@@ -35,43 +50,35 @@ describe('SessionTracker', () => {
   });
 
   describe('resolveSession', () => {
-    it('creates a new session and stores fingerprint on turn 1', () => {
+    it('mints a session id without a DB row on turn 1', () => {
       const result = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'You are helpful' },
-          { role: 'user', content: 'Hello' },
-        ],
-        responseContent: 'Hi there',
+        messages: turn1Messages,
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(result.sessionId).toBeDefined();
+
+      expect(result.sessionId).toMatch(UUID_RE);
       expect(result.isNew).toBe(true);
+      // Phase A does not create a mapping yet.
+      expect(repo.getDistinctSessionIds()).toEqual([]);
     });
 
-    it('resolves to existing session via fingerprint on turn 2+', () => {
-      // Turn 1: system + user → response "Hi there"
+    it('resolves to the same session id on turn 2 when turn 1 bound its fingerprint', () => {
       const turn1 = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'You are helpful' },
-          { role: 'user', content: 'Hello' },
-        ],
+        messages: turn1Messages,
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+      tracker.bindFingerprint({
+        sessionId: turn1.sessionId,
+        messages: turn1Messages,
         responseContent: 'Hi there',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(turn1.isNew).toBe(true);
 
-      // Turn 2: messages include the assistant with
-      // content matching turn 1's responseContent
       const turn2 = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'You are helpful' },
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: 'Hi there' },
-          { role: 'user', content: 'Follow-up question' },
-        ],
-        responseContent: 'Follow-up answer',
+        messages: turn2Messages,
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
@@ -79,140 +86,166 @@ describe('SessionTracker', () => {
       expect(turn2.isNew).toBe(false);
     });
 
-    it('resolves session via tool call IDs when first response has tool calls and empty content', () => {
-      // Turn 1: model responds with tool calls, empty content
+    it('mints a new session id on turn 2 when turn 1 never bound a fingerprint', () => {
       const turn1 = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'You are helpful' },
-          { role: 'user', content: 'Call a tool' },
-        ],
-        responseContent: '',
-        responseToolCallIds: ['call_abc', 'call_def'],
+        messages: turn1Messages,
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(turn1.isNew).toBe(true);
 
-      // Turn 2: messages include assistant tool_calls matching
-      // turn 1's responseToolCallIds. The fingerprint should match.
+      // No bindFingerprint — e.g. the first request failed
+      // without a response. Turn 2 cannot resolve to it.
       const turn2 = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'You are helpful' },
-          { role: 'user', content: 'Call a tool' },
-          {
-            role: 'assistant',
-            content: null,
-            tool_calls: [{ id: 'call_def' }, { id: 'call_abc' }],
-          },
-          { role: 'tool', content: 'Result A' },
-          { role: 'tool', content: 'Result B' },
-          { role: 'user', content: 'Continue with results' },
-        ],
-        responseContent: 'Final answer',
+        messages: turn2Messages,
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(turn2.sessionId).toBe(turn1.sessionId);
-      expect(turn2.isNew).toBe(false);
-    });
-
-    it('creates new session on turn 2+ when turn 1 had tool calls but responseToolCallIds was not passed', () => {
-      // Turn 1: model responds with tool calls, empty content,
-      // but responseToolCallIds is NOT passed — fingerprint is null,
-      // no mapping stored.
-      const turn1 = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'Sys' },
-          { role: 'user', content: 'Call tool' },
-        ],
-        responseContent: '',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-      expect(turn1.isNew).toBe(true);
-
-      // Turn 2: fingerprint is computed from tool_calls in messages,
-      // but no mapping was stored on turn 1, so a new session is created.
-      const turn2 = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'Sys' },
-          { role: 'user', content: 'Call tool' },
-          {
-            role: 'assistant',
-            content: null,
-            tool_calls: [{ id: 'call_abc' }],
-          },
-          { role: 'user', content: 'Next' },
-        ],
-        responseContent: 'Response',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-      expect(turn2.isNew).toBe(true);
       expect(turn2.sessionId).not.toBe(turn1.sessionId);
+      expect(turn2.isNew).toBe(true);
     });
 
-    it('creates new session when fingerprint differs', () => {
-      const first = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'Prompt A' },
-          { role: 'user', content: 'Question A' },
-        ],
-        responseContent: 'Answer A',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      const second = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'Prompt B' },
-          { role: 'user', content: 'Question B' },
-        ],
-        responseContent: 'Answer B',
-        workspaceId: 'ws-1',
-        modelName: 'gpt-4o',
-      });
-
-      expect(second.sessionId).not.toBe(first.sessionId);
-      expect(second.isNew).toBe(true);
-    });
-
-    it('creates session without mapping when messages are empty', () => {
+    it('mints a new id without a DB write when no fingerprint is possible', () => {
       const result = tracker.resolveSession({
         messages: [],
-        responseContent: 'Some response',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
-      expect(result.sessionId).toBeDefined();
+
+      expect(result.sessionId).toMatch(UUID_RE);
       expect(result.isNew).toBe(true);
+      expect(repo.getDistinctSessionIds()).toEqual([]);
+    });
+
+    it('reuses the existing session on turn 2 via the tool-call fingerprint', () => {
+      const turn1 = tracker.resolveSession({
+        messages: turn1Messages,
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+      tracker.bindFingerprint({
+        sessionId: turn1.sessionId,
+        messages: turn1Messages,
+        responseContent: '',
+        responseToolCallIds: ['call_def', 'call_abc'],
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      // Turn 2: first assistant message carries the tool calls
+      // (order is irrelevant to the fingerprint).
+      const turn2 = tracker.resolveSession({
+        messages: [
+          ...turn1Messages,
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [{ id: 'call_abc' }, { id: 'call_def' }],
+          },
+          { role: 'tool', content: 'Result A' },
+          { role: 'user', content: 'Continue with results' },
+        ],
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      expect(turn2.sessionId).toBe(turn1.sessionId);
+      expect(turn2.isNew).toBe(false);
+    });
+  });
+
+  describe('bindFingerprint', () => {
+    it('creates the session mapping row for a bound response', () => {
+      const { sessionId } = tracker.resolveSession({
+        messages: turn1Messages,
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      tracker.bindFingerprint({
+        sessionId,
+        messages: turn1Messages,
+        responseContent: 'Hi there',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      const fingerprint = computeFingerprint(turn1Messages, { content: 'Hi there' });
+      const row = repo.findByContentFingerprint(fingerprint!);
+      expect(row).toBeDefined();
+      expect(row!.sessionId).toBe(sessionId);
+      expect(repo.getDistinctSessionIds()).toEqual([sessionId]);
+    });
+
+    it('does not write a mapping when no fingerprint can be determined', () => {
+      const { sessionId } = tracker.resolveSession({
+        messages: [],
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      tracker.bindFingerprint({
+        sessionId,
+        messages: [],
+        responseContent: '',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      expect(repo.getDistinctSessionIds()).toEqual([]);
+    });
+
+    it('updates the fingerprint on a second bind instead of adding a row', () => {
+      const { sessionId } = tracker.resolveSession({
+        messages: turn1Messages,
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      tracker.bindFingerprint({
+        sessionId,
+        messages: turn1Messages,
+        responseContent: 'Hi there',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+      // A second bind (e.g. the request was retried) must
+      // refresh the row rather than create a duplicate.
+      tracker.bindFingerprint({
+        sessionId,
+        messages: turn1Messages,
+        responseContent: 'Hi there!',
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+
+      expect(repo.getDistinctSessionIds()).toEqual([sessionId]);
+      const stale = computeFingerprint(turn1Messages, { content: 'Hi there' });
+      const current = computeFingerprint(turn1Messages, { content: 'Hi there!' });
+      expect(repo.findByContentFingerprint(stale!)).toBeUndefined();
+      expect(repo.findByContentFingerprint(current!)?.sessionId).toBe(sessionId);
     });
   });
 
   describe('clearMappings', () => {
-    it('removes all session mappings', () => {
+    it('removes all session mappings and forces a new id on the next turn', () => {
       const first = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'System' },
-          { role: 'user', content: 'User' },
-        ],
-        responseContent: 'Response',
+        messages: turn1Messages,
+        workspaceId: 'ws-1',
+        modelName: 'gpt-4o',
+      });
+      tracker.bindFingerprint({
+        sessionId: first.sessionId,
+        messages: turn1Messages,
+        responseContent: 'Hi there',
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });
 
       tracker.clearMappings();
+      expect(repo.getDistinctSessionIds()).toEqual([]);
 
-      // Turn 2 with same fingerprint should create a new
-      // session since mappings were cleared
       const second = tracker.resolveSession({
-        messages: [
-          { role: 'system', content: 'System' },
-          { role: 'user', content: 'User' },
-          { role: 'assistant', content: 'Response' },
-          { role: 'user', content: 'Follow-up' },
-        ],
-        responseContent: 'Follow-up answer',
+        messages: turn2Messages,
         workspaceId: 'ws-1',
         modelName: 'gpt-4o',
       });

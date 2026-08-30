@@ -60,6 +60,48 @@ export class SessionMappingRepository {
       .get();
   }
 
+  /**
+   * Upsert a content fingerprint → session mapping.
+   *
+   * Updates the row matching `sessionId` (setting the new
+   * fingerprint and refreshing `updatedAt`) when one exists;
+   * otherwise inserts a new row. This is the single write in
+   * the two-phase session tracking flow — the session ID is
+   * minted pre-response and bound here after the response.
+   *
+   * @param mapping - The fingerprint mapping to upsert.
+   * @returns The stored row (updated or inserted).
+   */
+  upsertFingerprintMapping(mapping: FingerprintMappingInsert): SessionMapping {
+    const now = new Date().toISOString();
+    const updated = this.db
+      .update(sessionMappings)
+      .set({
+        contentFingerprint: mapping.contentFingerprint,
+        workspaceId: mapping.workspaceId,
+        modelName: mapping.modelName,
+        updatedAt: now,
+      })
+      .where(eq(sessionMappings.sessionId, mapping.sessionId))
+      .returning()
+      .get();
+
+    if (updated) return updated;
+
+    return this.db
+      .insert(sessionMappings)
+      .values({
+        contentFingerprint: mapping.contentFingerprint,
+        sessionId: mapping.sessionId,
+        workspaceId: mapping.workspaceId,
+        modelName: mapping.modelName,
+        createdAt: mapping.createdAt,
+        updatedAt: now,
+      })
+      .returning()
+      .get();
+  }
+
   /** Delete all session mappings. */
   deleteAll(): void {
     this.db.delete(sessionMappings).run();

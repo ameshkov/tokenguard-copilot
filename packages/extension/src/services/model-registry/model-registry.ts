@@ -4,6 +4,7 @@ import type { ModelInfo, FetchedModel, ModelConfig, CacheControlConfig } from '@
 import type { ModelRepository, ProviderRepository } from '../../repositories/index.js';
 import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../chat-debug-logger/index.js';
+import type { SessionTracker } from '../session-tracker/index.js';
 import type { TokenCounter } from '../token-counter/index.js';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import type { UsageTracker } from '../usage-tracker/index.js';
@@ -43,6 +44,8 @@ export class ModelRegistry {
    *   table (used to look up provider info for fetch).
    * @param secrets - VS Code SecretStorage for API keys.
    * @param chatDebugLogger - Logger for debug log files.
+   * @param sessionTracker - Session tracker for sticky
+   *   conversation session IDs.
    * @param tokenCounter - Token counting service for
    *   provideTokenCount.
    * @param reasoningCacheService - Service for caching reasoning.
@@ -58,6 +61,7 @@ export class ModelRegistry {
     private readonly providerRepo: ProviderRepository,
     private readonly secrets: SecretStorage,
     private readonly chatDebugLogger: ChatDebugLogger,
+    private readonly sessionTracker: SessionTracker,
     private readonly tokenCounter: TokenCounter,
     private readonly reasoningCacheService: ReasoningCacheService,
     private readonly usageTracker: UsageTracker,
@@ -473,6 +477,7 @@ export class ModelRegistry {
       chatInfoEmitter: this.chatInfoEmitter,
       secrets: this.secrets,
       chatDebugLogger: this.chatDebugLogger,
+      sessionTracker: this.sessionTracker,
       tokenCounter: this.tokenCounter,
       reasoningCacheService: this.reasoningCacheService,
       usageTracker: this.usageTracker,

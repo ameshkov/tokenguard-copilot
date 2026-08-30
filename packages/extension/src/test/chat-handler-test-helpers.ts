@@ -10,6 +10,7 @@ import { vi } from 'vitest';
 import type * as vscode from 'vscode';
 import type { Model, Provider } from '../db/index.js';
 import type { ReasoningCacheService } from '../services/reasoning-cache/index.js';
+import type { SessionTracker } from '../services/session-tracker/index.js';
 import type { ChatContext } from '../services/chat-handler/chat-handler.js';
 
 // ---------------------------------------------------------------------------
@@ -208,7 +209,8 @@ export function mockToken(
  * Helper to create a base ChatContext for chat-handler tests.
  *
  * Provides sensible defaults: a non-streaming test model, the default test
- * provider, and a dummy API key. Pass overrides to customise per test.
+ * provider, a dummy API key, and a mock SessionTracker that resolves every
+ * request to `test-session-id`. Pass overrides to customise per test.
  *
  * @internal Exported for test files only; not part of the public module API.
  */
@@ -217,6 +219,11 @@ export function baseChatContext(overrides: Partial<ChatContext> = {}): ChatConte
     model: mockModel({ streaming: 0 }),
     provider: mockProvider(),
     apiKey: 'sk-test',
+    sessionTracker: {
+      resolveSession: vi.fn(() => ({ sessionId: 'test-session-id', isNew: true })),
+      bindFingerprint: vi.fn(),
+      clearMappings: vi.fn(),
+    } as unknown as SessionTracker,
     ...overrides,
   };
 }

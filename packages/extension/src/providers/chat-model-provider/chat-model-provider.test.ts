@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Model, Provider } from '../../db/index.js';
 import type { ChatDebugLogger } from '../../services/chat-debug-logger/index.js';
+import type { SessionTracker } from '../../services/session-tracker/index.js';
 import type { TokenCounter } from '../../services/token-counter/index.js';
 import type { ReasoningCacheService } from '../../services/reasoning-cache/index.js';
 import type { UsageTracker } from '../../services/usage-tracker/index.js';
@@ -143,6 +144,11 @@ describe('ChatModelProvider', () => {
       chatDebugLogger: {
         logRequest: vi.fn(),
       } as unknown as ChatDebugLogger,
+      sessionTracker: {
+        resolveSession: vi.fn(() => ({ sessionId: 'test-session-id', isNew: true })),
+        bindFingerprint: vi.fn(),
+        clearMappings: vi.fn(),
+      } as unknown as SessionTracker,
       tokenCounter: {
         countTokens: vi.fn().mockResolvedValue(42),
         countMessageTokens: vi.fn().mockResolvedValue(10),
