@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.6.1] - 2026-08-30
+
 ### Fixed
 
 - Fixed the Usage Stats model filter dropping everything after the
@@ -326,7 +328,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.6.0...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.6.1...HEAD
+[v1.6.1]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.1
 [v1.6.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.0
 [v1.5.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.5.0
 [v1.4.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.4.0
