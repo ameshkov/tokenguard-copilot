@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.6.2] - 2026-09-23
+
 ### Changed
 
 - The `fetch:models-dev` script now writes the bundled models.dev
@@ -336,7 +338,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.6.1...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.6.2...HEAD
+[v1.6.2]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.2
 [v1.6.1]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.1
 [v1.6.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.0
 [v1.5.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.5.0
