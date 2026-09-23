@@ -12,6 +12,10 @@
  * combination, so runtime lookups must tolerate missing fields.
  *
  * Behavior:
+ * - Sorts providers alphabetically and models within each provider
+ *   alphabetically, so refreshes produce minimal diffs instead of
+ *   reshuffling the whole file. Key order is irrelevant for runtime
+ *   lookups (the service indexes providers and models).
  * - Writes the snapshot atomically (temp file + rename).
  * - If the fetch fails and a snapshot already exists, keeps the
  *   existing file and warns.
@@ -49,6 +53,52 @@ async function exists(filePath) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Compares two keys for alphabetical ordering.
+ *
+ * Comparison is case-insensitive (so `MiniMax-M1` sorts with the
+ * other `minimax-*` models) with a case-sensitive tiebreak for
+ * deterministic, locale-independent ordering.
+ *
+ * @param a - First key.
+ * @param b - Second key.
+ * @returns Negative when `a` sorts before `b`, positive when it
+ *   sorts after, `0` when the keys are equal.
+ */
+function compareKeys(a, b) {
+  const lowerA = a.toLowerCase();
+  const lowerB = b.toLowerCase();
+  if (lowerA !== lowerB) {
+    return lowerA < lowerB ? -1 : 1;
+  }
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Sorts a snapshot's keys deterministically.
+ *
+ * Providers are sorted by ID and each provider's models are sorted
+ * by model ID. Fields that were absent in the source data are not
+ * synthesized; only key order changes.
+ *
+ * @param data - Parsed models.dev snapshot.
+ * @returns A new snapshot with sorted provider and model keys.
+ */
+function sortSnapshot(data) {
+  const sorted = {};
+  for (const providerId of Object.keys(data).sort(compareKeys)) {
+    const provider = data[providerId];
+    const sortedProvider = { ...provider };
+    if (sortedProvider.models !== undefined) {
+      sortedProvider.models = Object.fromEntries(
+        Object.entries(sortedProvider.models).sort(([a], [b]) => compareKeys(a, b)),
+      );
+    }
+    sorted[providerId] = sortedProvider;
+  }
+  return sorted;
 }
 
 /** Runs the fetch and writes the snapshot. */
@@ -98,6 +148,8 @@ async function main() {
     );
     process.exit(1);
   }
+
+  data = sortSnapshot(data);
 
   const tempPath = `${OUTPUT_PATH}.tmp-${process.pid}`;
   try {

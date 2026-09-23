@@ -8,6 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- The `fetch:models-dev` script now writes the bundled models.dev
+  snapshot sorted alphabetically — providers and models within each
+  provider — so future refreshes keep diffs minimal instead of
+  reshuffling the whole file. The committed snapshot was refreshed
+  from models.dev and re-sorted as part of this change.
+
 ## [v1.6.1] - 2026-08-30
 
 ### Fixed
