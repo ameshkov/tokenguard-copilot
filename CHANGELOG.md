@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Refreshed the bundled models.dev snapshot (226 providers, 8454
+  models) so model defaults — context and output limits, costs,
+  capabilities, and reasoning effort options — stay current.
+
 ## [v1.6.2] - 2026-09-23
 
 ### Changed
