@@ -5,7 +5,7 @@ import type { Logger } from '../../logger/index.js';
 /**
  * Periodic cleanup service for the reasoning cache table.
  *
- * Removes cache entries older than 24 hours to prevent
+ * Removes cache entries older than 30 days to prevent
  * unbounded storage growth. Follows the same pattern as
  * {@link ChatDebugCleanupService}.
  *

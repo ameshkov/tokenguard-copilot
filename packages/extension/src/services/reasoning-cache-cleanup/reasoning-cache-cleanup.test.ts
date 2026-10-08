@@ -22,7 +22,7 @@ describe('ReasoningCacheCleanupService', () => {
   });
 
   it('runCleanup deletes expired entries', () => {
-    const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const oldDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
     raw.exec(
       `INSERT INTO reasoning_cache (fingerprint, message_fingerprint, reasoning_content, created_at)
        VALUES ('old_fp', 'old_msg', 'old', '${oldDate}')`,
@@ -60,7 +60,7 @@ describe('ReasoningCacheCleanupService', () => {
   });
 
   it('startPeriodicCleanup runs immediate cleanup', () => {
-    const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const oldDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
     raw.exec(
       `INSERT INTO reasoning_cache (fingerprint, message_fingerprint, reasoning_content, created_at)
        VALUES ('old_fp', 'old_msg', 'old', '${oldDate}')`,

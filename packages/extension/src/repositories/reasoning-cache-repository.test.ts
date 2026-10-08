@@ -95,16 +95,17 @@ describe('ReasoningCacheRepository', () => {
     expect(fields!.reasoning_details).toEqual(details);
   });
 
-  it('deleteExpired removes truly old entries', () => {
-    const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  it('deleteExpired removes entries older than 30 days', () => {
+    const oldDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+    const boundaryDate = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString();
     raw.exec(
       `INSERT INTO reasoning_cache (fingerprint, message_fingerprint, reasoning_content, created_at)
        VALUES ('old_fp', 'old_msg', 'old content', '${oldDate}')`,
     );
-
-    repo.cache('fp_new', 'msg_new', {
-      reasoning_content: 'new content',
-    });
+    raw.exec(
+      `INSERT INTO reasoning_cache (fingerprint, message_fingerprint, reasoning_content, created_at)
+       VALUES ('boundary_fp', 'boundary_msg', 'boundary content', '${boundaryDate}')`,
+    );
 
     const deleted = repo.deleteExpired();
 
@@ -112,9 +113,9 @@ describe('ReasoningCacheRepository', () => {
     const oldFields = repo.get('old_fp', 'old_msg');
     expect(oldFields).toBeNull();
 
-    const newFields = repo.get('fp_new', 'msg_new');
-    expect(newFields).not.toBeNull();
-    expect(newFields!.reasoning_content).toBe('new content');
+    const boundaryFields = repo.get('boundary_fp', 'boundary_msg');
+    expect(boundaryFields).not.toBeNull();
+    expect(boundaryFields!.reasoning_content).toBe('boundary content');
   });
 
   it('same message fp with different session fps are separate', () => {

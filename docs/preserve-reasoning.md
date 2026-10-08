@@ -306,7 +306,7 @@ Key design points:
   matches by content.
 - **`reasoningDetails`** is stored as a JSON string and parsed
   back on retrieval.
-- **`createdAt`** enables TTL-based cleanup (24-hour expiry).
+- **`createdAt`** enables TTL-based cleanup (30-day expiry).
 
 The `models` table also carries reasoning-related columns:
 
@@ -330,7 +330,7 @@ reasoningTokens: integer('reasoning_tokens').notNull().default(0),
 | --- | --- |
 | `cache(fingerprint, messageFingerprint, fields)` | Upserts reasoning fields for a specific assistant message |
 | `get(fingerprint, messageFingerprint)` | Retrieves cached reasoning fields |
-| `deleteExpired()` | Removes entries older than 24 hours |
+| `deleteExpired()` | Removes entries older than 30 days |
 | `deleteAll()` | Clears all entries (testing only) |
 
 The `cache` method uses `onConflictDoUpdate` for upsert
@@ -570,12 +570,12 @@ signed `thinking` block are visible at a glance.
 
 ## TTL and Cleanup
 
-Cache entries expire after 24 hours. Cleanup is handled by
+Cache entries expire after 30 days. Cleanup is handled by
 `ReasoningCacheCleanupService`:
 
 - Runs immediately on extension activation.
 - Runs every 30 minutes thereafter.
-- Deletes all rows where `createdAt < now - 24h`.
+- Deletes all rows where `createdAt < now - 30d`.
 
 The service is registered in `extension.ts` as a VS Code `Disposable`,
 so cleanup stops when the extension deactivates.

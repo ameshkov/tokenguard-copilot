@@ -10,6 +10,8 @@ and this project adheres to
 
 ### Changed
 
+- Changed the reasoning cache retention from 24 hours to 30 days, so
+  reasoning content is preserved when users return to older chats.
 - Refreshed the bundled models.dev snapshot (226 providers, 8454
   models) so model defaults — context and output limits, costs,
   capabilities, and reasoning effort options — stay current.

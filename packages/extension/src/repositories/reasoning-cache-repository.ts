@@ -3,8 +3,8 @@ import type { Database } from '../db/index.js';
 import { reasoningCache, type ReasoningCacheRow } from '../db/index.js';
 import type { ReasoningFields } from '../utils/index.js';
 
-/** TTL for cache entries: 24 hours in milliseconds. */
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** TTL for cache entries: 30 days in milliseconds. */
+const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Data-access layer for the `reasoning_cache` table.
@@ -94,7 +94,7 @@ export class ReasoningCacheRepository {
   }
 
   /**
-   * Deletes all cache entries older than 24 hours.
+   * Deletes all cache entries older than 30 days.
    *
    * @returns The number of deleted rows.
    */
