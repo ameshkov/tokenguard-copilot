@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [v1.7.0] - 2026-10-08
+
 ### Changed
 
 - Changed the reasoning cache retention from 24 hours to 30 days, so
@@ -346,7 +348,8 @@ and this project adheres to
   Explorer sidebar.
 - SQLite persistence via `node:sqlite` and Drizzle ORM.
 
-[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.6.2...HEAD
+[unreleased]: https://github.com/ameshkov/tokenguard-copilot/compare/v1.7.0...HEAD
+[v1.7.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.7.0
 [v1.6.2]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.2
 [v1.6.1]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.1
 [v1.6.0]: https://github.com/ameshkov/tokenguard-copilot/releases/tag/v1.6.0
