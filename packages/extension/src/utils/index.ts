@@ -20,4 +20,5 @@ export {
 } from './reasoning.js';
 export { thinkingPartsToReasoning, reasoningToThinkingPart } from './reasoning-conversion.js';
 export { truncate } from './string.js';
+export { replaceUnpairedSurrogates, unpairedSurrogateReplacer } from './string-sanitize.js';
 export { buildUserAgent } from './user-agent.js';
