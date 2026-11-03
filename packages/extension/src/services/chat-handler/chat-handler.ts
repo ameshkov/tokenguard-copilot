@@ -7,7 +7,7 @@ import type {
 import { randomUUID } from 'node:crypto';
 import type { ReasoningCacheService } from '../reasoning-cache/index.js';
 import { CacheControlService } from '../cache-control/index.js';
-import { buildUserAgent } from '../../utils/index.js';
+import { buildUserAgent, unpairedSurrogateReplacer } from '../../utils/index.js';
 import { translateMessages } from './translate-messages.js';
 import { buildRequestBody } from './build-request-body.js';
 import { handleNonStreaming } from './handle-non-streaming.js';
@@ -102,7 +102,10 @@ export class ChatHandler {
             'X-TokenGuard-Request-Id': requestId,
             'X-Session-Id': sessionId,
           },
-          body: JSON.stringify(body),
+          // Replaces unpaired UTF-16 surrogates (e.g. from tool results
+          // truncated mid-astral-character by VS Code) with U+FFFD, so
+          // strict JSON parsers on the backend cannot reject the body.
+          body: JSON.stringify(body, unpairedSurrogateReplacer),
           signal: abortController.signal,
         },
         policy: DEFAULT_RETRY_POLICY,

@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed chat completion requests failing with a 400 error from strict
+  JSON parsers (e.g. vLLM/Rust serde) when the conversation history
+  contains a string with an unpaired UTF-16 surrogate — which can
+  happen when VS Code truncates a tool result in the middle of an
+  astral character, keeping only half of its surrogate pair. String
+  values in the request body are now serialized with unpaired
+  surrogates replaced by U+FFFD, matching how VS Code itself
+  sanitizes such strings for its built-in model endpoints.
+
 ## [v1.7.0] - 2026-10-08
 
 ### Changed
